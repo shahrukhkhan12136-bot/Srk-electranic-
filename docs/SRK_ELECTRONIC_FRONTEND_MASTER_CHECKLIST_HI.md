@@ -771,3 +771,18 @@
 - [x] Clearly separates source-observed current calls from proposed, not-deployed API names.
 - [ ] Backend owner must confirm actual deployed routes/schema, permissions, response/error contracts and staging evidence before frontend integration.
 - [ ] No live API call, UI, booking, payment, database or production behavior changed; Flutter/Android verification remains pending.
+
+
+## 2AA. Shared six-category catalogue and Customer picker unification (2026-11-21)
+
+- [x] Shared core catalogue now owns the six category keys, Hindi display labels, icon keys, existing subcategory keys/labels, AC/Fridge task labels and existing rate data.
+- [x] Added draft catalogue version `draft-2026-11-21.1`; all keys remain frontend proposal identifiers and are NOT deployed backend IDs.
+- [x] Customer service picker now adapts from `packages/srk_mobile_core/lib/srk_service_catalog.dart`; its separate hard-coded category/subcategory/task list has been removed.
+- [x] AC and Fridge task lists are stored separately in shared data; their task keys are scoped separately.
+- [x] Plumber/Painter task lists remain empty because the owner has not confirmed their detailed tasks; unconfirmed Fridge/helper/other rates are not invented.
+- [x] Existing shared rate entries, Cooler ₹500 fixed labour, Motor winding HP rates and materials-approval note remain in the shared catalogue.
+- [ ] Technician verified-skill model and backend offer matching are NOT yet wired to this catalogue; backend must approve canonical IDs/version and publish exact response contract.
+- [ ] Do not send these draft IDs through existing booking create API or use them for dispatch/payment until backend contract is deployed and verified.
+- [ ] Run Flutter formatter, analyzer, shared-core tests, Customer widget tests and Android builds; none are claimed as executed by this source update.
+
+**सीमा:** केवल shared presentation catalogue और Customer picker data source बदला है। Existing booking form/submit payload, booking lifecycle, Technician live screens/skill authorization, APIs, Supabase, database, payment, production और Admin में कोई बदलाव नहीं।
