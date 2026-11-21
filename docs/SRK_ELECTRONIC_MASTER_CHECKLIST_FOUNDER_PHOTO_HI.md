@@ -85,6 +85,7 @@
 - [x] Electrician KYC private document bucket, upload/list/preview, Admin review/audit और activation gate source मौजूद।
 - [x] Electrician support tickets/replies, profile edit, phone-change approval, earnings/wallet projections source मौजूद।
 - [x] Push opt-in, service worker, safe notification click-to-offer routing source मौजूद।
+- [x] Shared Technician App source: OTP-first application, multi-category skills, private KYC upload, Admin review/approval, Master offer inbox, GPS presence, timer controls, 85% rate list, two-way ratings, Cash Refund task inbox और wallet refund-credit history।
 - [ ] KYC/Storage/OTP/activation, dispatch race, work timer, location sharing और availability/relocation के सभी actor/ownership flows isolated environment में runtime verify करें।
 
 ## 3. Admin और Support Staff — Feature Branch implementation
@@ -100,6 +101,7 @@
 - [x] Legacy Admin manual-payment RPC `srk_admin_record_manual_payment(uuid,text,text,text)` अब मौजूद; केवल Main Admin, completed/assigned/customer-approved quote, unpaid/pending, no Razorpay IDs, exact labour + materials total, receipt evidence और payout row।
 - [x] Admin booking table में labour/materials/quote-status का अलग data box; approved quote total को अलग-अलग मदों से match करना अनिवार्य।
 - [x] Read-only booking accounting reconciliation RPC/UI source मौजूद।
+- [x] Master Admin source: Technician application/KYC/skill review, dispatch queue/retry, service/rate catalogue, GST accounting, completed manual-payment verification, cash refund review और payout-credit integration।
 - [ ] Admin/Staff role, support assignment, phone visibility, refund/cancellation/payout/KYC और सभी direct table-write ACL को isolated DB + browser में actor-by-actor runtime verify करें।
 - [x] Admin booking customer-location और legacy quote direct-edit paths का source/privilege audit पूरा: दोनों UI writes Main-Admin-only, row-locked RPCs पर बदले; location change before/after `srk_admin_audit_events` में दर्ज; `service_bookings` के authenticated direct UPDATE grants revoke किए। पूरे `admin.html` में कोई `.from(...).update(...)` direct table write शेष नहीं मिला। Profile/other legacy paths की runtime DB/browser verification अलग pending है।
 
@@ -113,6 +115,7 @@
 - [x] Billing paise में integer arithmetic और half-up rounding rule documented/implemented in approved calculation paths.
 - [x] Manual payment evidence में unique booking, method, receipt/UTR, recorder और timestamp।
 - [x] Payment और refund paths Razorpay IDs/verified provider evidence से अलग रखे गए; manual RPC Razorpay-linked booking स्वीकार नहीं करती।
+- [x] Master payment/accounting source: GST-inclusive final bill, tax invoice/credit note, manual cash/UPI/bank verification, Technician cash refund evidence, commission reversal और wallet-credit payout history।
 - [ ] Legacy manual payment migration + pgTAP को isolated PostgreSQL में चलाएँ; duplicate/concurrent payment, rollback, payout-row trigger और customer receipt runtime verify करें।
 - [ ] Legacy commission trigger और completion/accounting path का end-to-end runtime reconciliation करें।
 
@@ -130,20 +133,19 @@
 
 ## 6. Welcome Screen और Founder Photo
 
-**Owner-approved asset (नवीनतम निर्देश, 16 नवम्बर 2026):** आधिकारिक Founder Photo वही मूल portrait है जिसमें Founder काली shirt में बाँहें मोड़े हुए हैं और पीछे गहरा नीला studio background है। यही Library asset `SRK ELECTRONIC/Official Founder Photo.png` उपयोग करना है। पहले दर्ज garden-background portrait/`Urban Garden Portrait.png` निर्देश अब superseded हैं; उसे उपयोग नहीं करना है। चेहरा, कपड़े और नीला background ज्यों का त्यों रखें—कोई AI substitute या appearance edit नहीं। केवल आवश्यक responsive display sizing/cropping करें। Welcome Screen और Customer Login दोनों में यही फोटो लगनी है।
+**नवीनतम Owner निर्देश:** वास्तविक Founder Photo Owner द्वारा अलग से भेजी जाएगी। पुरानी portrait asset superseded है; उसे Welcome, Customer या Technician स्क्रीन पर नहीं दिखाना है। कोई AI/generated या alternate portrait नहीं चुनना है। Original मिलने पर वही फोटो Welcome Screen, Customer App और shared Technician App में prominent रूप से लगानी है।
 
-- [x] `index.html` स्वागत पेज पर redirect करता है और Welcome Screen का responsive layout मौजूद है।
-- [x] Welcome Screen का source implementation और responsive layout मौजूद है।
-- [x] Owner ने black shirt और deep-blue studio background वाली original Founder Photo को आधिकारिक asset के रूप में confirm किया; garden portrait superseded है।
-- [x] Official blue-background Founder Photo की owner-verified मूल फ़ाइल `assets/IMG-20261116-WA0000.jpg` है; Welcome Screen और Customer Login दोनों इसी asset को सीधे load करते हैं। इस current source में `assets/founder-photo.svg` उपयोग नहीं हो रहा।
-- [ ] Netlify Deploy Preview में asset/page load और desktop/mobile rendering verify करें; manual mobile QA अंतिम consolidated pass तक रोका गया है।
-- [ ] Automated build/check और Netlify Deploy Preview में asset/page load verify करें।
-- [ ] Owner visual acceptance लें।
-- [ ] Desktop और responsive/mobile presentation final consolidated QA में verify करें।
+- [x] Welcome Screen पर company intro, welcome copy और तीन role logins मौजूद।
+- [x] Welcome, Customer OTP Login, Customer Booking App और shared Technician App में एक समान Founder Photo placeholder slot तैयार; पुरानी portrait को UI और PWA cache से हटाया।
+- [ ] Owner वास्तविक original Founder Photo upload करे।
+- [ ] उसी original photo को Welcome, Customer App और Technician App में लगाएँ; केवल responsive sizing/crop।
+- [ ] PWA cache version और image loading desktop/mobile पर verify करें।
+- [ ] Owner final visual placement/crop approve करे।
 
 ## 7. Documentation और source consistency
 
 - [x] README phone visibility policy owner-approved rule के अनुसार सुधारी गई।
+- [x] Current staging branch, rate configuration, database-baseline blocker और release gates को progress dashboard तथा project audit docs में reconcile किया।
 - [ ] README endpoints, feature descriptions और all portal UI copy को latest source से अंतिम बार मिलाएँ।
 - [ ] Customer, Electrician, Admin और Staff के हर visible button/action को source/API contract से one-by-one reconcile करें; कोई dead button, missing field, placeholder या stale label न छोड़े।
 
@@ -172,13 +174,14 @@
 - [ ] Main DB में `job_offers.expires_at` और `electrician_profiles.available_for_work` columns नहीं मिले; नई Push/dispatch implementation के लिए schema parity जरूरी है।
 - [ ] Legacy status direct-write guard और नवीनतम itemized legacy manual-payment/receipt implementation Main DB पर लागू नहीं हैं। Existing Main DB manual-payment RPC पुरानी definition है; नई Feature Branch definition से अलग है।
 - [ ] Production migration chain में नवीनतम लागू version इस audit के समय `20261115092149` (unused Route ledger retirement) है; Feature Branch की बाद की Customer/Admin/KYC/Push/payment migrations Production पर लागू नहीं।
+- [x] Current staging में 4 Master follow-up migrations और source-level pgTAP/Node contracts जोड़े: unified Technician offer read, application/Admin operations, GST-inclusive manual-payment/cash-refund tasks और confirmed rate catalogue। 36 confirmed rate levels active; 6 unresolved rows pending-only।
 - [ ] सभी missing migrations को dependency/order और existing production data के हिसाब से migration-by-migration reconcile करें; एक साथ blind apply नहीं। Backup/rollback और maintenance/worker sequencing review के बाद ही owner-approved Production apply।
 
 **निष्कर्ष:** Checklist के बाहर दो confirmed unused objects मिले और हटाए गए: orphan `accept_electrician_job` function और zero-row `srk_route_transfers` table। इनके अलावा कोई दूसरा object पर्याप्त प्रमाण से extra साबित नहीं हुआ। अभी मुख्य अंतर “फालतू database” नहीं बल्कि Main DB का Feature Branch checklist से पीछे होना और कई नई आवश्यक tables/columns/RPCs का अभी apply न होना है।
 
 ## 9. Test, release और approval gates
 
-- [x] Feature Branch PR Node CI run `43704748225` (commit `059f875`): **96/96 PASS**। उसके बाद latest observed HEAD `a924bc3` का run `43704886935`: **97 PASS / 1 FAIL**; शेष failure GPT-1 Customer quote UI regression test के पुराने onclick-regex expectation में है (`tests/customer-quote-approval-ui.test.js`) जबकि `booking.html` में approve/reject handlers मौजूद हैं। Admin accounting tests latest run में PASS हैं। यह source-level Node suite है; pgTAP/live DB/browser E2E/Preview/mobile QA अलग बाकी हैं।
+- [x] Latest completed staging Node CI before founder-photo placeholder update: run `44906454353`, HEAD `280a6a17`: **573 PASS / 0 FAIL**. Founder-photo placeholder change and its revised contract test are newer and must receive a fresh CI run. Node CI is source-level only; pgTAP/live DB/browser E2E/Preview/mobile QA remain separate gates.
 - [x] Push Deno check और local PostgreSQL Push migration/RPC runtime checks PASS।
 - [ ] ऊपर सूचीबद्ध शेष Customer/Electrician/Admin/Staff/legacy-payment SQL और browser workflows के isolated runtime tests पूरे करें।
 - [ ] सभी implementation और internal checks पूरे होने के बाद ही एक consolidated desktop + mobile QA pass करें; बीच में अलग mobile test नहीं।
