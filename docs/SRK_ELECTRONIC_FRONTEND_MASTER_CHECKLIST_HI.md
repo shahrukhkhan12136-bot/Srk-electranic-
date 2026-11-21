@@ -351,3 +351,18 @@
 - Technician: `electrician_profiles`, `job_offers`; `srk_get_my_offer_details`; `srk_get_my_offer_price_details`; `srk_get_my_assigned_booking_quote_details`; `srk_electrician_get_my_assigned_booking_contacts`; `srk_get_my_earnings`; `srk_get_my_wallet_summary`; `srk_respond_to_offer`; `srk_update_booking_work_status`; `srk_submit_booking_quote` (हटाने हेतु backend lifecycle replacement जरूरी); `srk_electrician_confirm_cash_payment`।
 
 **Audit decision:** Booking create, offer accept/decline, assigned jobs, location/map, contacts, cancellation, complaints, verified Razorpay payment and existing earnings history को preserve करना है। केवल quote/counter-offer UI हटेगा—लेकिन पुराने quote records read-only compatibility में रह सकते हैं। New material item approval को quote workflow से अलग backend contract चाहिए। अभी कोई production/backend source बदला नहीं गया।
+
+## 2E. मुख्य Requirements बनाम छह service categories की जाँच (2026-11-21)
+
+**जाँचा गया source of truth:** `docs/SRK_ELECTRONIC_MASTER_REQUIREMENTS_HI.md`, branch `feature/platform-fee-cash-online-cycle`, blob SHA `dcce53e2600e46251b5fe89e7a760de2809d6017` (4,307 lines).
+
+- [x] मुख्य दस्तावेज़ के §1 में customer booking के लिए electrician category, 1–8 घंटे की अवधि, category-specific matching और customer-selected payment method दर्ज है।
+- [x] §2 में केवल चार **Electrician skill/rate tiers** दर्ज हैं: Electrical Assistant ₹899/8h, Skilled Electrician ₹1,199/8h, Expert Electrician ₹1,599/8h और Premium Electrical Specialist ₹1,999/8h। ये electrician की skill/rate tiers हैं; इन्हें चार अलग top-level service categories नहीं बनाना है।
+- [x] §2 के scope में AC electrical connections, AC service/repair, cooler repair और fridge inspection/repair का कुछ काम Premium Electrical Specialist के दायरे में है। Refrigerant/gas work और sealed-system fridge repair केवल उपयुक्त trained specialist के लिए सीमित है। इस दस्तावेज़ में AC Installation, AC Repair और Fridge के अलग-अलग customer booking subflows परिभाषित नहीं हैं।
+- [x] पूरे 4,307-line master requirements document में Plumber/प्लंबर/प्लम्बर, Painter/पेंटर, AC Installation, AC Repair या छह top-level service categories का स्पष्ट catalog नहीं मिला।
+- [x] इसलिए अभी छह-category catalog, plumber/painter rates, AC/fridge subcategory rates या उनके booking fields को अनुमान से बनाना निषिद्ध है। दूसरे branch या पुरानी बातचीत के अधूरे संकेत को source-of-truth का विकल्प नहीं मानना है।
+- [x] Existing Customer booking form, Technician offer/assigned-booking flow और booking lifecycle को preserve करना है। केवल verified requirement के अनुसार विकल्प हटाने/छाँटने हैं; booking system को rebuild नहीं करना।
+- [ ] छह top-level categories और हर category के exact subcategories/rates/eligibility की owner-approved final list को master requirements में दर्ज या अलग signed-off source के रूप में link करना बाकी है।
+- [ ] उस सूची के बाद हर category के customer-visible options, technician skill/onboarding options, rate/duration display और backend payload mapping का side-by-side matrix पूरा करना बाकी है।
+
+**इस audit का निर्णय:** अभी app source में category dropdown/catalog बदलना सुरक्षित नहीं, क्योंकि authoritative master document छह-category list और plumber/painter/AC-fridge standalone flows को परिभाषित नहीं करता। यह केवल requirements gap है—इससे user द्वारा बातचीत में स्वीकृत किसी category को अस्वीकार नहीं किया जा रहा। छह-category सूची स्पष्ट होते ही उसी के आधार पर मौजूदा booking flow में न्यूनतम बदलाव किए जाएँगे। इस चरण में कोई Dart source, backend API, SQL migration, database या production setting नहीं बदली गई।
