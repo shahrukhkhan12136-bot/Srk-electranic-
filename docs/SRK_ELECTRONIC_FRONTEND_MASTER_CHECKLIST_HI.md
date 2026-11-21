@@ -930,3 +930,36 @@
 - [ ] Flutter tests/analyzer/formatter, Supabase staging tests और Android build/device tests इस source audit में execute नहीं हुए।
 
 **सीमा:** केवल source inspection और दस्तावेज़ीकरण। Offer query, Accept/Reject RPC, dispatch, skill authorization, database, payment और production नहीं बदले।
+
+
+## 2AK. Customer ↔ Technician नियुक्त बुकिंग और काम-पुष्टि audit (21-11-2026)
+
+### Technician ऐप — मौजूदा live UI/RPC
+- [x] नियुक्त बुकिंग `srk_get_my_assigned_booking_quote_details` RPC से लोड होती है; ग्राहक संपर्क अलग `srk_electrician_get_my_assigned_booking_contacts` RPC से जोड़ा जाता है।
+- [x] UI में booking service, ID, district/state/PIN, status, map link और authorized customer phone दिखते हैं।
+- [x] `assigned → inspection` के लिए Technician `srk_update_booking_work_status` चलाता है।
+- [x] `quote_approved → in_progress → completed` के लिए वही RPC चलती है।
+- [x] `assigned/inspection/quote_rejected` पर quote form उपलब्ध है; यह अभी legacy quote workflow है।
+- [x] Completed + cash + unpaid पर Technician नकद भुगतान मिलने की पुष्टि करता है; RPC `srk_electrician_confirm_cash_payment` है।
+
+### Customer ऐप — मौजूदा live UI/RPC
+- [x] Customer केवल अपने `customer_user_id` की अधिकतम 50 नवीनतम bookings पढ़ता है।
+- [x] Customer quote approve/reject `srk_customer_respond_booking_quote` से करता है।
+- [x] Customer cancellation केवल `new/confirmed` status पर UI में दिखती है; Backend RPC अंतिम जाँच करता है।
+- [x] Assigned lifecycle status में Customer को Technician का authorized phone दिखता है।
+- [x] Online payment button केवल `completed + unpaid + quote approved` पर दिखता है; cash में Technician को नकद देने का संदेश दिखता है।
+- [x] Complaint/support विकल्प non-cancelled booking पर उपलब्ध है।
+
+### Cross-app gap / सुरक्षित rollout के लिए जरूरी
+- [ ] Customer ऐप में अलग `काम शुरू करने की पुष्टि` action/RPC मौजूद नहीं।
+- [ ] Customer ऐप में अलग `काम पूरा होने की पुष्टि` या `विवाद दर्ज करें` action/RPC मौजूद नहीं।
+- [ ] Technician अभी सीधे `in_progress` और `completed` status बदल सकता है; ग्राहक confirmation के बिना app UI काम पूरा दिखा सकता है।
+- [ ] Timer का live server-backed start/stop इस source में नहीं दिखता। केवल Technician button press को समय-गणना का प्रमाण न मानें।
+- [ ] Payment eligibility और online payment अभी quote approval पर निर्भर हैं; quote-free flow deploy होने से पहले legacy payment path हटाना असुरक्षित होगा।
+- [ ] Cash confirmation और earnings को नए customer-confirmed completion/final-bill state से जोड़ना होगा।
+- [ ] Customer/Technician दोनों ऐप में एक साझा server-authoritative lifecycle, status/version, role authorization, idempotency और historical booking compatibility चाहिए।
+- [ ] Materials/parts की itemized entry और Customer approval, work-start/completion confirmation से अलग सुरक्षित चरण हों।
+- [ ] Customer completion response के लिए Backend को timeout, dispute, Admin review/override और duplicate request नीति तय करनी होगी।
+- [ ] Final bill में labour, Customer-approved materials, अन्य लागू charges, total, payment method/status और receipt एक ही authoritative response से आने चाहिए।
+
+**निर्णय:** मौजूदा Booking System को अभी न बदलें। Quote-dependent RPC/UI को तब तक सुरक्षित रखें जब तक Backend नया quote-free lifecycle और payment contract deploy करके staging में Customer तथा Technician दोनों ऐप से सत्यापित न कर दे। यह audit source-only है; runtime, RPC, database, payment और production में बदलाव नहीं हुआ। Flutter tests/analyzer/Android build execute नहीं हुए।
