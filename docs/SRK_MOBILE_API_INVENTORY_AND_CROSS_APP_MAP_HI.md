@@ -43,7 +43,7 @@
 | `srk_update_booking_work_status(p_booking_id,p_status)` | inspection/start/complete | मौजूदा start transition quote approval पर निर्भर; quote-free replacement से पहले live button न बदलें। |
 | `srk_submit_booking_quote(p_booking_id,p_service_charge,p_materials_amount,p_quote_note)` | technician quote submit | legacy quote workflow; केवल backend replacement + old record compatibility के बाद हटे। |
 | `srk_electrician_confirm_cash_payment(p_booking_id)` | cash receipt confirmation | वर्तमान backend quote approval सहित completed/cash/unpaid शर्तें जाँचता है। |
-| `srk_get_my_earnings()` | earnings list | existing amount/commission semantics की जाँच जरूरी; latest owner split 15/85 full customer payment पर है। |
+| `srk_get_my_earnings()` | earnings list | existing amount/commission semantics की जाँच जरूरी; controlling owner rule केवल service_charge/labour पर 15% company और 85% technician है; materials पर 0% commission। |
 | `srk_get_my_wallet_summary()` | wallet summary | वर्तमान implementation में payout disabled बताया गया है; UI को actual payout का दावा नहीं करना चाहिए। |
 
 ## 4. मौजूदा lifecycle की मुख्य बाधाएँ
