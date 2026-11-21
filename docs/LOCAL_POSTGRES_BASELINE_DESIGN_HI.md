@@ -86,3 +86,7 @@
 GitHub-hosted disposable Supabase CLI trial में stack startup ने migration replay से पहले ही `service_bookings` जैसी pre-existing core relation न मिलने पर fail किया। इसलिए वह workflow हटाया गया; कोई pgTAP test execute नहीं हुआ और कोई database migration apply नहीं हुई। यह परिणाम migration-only clean-room baseline की कमी की पुष्टि करता है—इसे SQL runtime success नहीं माना जाएगा।
 
 अगला सुरक्षित काम अभी भी यही है: source से प्रमाणित core schema/Auth/Storage fixture बनाना, migration version collision handling को अलग scratch runner में सत्यापित करना, फिर 54 pgTAP files को disposable database में वास्तव में चलाना।
+
+### Rate audit correction — Master Electrician Helper conflict
+
+Confirmed ₹700/hour Technician-only Master rate remains active. The historical inputs conflict on the combined Master + Helper total (₹900 vs ₹950/hour), so no helper amount is guessed: both residential and factory Master Helper selections are pending Admin configuration. The active Technician-only row has Helper rate ₹0, which the Customer UI now treats as no Helper available. This is intentional until the owner confirms one combined total and split.
