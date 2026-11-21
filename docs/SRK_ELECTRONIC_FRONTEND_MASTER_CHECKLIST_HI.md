@@ -1342,3 +1342,29 @@
 - [ ] Rounding, helper inclusion, fixed-price exceptions और overtime base-rate calculation backend contract से verify करें; frontend में commission/payment calculation स्वयं authoritative न बनाएँ।
 
 **सीमा:** यह display/accounting requirement है। इसे checklist में दर्ज करने से live rate calculation, wallet credit, commission settlement, payment flow या backend contract नहीं बदलता। Implementation से पहले छह categories के 8-hour gross rates, 85% display values और overtime calculation basis का approved rate snapshot सत्यापित करना होगा।
+
+
+## 2BE. Electrician app implementation audit — onboarding, approval, wallet and rate visibility (21-11-2026)
+
+### Current Flutter source findings
+- [x] `apps/electrician_app/lib/main.dart` already has mobile OTP login and an authenticated dashboard.
+- [x] Dashboard currently loads an existing `electrician_profiles` row and existing offers, assigned bookings, earnings and wallet summary.
+- [x] When no profile row exists, the current UI shows a profile-link/approval message; it does **not** provide the requested full application form.
+- [x] Current dashboard derives Active from `verification_status == 'approved' && active == true`; preserve this server-authoritative gate.
+- [x] Current profile query only reads `id, display_name, state, district, pincode, active, verification_status`; it does not currently display the full approved profile, a Technician ID label, or a complete verified skill checklist.
+- [x] Existing wallet UI is read-only summary via `srk_get_my_wallet_summary`; it does not implement technician-initiated UPI/bank top-up or verification.
+- [x] Existing earnings/quote detail UI can expose service/material amounts and quote details before the completion accounting view; audit and separate technician-facing 85% rate display from completion-time full accounting.
+- [x] Existing electrician application schema in `COMPLETE_DATABASE_SETUP.sql` has `full_name`, `phone`, `state`, `district`, `pincode`, free-text `skills`, `experience_years`, `about`, `verification_status` and `active`; it does not contain the requested mandatory Aadhaar verification state, structured Basic/Commercial/Master skill selections, per-task approval records, or optional document-upload metadata.
+- [x] Existing admin approval routine creates/links a profile from the application and keeps the profile inactive initially; retain this approval/activation safety gate.
+- [ ] Add the requested application/dashboard/profile UI only against a verified, owner-approved application/KYC/skill contract. The current schema cannot safely persist mandatory Aadhaar verification or structured per-level/per-task selections.
+- [ ] Do not collect Aadhaar number/image into an unapproved field, free-text skills string, app logs, or local insecure storage. Aadhaar verification must use an approved secure verification flow/provider and store only the minimum approved verification result/reference.
+- [ ] Define secure document upload storage, private access policies, file limits/types, and admin review behavior before enabling uploads.
+- [ ] Define structured skill IDs for Electrician → Basic / Commercial / Master → individual tasks, plus admin verification status for each selected task; self-selected tasks must not become dispatch-eligible before admin approval.
+- [ ] Define Technician ID source and approved profile fields; do not generate a fake local ID.
+- [ ] Define wallet top-up provider/flow and server-verified UPI/bank ownership contract. Do not credit wallet based on a typed UPI ID, bank details, screenshot, or client-side success.
+- [ ] Implement technician-visible rate list only from approved six-category rate snapshots, displaying the electrician's 85% payable share and the approved 1.5x overtime share after 8 hours. Do not invent missing rates or expose company commission in the pre-completion rate-list view.
+- [ ] At completion, show the server-authoritative full accounting breakdown, including gross service amount, electrician 85%, company 15%, overtime and separately approved material/other items.
+- [ ] Gate offers, job acceptance and work actions to server-approved active profile and verified skill/task eligibility; frontend visibility alone is not authorization.
+- [ ] Preserve existing OTP, offer response, assigned booking, work status, earnings and wallet summary behavior while implementing the approved onboarding flow.
+
+**Implementation decision:** The current Flutter app is not yet compliant with the newly clarified electrician onboarding flow. A frontend-only form cannot safely complete the requirement because the existing application contract lacks mandatory Aadhaar verification and structured skill/task approval, and the wallet has no verified technician top-up flow. Do not fake submission, KYC, approval, Technician ID, wallet credit, or task eligibility. First prepare the UI against a versioned approved contract; backend/database/payment changes remain outside this frontend branch scope unless separately authorized.
