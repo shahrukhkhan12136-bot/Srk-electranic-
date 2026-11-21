@@ -59,6 +59,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS srk_technician_dispatch_one_live_offer_per_boo
   ON public.srk_technician_dispatch_offers(dispatch_request_id) WHERE status='offered';
 CREATE UNIQUE INDEX IF NOT EXISTS srk_technician_dispatch_one_live_offer_per_technician_uidx
   ON public.srk_technician_dispatch_offers(technician_id) WHERE status='offered';
+CREATE INDEX IF NOT EXISTS srk_technician_dispatch_offers_expiry_idx
+  ON public.srk_technician_dispatch_offers(expires_at)
+  WHERE status='offered';
 CREATE INDEX IF NOT EXISTS srk_technician_dispatch_offers_booking_idx
   ON public.srk_technician_dispatch_offers(booking_id,offered_at DESC);
 CREATE INDEX IF NOT EXISTS srk_technician_dispatch_offers_technician_idx
@@ -200,7 +203,8 @@ BEGIN
   IF v_id IS NULL THEN
     SELECT id INTO v_id FROM public.srk_technician_dispatch_requests WHERE booking_id=p_booking_id
       AND category_code=p_category_code AND skill_code=p_skill_code
-      AND required_technician_count=p_required_technician_count;
+      AND required_technician_count=p_required_technician_count
+      AND offer_ttl_seconds=p_offer_ttl_seconds;
     IF v_id IS NULL THEN RAISE EXCEPTION 'BOOKING_ALREADY_HAS_DIFFERENT_DISPATCH_REQUIREMENTS' USING ERRCODE='23505'; END IF;
   ELSE
     INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,event_type,details)
@@ -230,11 +234,11 @@ BEGIN
   FOR v_expired IN
     UPDATE public.srk_technician_dispatch_offers
       SET status='expired',responded_at=clock_timestamp()
-    WHERE dispatch_request_id=v_req.id AND status='offered' AND expires_at<=clock_timestamp()
-    RETURNING id,technician_id
+    WHERE status='offered' AND expires_at<=clock_timestamp()
+    RETURNING id,dispatch_request_id,booking_id,technician_id
   LOOP
     INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,technician_id,offer_id,event_type)
-    VALUES(v_req.id,p_booking_id,v_expired.technician_id,v_expired.id,'offer_expired');
+    VALUES(v_expired.dispatch_request_id,v_expired.booking_id,v_expired.technician_id,v_expired.id,'offer_expired');
   END LOOP;
 
   SELECT o.id INTO v_offer_id FROM public.srk_technician_dispatch_offers o
