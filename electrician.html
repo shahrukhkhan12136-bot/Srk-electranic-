@@ -1096,6 +1096,7 @@ async function submitMasterCashRefundEvidence(){
   });
   if(error||!data?.success)throw error||new Error('Evidence submission was not confirmed');
   if(msg)msg.textContent='प्रमाण Admin को भेज दिया गया है। Admin की जाँच और अंतिम पुष्टि बाकी है।';
+  await loadMasterCashRefundTasks();
   document.getElementById('masterCashRefundBookingId').value='';
   document.getElementById('masterCashRefundAmount').value='';
   document.getElementById('masterCashRefundReference').value='';
