@@ -5,9 +5,9 @@ INSERT INTO public.srk_service_rates
 VALUES
  ('residential_wiring','basic','Basic',10000,0,NULL,'SRK-ELECTRICIAN-2026-11-22-V1','active'),
  ('residential_wiring','expert','Expert Residential',12500,6250,NULL,'SRK-ELECTRICIAN-2026-11-22-V1','active'),
- ('residential_wiring','master','Master Electrician',70000,20000,NULL,'SRK-ELECTRICIAN-2026-11-22-V1','active'),
+ ('residential_wiring','master','Master Electrician (Technician only)',70000,0,NULL,'SRK-ELECTRICIAN-2026-11-22-V1','active'),
  ('factory_wiring','expert','Expert Factory / Industrial Wiring',30000,12500,NULL,'SRK-ELECTRICIAN-2026-11-22-V1','active'),
- ('factory_wiring','master','Master Electrician',70000,20000,NULL,'SRK-ELECTRICIAN-2026-11-22-V1','active'),
+ ('factory_wiring','master','Master Electrician (Technician only)',70000,0,NULL,'SRK-ELECTRICIAN-2026-11-22-V1','active'),
 
  ('interior_painting','basic','Basic Painter',8750,0,NULL,'SRK-PAINTER-2026-11-22-V1','active'),
  ('interior_painting','expert','Expert Painter',11250,7500,NULL,'SRK-PAINTER-2026-11-22-V1','active'),
@@ -52,5 +52,7 @@ VALUES
  ('pump_repair','standard','Pump Repair — Admin Rate Pending',NULL,0,NULL,'SRK-PUMP-2026-11-22-PENDING','pending_admin_configuration'),
  ('residential_wiring','basic_helper','Basic Electrician + Helper — Helper Rate Pending',10000,0,NULL,'SRK-ELECTRICIAN-2026-11-22-PENDING','pending_admin_configuration'),
  ('motor_winding','hp_over_20','Above 20 HP — Admin Rate Pending',NULL,0,NULL,'SRK-MOTOR-PUMP-2026-11-22-PENDING','pending_admin_configuration'),
- ('cooler_motor_winding','hp_over_20','Above 20 HP — Admin Rate Pending',NULL,0,NULL,'SRK-COOLER-2026-11-22-PENDING','pending_admin_configuration')
+ ('cooler_motor_winding','hp_over_20','Above 20 HP — Admin Rate Pending',NULL,0,NULL,'SRK-COOLER-2026-11-22-PENDING','pending_admin_configuration'),
+ ('residential_wiring','master_helper','Master Electrician + Helper — conflicting ₹900/₹950 totals; Admin decision pending',70000,0,NULL,'SRK-ELECTRICIAN-MASTER-HELPER-PENDING','pending_admin_configuration'),
+ ('factory_wiring','master_helper','Master Electrician + Helper — conflicting ₹900/₹950 totals; Admin decision pending',70000,0,NULL,'SRK-ELECTRICIAN-MASTER-HELPER-PENDING','pending_admin_configuration')
 ON CONFLICT(service_code,level_code,rate_version) DO NOTHING;
