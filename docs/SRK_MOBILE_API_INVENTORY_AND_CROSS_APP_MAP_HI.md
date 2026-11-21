@@ -165,3 +165,8 @@ A shared frontend DTO now exists at `packages/srk_mobile_core/lib/srk_service_se
 - The draft version and IDs are not production/backend-approved identifiers.
 - Existing `POST /api/create-booking` does not receive these fields yet. Live booking form, create-booking payload, offer query and dispatch remain unchanged.
 - Backend contract required: approve a canonical catalogue version; validate and snapshot selection at booking creation; return normalized identity; copy exact identity to offers; publish verified skills with same IDs/version; enforce skill/assignment/ownership checks server-side on every protected transition.
+
+
+## 10. Booking service identity rollout reference
+
+See `docs/SRK_CUSTOMER_BOOKING_SERVICE_ID_INTEGRATION_PLAN_HI.md` for the exact current Customer create-booking payload, proposed structured fields, backend response/offer propagation, legacy booking compatibility, rollout gates and acceptance checklist. Existing live payload and API calls remain unchanged until backend contract approval and staging evidence.
