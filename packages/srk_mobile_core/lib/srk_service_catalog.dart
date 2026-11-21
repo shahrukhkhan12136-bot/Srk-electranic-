@@ -1,9 +1,10 @@
-/// SRK ELECTRONIC canonical customer-facing service catalogue draft.
+/// SRK ELECTRONIC customer-facing service catalogue with owner-approved rates.
 ///
 /// IMPORTANT:
-/// This catalogue is presentation data only. It is NOT wired to booking submit,
-/// dispatch, payment, or technician eligibility until the backend contract is
-/// versioned and verified. Do not treat display labels as dispatch identifiers.
+/// The listed rates are approved for catalogue display. This catalogue is still
+/// presentation data only; it is NOT wired to booking submit, dispatch, payment,
+/// or technician eligibility until the backend contract is versioned and verified.
+/// Do not treat display labels as dispatch identifiers.
 class SrkServiceRate {
   final String label;
   final String amount;
@@ -65,13 +66,16 @@ class SrkServiceCategory {
   });
 }
 
-/// Draft catalogue version. IDs are local proposal keys, not deployed backend IDs.
-const String srkServiceCatalogDraftVersion = 'draft-2026-11-21.1';
+/// Approved catalogue revision. IDs remain local keys, not deployed backend IDs.
+/// Keep the legacy constant name to avoid breaking existing app references.
+const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.1';
 
 /// Six approved top-level categories, in the owner's requested order.
 ///
-/// Rates intentionally omit unconfirmed prices. Materials/parts are separate
-/// from labour and may only be added after customer approval.
+/// Only the rates explicitly listed below are approved. Where a rate is not
+/// listed (for example, fridge work or above 20 HP winding), do not calculate
+/// or invent a price. Materials/parts are separate from labour and may only be
+/// added after customer approval.
 const List<SrkServiceCategory> srkServiceCatalog = [
   SrkServiceCategory(
     id: 'electrician',
