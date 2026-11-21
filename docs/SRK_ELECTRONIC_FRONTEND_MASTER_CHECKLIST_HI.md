@@ -1266,3 +1266,23 @@
 
 **इस audit का परिणाम:** वर्तमान source में नया category picker मौजूद है, लेकिन अभी पुराना form ही वास्तविक booking submit करता है। इसलिए काम केवल पुराने form के कुछ fields बदलना नहीं है; पुराने mandatory electrical dropdown और preview-only picker को हटाकर पूरे booking entry flow को नए sequence से बनाना होगा। उपयोगी auth/address/GPS/submit/history/support/payment capabilities को अलग से सुरक्षित रखना है। इस documentation update में app code, backend, database, API, payment या पुराने records नहीं बदले गए।
 
+
+
+## 2BA. Booking API contract audit — current backend compatibility (21-11-2026)
+
+### Existing `create-booking.js` verified behavior
+- [x] Endpoint requires POST and checks the Supabase configuration server-side.
+- [x] Endpoint enforces public booking rate limiting before processing the request.
+- [x] Endpoint verifies the Supabase Bearer session, requires `phone_confirmed_at`, and checks that the submitted 10-digit booking phone matches the verified account phone.
+- [x] Current required request fields are: `customer_name`, `phone`, `state`, `district`, `pincode`, `address`, `service_type`, `preferred_date`, and `preferred_time`.
+- [x] Optional accepted fields include `location_lat`, `location_lng`, `work_details`, `payment_method`, `quoted_amount`, and `customer_suggested_amount`.
+- [x] Current insert targets `service_bookings`, sets `status: "new"` and `payment_status: "unpaid"`, and associates `customer_user_id` from the verified session.
+- [x] Dispatch currently relies on the database `broadcast_new_booking` trigger; the function reads the resulting `job_offers` and returns `booking_id`, offer count, match level and a server message.
+- [x] API does not currently read or validate `catalogue_version`, `category_id`, `subcategory_id`, `task_id`, electrician count, helper count, duration, rate calculation or a server price snapshot.
+- [x] API requires a preferred date and time; a duration-only request from the new flow will not satisfy current validation.
+- [ ] Do not send the draft selection contract to this API and assume it is supported: current API ignores those fields and still requires legacy `service_type` plus date/time.
+- [ ] Before connecting the new UI, backend owner must define and approve the versioned request/response contract, authoritative catalogue IDs, rate/price snapshot, team/duration validation, scheduling semantics and dispatch handling.
+- [ ] Preserve current auth, rate limiting, server-only credentials, database trigger dispatch and booking success confirmation when backend contract is deliberately upgraded.
+- [ ] Test idempotency/duplicate-submit behavior end-to-end; this handler's source does not itself show an Idempotency-Key check, so do not claim API-level idempotency until verified in the database/API path.
+
+**Audit conclusion:** The existing endpoint is secure-session-aware and already creates legacy bookings/offers, but it is not compatible with the newly requested structured category/task + team size + duration + automatic pricing payload. A frontend-only switch would either fail validation or create incomplete legacy bookings. Therefore the next safe implementation stage is to design the integrated customer UI against an explicit API contract, while keeping submit disabled/not connected until the backend contract is approved. No API, database, payment, or app source code was changed in this audit.
