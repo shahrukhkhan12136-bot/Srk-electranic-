@@ -118,7 +118,7 @@ Backend exact field types, nullability, enums और errors प्रकाश�
 5. **Completion confirmation:** technician completion request → customer confirm/dispute; timeout, dispute resolution और Admin override policy।
 6. **Final bill:** labour, approved materials, other charges, taxes/fees, total, currency/rounding और immutable snapshot।
 7. **Payment:** online order, verification/webhook, cash confirmation, refund/reconciliation और receipt; duplicate-safe ledger।
-8. **Earnings/commission:** owner-approved 15% company / 85% technician on full customer booking payment; define rounding, refund, tax, material, travel, helper, cash and online settlement treatment. Razorpay settlement/transfer must not be represented as instant payout unless actually completed.
+8. **Earnings/commission:** owner-approved 15% company / 85% technician on service_charge/labour only; materials/parts are excluded (0% platform fee). Define rounding, refund, tax, travel, helper, cash and online settlement treatment. Razorpay settlement/transfer must not be represented as instant payout unless actually completed.
 9. **Offer skill matching:** verified skill server-side filtering and atomic accept re-check; no client-only filtering.
 10. **Compatibility & rollout:** historical quote bookings, old RPC consumers, rollback plan, staging tests, RLS/permissions and production deployment evidence.
 11. **Only after backend deployment:** frontend integration, contract tests, device tests, then release build.
@@ -170,3 +170,7 @@ A shared frontend DTO now exists at `packages/srk_mobile_core/lib/srk_service_se
 ## 10. Booking service identity rollout reference
 
 See `docs/SRK_CUSTOMER_BOOKING_SERVICE_ID_INTEGRATION_PLAN_HI.md` for the exact current Customer create-booking payload, proposed structured fields, backend response/offer propagation, legacy booking compatibility, rollout gates and acceptance checklist. Existing live payload and API calls remain unchanged until backend contract approval and staging evidence.
+
+
+## Owner correction — commission base clarified (21-11-2026)
+**Controlling rule:** 15% commission is charged only on service charge/labour; Technician receives 85% of service charge/labour. Materials/parts carry 0% company commission/platform fee and remain outside the commission base. Example: ₹600 labour + ₹400 materials → ₹90 company commission, ₹510 technician labour share, ₹400 materials separately. This supersedes earlier full-payment commission wording in this document. No live payment code is changed by this documentation correction.
