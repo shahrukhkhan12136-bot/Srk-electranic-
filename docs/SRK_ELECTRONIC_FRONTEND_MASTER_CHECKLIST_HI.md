@@ -321,3 +321,33 @@
 9. **Ownership/security:** प्रत्येक endpoint की customer/technician ownership checks, approved-active technician rules, RLS/RPC grants, rate limits और audit trail।
 
 **इस चरण का निष्कर्ष:** Existing booking create/offer flow उपयोगी है और सुरक्षित रखना है। Quote UI को बाद में हटाया जा सकता है, लेकिन work-start और final payment का रास्ता backend contract के बिना सुरक्षित रूप से बदलना संभव नहीं। इस audit में कोई app Dart source, backend function, migration, database या production setting नहीं बदली गई।
+## 2D. विस्तृत Migration / RPC / Payment audit (2026-11-21)
+
+### Confirmed current backend contracts
+- [x] Approved mobile branch में `supabase/migrations` के 21 SQL migrations सूचीबद्ध किए। उनमें booking security, offer/map, commission, wallet ledger, Razorpay Route ledger, quote workflow, contact visibility, cancellation और cash payment से जुड़े migrations की जाँच की।
+- [x] `srk_get_my_offer_details()` टेक्नीशियन को offer + booking detail देता है; फोन/पता/GPS केवल assigned electrician के लिए return करने की शर्त है। इसे preserve करना है; नया quote-free response contract इसी privacy boundary को बनाए रखे।
+- [x] `srk_get_my_offer_price_details()` quote-संबंधी fields लौटाता है। इसे नए customer-suggested-amount UI से अलग करना होगा; UI हटाने पर backend function को अभी delete नहीं करना है क्योंकि legacy records/other clients इसकी dependency हो सकती है।
+- [x] `srk_get_my_assigned_booking_quote_details()` की अंतिम migration definition में payment method/status, GPS और address भी हैं; यह assigned approved+active electrician की bookings ही देता है। नाम quote-specific है, पर app के assigned-job details का मौजूदा data source भी यही है। Backend replacement बिना इसके UI टूटेगा।
+- [x] `srk_customer_cancel_my_booking(p_booking_id)` केवल ग्राहक की अपनी unassigned `new`/`confirmed` booking cancel करता है। Customer cancel UI को preserve करें; assigned booking cancel की सुविधा अभी backend में नहीं है।
+- [x] `srk_customer_get_my_booking_contacts()` और `srk_electrician_get_my_assigned_booking_contacts()` owner-linked contacts लौटाते हैं। कॉल बटन और phone visibility preserve करें।
+- [x] `srk_electrician_confirm_cash_payment(p_booking_id)` केवल assigned approved+active electrician, `completed` work, approved quote और cash payment पर paid mark करता है; duplicate same booking paid होने पर idempotent success देता है। Quote-free lifecycle contract में quote approval check को backend owner द्वारा स्पष्ट रूप से replace करना होगा; frontend अकेले नहीं।
+- [x] `srk_get_my_earnings()` केवल completed+paid rows पर earning दिखाता है; electrician ownership check मौजूद है। `srk_get_my_wallet_summary()` electrician payouts disabled बताता है और बैंक पेआउट को Route linked-account onboarding/live approval पर निर्भर बताता है।
+
+### Commission और payout का महत्वपूर्ण अंतर
+- [x] `srk_calculate_booking_commission()` की मौजूदा गणना `service_charge * commission_rate / 100` पर है; `materials_amount` को commission base में शामिल नहीं करती। `srk_get_my_earnings()` electrician earning को `amount_paid - commission_amount` मानता है।
+- [x] Razorpay Route transfer ledger (`srk_route_transfers`) reconciliation record है; migration comment साफ कहता है कि database write अपने-आप money movement trigger नहीं करता।
+- [ ] इसलिए user-approved 85% technician / 15% company split **पूरे customer payment** पर लागू है या labour-only पर—इसे मौजूदा backend से compatible मानना गलत होगा। Backend owner से exact formula, material treatment, cash-vs-online ledger treatment और rounding rules लिखित रूप में चाहिए।
+- [ ] मौजूदा wallet summary को payout request, bank transfer, UTR या paid-out history का प्रमाण न मानें। ऐसे वास्तविक payout contracts/flows इस audit में नहीं मिले।
+
+### Razorpay payment contract (root server functions)
+- [x] `create-order.js` customer session + booking ownership/verified phone check करता है; केवल `payment_method=online`, `status=completed`, `quote_status=approved` booking payable है। Amount `service_charge + materials_amount` से calculate होकर `quoted_amount` से match कराया जाता है। Per-booking order lock और pending order reuse है।
+- [x] `verify-payment.js` signature HMAC verify करता है, Razorpay payment को API से fetch कर `captured`, INR, matching order और exact amount जाँचता है; payment update duplicate-safe है।
+- [x] `razorpay-webhook.js` webhook signature verify करता है और captured payment/refund को reconcile करता है; paid/refund conflicts और amount mismatch अलग संभाले जाते हैं।
+- [x] `create-refund.js` Admin-only refund request है; idempotency key और webhook reconciliation का उपयोग करता है। इसे Customer app का direct refund action नहीं समझें।
+- [ ] इन payment functions में quote approval और quote amount checks भी मौजूद हैं। Quote-free booking lifecycle आने पर backend owner को create-order, verify-payment और webhook के तीनों paths एक साथ update/compatibility contract देना होगा।
+
+### App-to-backend dependency map
+- Customer: `service_bookings` own-row read; `srk_customer_get_my_booking_contacts`; `srk_customer_list_booking_complaints`; `srk_customer_create_booking_complaint`; `srk_customer_cancel_my_booking`; वर्तमान में `srk_customer_respond_booking_quote` (हटाने हेतु backend lifecycle replacement जरूरी); `/api/create-booking`; `/api/create-order`; `/api/verify-payment`।
+- Technician: `electrician_profiles`, `job_offers`; `srk_get_my_offer_details`; `srk_get_my_offer_price_details`; `srk_get_my_assigned_booking_quote_details`; `srk_electrician_get_my_assigned_booking_contacts`; `srk_get_my_earnings`; `srk_get_my_wallet_summary`; `srk_respond_to_offer`; `srk_update_booking_work_status`; `srk_submit_booking_quote` (हटाने हेतु backend lifecycle replacement जरूरी); `srk_electrician_confirm_cash_payment`।
+
+**Audit decision:** Booking create, offer accept/decline, assigned jobs, location/map, contacts, cancellation, complaints, verified Razorpay payment and existing earnings history को preserve करना है। केवल quote/counter-offer UI हटेगा—लेकिन पुराने quote records read-only compatibility में रह सकते हैं। New material item approval को quote workflow से अलग backend contract चाहिए। अभी कोई production/backend source बदला नहीं गया।
