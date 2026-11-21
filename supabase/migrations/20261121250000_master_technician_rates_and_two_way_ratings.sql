@@ -241,6 +241,17 @@ CREATE TABLE IF NOT EXISTS public.srk_master_rating_moderation_events (
 );
 ALTER TABLE public.srk_master_rating_moderation_events ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.srk_master_rating_moderation_events FROM PUBLIC,anon,authenticated;
+CREATE OR REPLACE FUNCTION public.srk_guard_master_rating_moderation_events_append_only()
+RETURNS trigger LANGUAGE plpgsql SET search_path='' AS $function$
+BEGIN
+  RAISE EXCEPTION 'RATING_MODERATION_HISTORY_IS_APPEND_ONLY' USING ERRCODE='55000';
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_guard_master_rating_moderation_events_append_only() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS srk_master_rating_moderation_events_append_only ON public.srk_master_rating_moderation_events;
+CREATE TRIGGER srk_master_rating_moderation_events_append_only
+BEFORE UPDATE OR DELETE ON public.srk_master_rating_moderation_events
+FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_rating_moderation_events_append_only();
 GRANT ALL ON public.srk_master_rating_moderation_events TO service_role;
 
 CREATE OR REPLACE FUNCTION public.srk_admin_moderate_master_rating(
