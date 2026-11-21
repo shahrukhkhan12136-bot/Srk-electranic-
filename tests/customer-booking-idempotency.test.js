@@ -204,7 +204,8 @@ test('Master booking calculates hourly labour from Admin rate and stores canonic
     srk_rate_level_code: 'basic',
     srk_duration_minutes: 120,
     srk_service_quantity: 1,
-    srk_required_technician_count: 1
+    srk_required_technician_count: 1,
+    srk_helper_included: true
   })));
   assert.equal(result.statusCode, 200);
   const body = JSON.parse(result.body);
@@ -222,6 +223,7 @@ test('Master booking calculates hourly labour from Admin rate and stores canonic
   assert.equal(row.srk_estimated_labour_paise, 30000);
   assert.equal(row.srk_duration_minutes, 120);
   assert.equal(row.srk_service_quantity, 1);
+  assert.equal(row.srk_helper_included_snapshot, true);
   assert.equal(row.selected_category, null);
   assert.equal(row.selected_rate_tier, null);
   assert.equal(row.estimated_labour_paise, null);
@@ -283,14 +285,16 @@ test('Master booking idempotency replay uses the saved rate snapshot even after 
     srk_rate_level_code: 'basic',
     srk_duration_minutes: 120,
     srk_service_quantity: 1,
-    srk_required_technician_count: 1
+    srk_required_technician_count: 1,
+    srk_helper_included: true
   })).digest('hex');
   const calls = mockSupabase({
     existingRows: [{
       id: BOOKING_ID, customer_user_id: USER_ID, customer_request_fingerprint: fingerprint,
       srk_estimated_labour_paise: 30000, srk_rate_version_snapshot: 'SRK-PLUMBER-OLD-V1',
       srk_billing_model_snapshot: 'hourly', srk_technician_hourly_paise_snapshot: 10000,
-      srk_helper_hourly_paise_snapshot: 5000, srk_fixed_labour_paise_snapshot: null
+      srk_helper_hourly_paise_snapshot: 5000, srk_helper_included_snapshot: true,
+      srk_required_technician_count: 1, srk_fixed_labour_paise_snapshot: null
     }]
   });
   const result = await handler(event(bookingBody({
@@ -400,4 +404,29 @@ test('successful booking keeps its idempotency key until the new booking is visi
   assert.ok(clearIndex > visibleIndex, 'idempotency key is cleared only after booking is visible');
   assert.match(submit, /सुरक्षित डुप्लीकेट-रोक पहचान सुरक्षित रखी गई है/);
   assert.match(submit, /नई या बदली हुई बुकिंग अभी न भेजें/);
+});
+
+test('Master hourly estimate scales by requested Technician count and defaults to no helper', async () => {
+  const calls = mockSupabase({
+    masterRateRows: [{
+      category_code: 'plumber', skill_code: 'residential_plumbing',
+      service_code: 'residential_plumbing', service_name: 'Residential Plumbing',
+      billing_model: 'hourly', unit_label: 'घंटा', level_code: 'basic', level_label: 'Basic',
+      technician_hourly_paise: 10000, helper_hourly_paise: 5000,
+      fixed_labour_paise: null, rate_version: 'SRK-PLUMBER-2026-11-21-V1'
+    }],
+    insertResponse: [{ id: BOOKING_ID }]
+  });
+  const result = await handler(event(bookingBody({
+    service_type: '', selected_category: undefined, selected_rate_tier: undefined,
+    selected_duration_hours: undefined, srk_service_code: 'residential_plumbing',
+    srk_rate_level_code: 'basic', srk_duration_minutes: 120, srk_service_quantity: 1,
+    srk_required_technician_count: 2
+  })));
+  assert.equal(result.statusCode, 200);
+  assert.equal(JSON.parse(result.body).estimate.amount_paise, 40000);
+  const inserted = calls.find(call => call.method === 'POST' && call.target.endsWith('/service_bookings'));
+  const row = JSON.parse(inserted.body)[0];
+  assert.equal(row.srk_helper_included_snapshot, false);
+  assert.equal(row.srk_required_technician_count, 2);
 });
