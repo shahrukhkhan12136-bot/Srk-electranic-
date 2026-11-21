@@ -433,3 +433,33 @@ Customer:
 12. Exact deployed RPC names, request/response JSON, SQL migration IDs, RLS/grants, staging test evidence और rollback plan उपलब्ध कराएँ।
 
 **महत्वपूर्ण:** जब तक नया lifecycle/payment contract deploy और staging में सत्यापित नहीं होता, मौजूदा quote-dependent status, RPC, UI और payment gates न हटाएँ। यह source audit/handoff है; कोई backend/database/RPC/payment/production परिवर्तन नहीं हुआ।
+
+
+## 29. Owner-confirmed 15% Company / 85% Technician full-payment split — financial audit (21-11-2026)
+
+### Owner-confirmed rule
+- Company platform fee: 15% of the full customer booking payment.
+- Technician share: 85% of the same full customer booking payment.
+- Example: ₹1,000 verified customer payment → Company ₹150; Technician ₹850.
+- Full booking amount is the base, not labour/service charge alone. Approved materials and applicable booking charges must be included according to the final bill.
+- Same split applies to cash and online bookings; collection evidence and reconciliation differ.
+
+### Source-audited mismatch
+1. Migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` defines `srk_calculate_booking_commission()` as `round(service_charge * commission_rate / 100, 2)`. This is service-charge-only, not full customer payment.
+2. `srk_get_my_earnings()` reports amount received, commission amount and electrician earning as amount_paid minus commission_amount. It depends on commission_amount already being correct.
+3. `srk_wallet_accounts/srk_wallet_ledger` are an internal accounting foundation. Wallet summary computes posted ledger balance; customer top-ups and electrician payouts are explicitly disabled pending provider approval.
+4. No verified automatic posting path from captured customer payment to 15% company ledger + 85% technician payable was established by this audit.
+5. Razorpay Route reconciliation/transfer ledger records alone do not prove an actual bank transfer.
+
+### Required server contract
+- Define gross as server-verified collected customer booking total and specify treatment of labour, approved materials, discounts, taxes, travel/extra charges and other bill components.
+- Calculate company fee as 15% and technician payable as 85% of that same gross; use integer paise and deterministic rounding so shares always sum exactly to gross.
+- Define allocation/reversal rules for full/partial refunds, failed payments, chargebacks and cash disputes.
+- Verify cash collection evidence and Razorpay captured payment server-side; never trust a client-supplied total.
+- Post idempotent, auditable ledger entries for collection, company fee, technician payable, refund/reversal and payout, linked to booking and payment references.
+- Keep customer collection, company revenue, technician payable, wallet balance and actual bank payout as distinct financial stages.
+- Admin commission report, Technician earnings, wallet ledger and payout queue must derive from one canonical split record.
+- Payout is marked paid only after verified bank/UPI transfer response and reference/UTR; a wallet balance is not payout evidence.
+- Provide historical commission reconciliation/backfill and rollback plan before modifying existing records.
+
+**No live financial code changed:** this is an audit/handoff only. Existing commission trigger, earnings RPC, wallet schema, Razorpay, Route and payout controls remain untouched. Do not claim the mobile app implements the owner-confirmed 15/85 split until backend rollout and cash/online staging reconciliation pass.
