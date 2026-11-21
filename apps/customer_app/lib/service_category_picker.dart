@@ -201,6 +201,22 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
             }).toList(),
           ),
           if (selectedSkillLevel != null &&
+              selectedSkillLevel.rates.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text('मजदूरी की दर (सामग्री अलग)',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 6),
+            ...selectedSkillLevel.rates.map((rate) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    '${rate.label}: ${rate.amount} / ${rate.unit}'
+                    '${rate.helperAmount == null ? '' : ' • ${rate.helperAmount}'}'
+                    '${rate.note == null ? '' : ' • ${rate.note}'}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                )),
+          ],
+          if (selectedSkillLevel != null &&
               selectedSkillLevel.tasks.isNotEmpty) ...[
             const SizedBox(height: 14),
             Text('इस स्तर के काम / क्षमताएँ',
