@@ -128,7 +128,7 @@ BEGIN
   'amount_paise',r.amount_paise,'destination_type',r.destination_type,'destination_reference',r.destination_reference,
   'status',r.status,'requested_at',r.requested_at,'review_note',r.review_note,
   'payable_count',(SELECT count(*) FROM public.srk_master_payout_request_items i WHERE i.payout_request_id=r.id),
-  'payments',(SELECT jsonb_agg(jsonb_build_object('payment_method',m.payment_method,'payment_id',m.id,'settlement_confirmed',EXISTS(SELECT 1 FROM public.srk_master_company_settlements s WHERE s.payment_id=m.id))) FROM public.srk_master_payout_request_items i JOIN public.srk_master_technician_payables p ON p.id=i.payable_id JOIN public.srk_master_booking_payments m ON m.id=p.payment_id WHERE i.payout_request_id=r.id)
+  'payments',(SELECT jsonb_agg(jsonb_build_object('payment_method',m.payment_method,'payment_id',m.id,'amount_paise',m.amount_paise,'settlement_confirmed',EXISTS(SELECT 1 FROM public.srk_master_company_settlements s WHERE s.payment_id=m.id))) FROM public.srk_master_payout_request_items i JOIN public.srk_master_technician_payables p ON p.id=i.payable_id JOIN public.srk_master_booking_payments m ON m.id=p.payment_id WHERE i.payout_request_id=r.id)
  ) ORDER BY r.requested_at DESC),'[]'::jsonb) INTO v_out
  FROM public.srk_master_payout_requests r
  JOIN public.srk_technicians t ON t.id=r.technician_id
