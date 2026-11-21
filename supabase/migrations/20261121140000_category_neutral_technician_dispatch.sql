@@ -311,6 +311,34 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_dispatch_issue_next_offer(uuid) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.srk_dispatch_issue_next_offer(uuid) TO service_role;
 
+-- Existing minute worker calls this RPC; no new customer appointment/scheduling flow is introduced.
+CREATE OR REPLACE FUNCTION public.srk_dispatch_process_pending_queue()
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+DECLARE v_request record; v_result jsonb; v_processed integer:=0; v_offers_sent integer:=0;
+  v_waiting integer:=0; v_active integer:=0;
+BEGIN
+  FOR v_request IN
+    SELECT booking_id FROM public.srk_technician_dispatch_requests
+    WHERE status='searching'
+    ORDER BY created_at,booking_id
+    LIMIT 200
+    FOR UPDATE SKIP LOCKED
+  LOOP
+    v_result:=public.srk_dispatch_issue_next_offer(v_request.booking_id);
+    v_processed:=v_processed+1;
+    IF v_result->>'status'='offer_sent' THEN v_offers_sent:=v_offers_sent+1;
+    ELSIF v_result->>'status'='unavailable' THEN v_waiting:=v_waiting+1;
+    ELSIF v_result->>'status'='offer_active' THEN v_active:=v_active+1;
+    END IF;
+  END LOOP;
+  RETURN jsonb_build_object('success',true,'processed',v_processed,
+    'offers_sent',v_offers_sent,'waiting_for_eligible_technician',v_waiting,
+    'existing_live_offers',v_active);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_dispatch_process_pending_queue() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.srk_dispatch_process_pending_queue() TO service_role;
+
 -- Technician accepts or declines only their own live offer. Decline immediately advances the queue.
 CREATE OR REPLACE FUNCTION public.srk_technician_respond_to_dispatch_offer(p_offer_id uuid,p_response text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
