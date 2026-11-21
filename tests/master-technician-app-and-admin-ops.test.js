@@ -50,7 +50,7 @@ test('Customer Master Booking screen shows daily workday approvals, all three ne
 });
 test('Shared Technician, Customer and Admin inline scripts parse after Master app integration',()=>{
  for(const [name,source] of [['electrician.html',technician],['booking.html',customer],['admin.html',admin]]){
-  const scripts=[...source.matchAll(/<script(?![^>]*\\bsrc=)[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(x=>x[1]).filter(x=>x.trim());
+  const scripts=[...source.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\\S]*?)<\/script>/gi)].map(x=>x[1]).filter(x=>x.trim());
   assert.ok(scripts.length>0);
   scripts.forEach((script,index)=>assert.doesNotThrow(()=>new vm.Script(script,{filename:name+'#'+index})));
  }
