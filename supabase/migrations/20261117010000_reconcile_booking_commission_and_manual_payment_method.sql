@@ -14,6 +14,7 @@ declare
   v_rate numeric(7,2);
   v_commission numeric(12,2);
   v_bill public.srk_booking_labour_bills%rowtype;
+  v_legacy srk_private.legacy_booking_financial_evidence%rowtype;
 begin
   if new.payment_status = 'paid'
      and new.payment_verified_at is not null
@@ -50,23 +51,21 @@ begin
     return new;
   end if;
 
-  if new.selected_category is not null then
-    select * into v_bill
-      from public.srk_booking_labour_bills
-     where booking_id = new.id;
-
-    if not found
-       or v_bill.electrician_profile_id is distinct from new.assigned_electrician_id
-       or v_bill.labour_amount <= 0 then
-      raise exception 'IMMUTABLE_LABOUR_BILL_OR_ELECTRICIAN_ASSIGNMENT_MISMATCH';
-    end if;
-    v_service := round(v_bill.labour_amount,2);
-  else
-    if new.quote_status <> 'approved' then
-      return new;
-    end if;
-    v_service := round(coalesce(new.service_charge,0),2);
+  -- Only immutable server-timed labour bills can create new commission.
+  if new.selected_category is null then
+    return new;
   end if;
+
+  select * into v_bill
+    from public.srk_booking_labour_bills
+   where booking_id = new.id;
+
+  if not found
+     or v_bill.electrician_profile_id is distinct from new.assigned_electrician_id
+     or v_bill.labour_amount <= 0 then
+    raise exception 'IMMUTABLE_LABOUR_BILL_OR_ELECTRICIAN_ASSIGNMENT_MISMATCH';
+  end if;
+  v_service := round(v_bill.labour_amount,2);
 
   v_rate := new.commission_rate;
   if v_rate is null or v_rate < 0 or v_rate > 100 then
@@ -89,8 +88,6 @@ before insert or update of
   assigned_electrician_id,
   payment_verified_at,
   amount_paid,
-  quote_status,
-  service_charge,
   commission_rate,
   razorpay_payment_id,
   selected_category,
@@ -146,9 +143,6 @@ after insert or update of
   assigned_electrician_id,
   payment_verified_at,
   amount_paid,
-  quote_status,
-  service_charge,
-  materials_amount,
   commission_rate,
   commission_amount,
   razorpay_payment_id,
@@ -253,8 +247,15 @@ begin
     end if;
     v_materials_paise := 0;
   else
-    v_labour_paise := round(coalesce(v_booking.service_charge,0)*100)::bigint;
-    v_materials_paise := round(coalesce(v_booking.materials_amount,0)*100)::bigint;
+    select * into v_legacy
+      from srk_private.legacy_booking_financial_evidence
+     where booking_id=p_booking_id;
+    if found then
+      v_labour_paise := round(coalesce(v_legacy.service_charge,0)*100)::bigint;
+      v_materials_paise := round(coalesce(v_legacy.materials_amount,0)*100)::bigint;
+    else
+      v_exceptions := array_append(v_exceptions,'MISSING_ARCHIVED_LEGACY_FINANCIAL_EVIDENCE');
+    end if;
   end if;
 
   if v_booking.commission_rate is null
@@ -379,9 +380,8 @@ begin
      and v_collection_paise is distinct from (v_labour_paise+v_fee_captured_paise) then
     v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_LABOUR_AND_SETTLED_FEES');
   elsif v_booking.selected_category is null and v_payment_verified
-     and v_booking.quote_status='approved'
      and v_collection_paise is distinct from (v_labour_paise+v_materials_paise) then
-    v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_APPROVED_QUOTE');
+    v_exceptions := array_append(v_exceptions,'VERIFIED_COLLECTION_DOES_NOT_MATCH_ARCHIVED_LEGACY_FINANCIAL_EVIDENCE');
   end if;
 
   select
