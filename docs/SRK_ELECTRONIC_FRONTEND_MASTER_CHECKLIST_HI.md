@@ -1570,3 +1570,16 @@ Founder ने बाजार-दर तुलना के बाद नीच
 - [ ] Plumber/Painter के skill-level-specific कामों की सूची catalogue में उपलब्ध नहीं है; कोई काम मन से जोड़कर approved नहीं दिखाया गया।
 - [ ] Flutter format/analyzer/widget tests/Android build अभी नहीं चलाए गए; test source जोड़ा गया है, pass होने का दावा नहीं है।
 - Commits: `a48f9ea8f89927dea531056b930372bd6aeef310`, `dbdb777aa0a06e91b00de944d62b8a79cff59e28`, `f599c79de8e69acc9d4fc2ef629eb844e6d60c03`.
+
+## 7A. Technician App — verified-services और job-flow source audit (21-11-2026)
+
+- [x] `apps/electrician_app/lib/main.dart` में Supabase OTP login, profile lookup, job-offer list, offer accept/decline, assigned-booking details, customer contact lookup, earnings और wallet summary के मौजूदा calls मिले।
+- [x] Login में भारतीय 10-अंकीय नंबर को `+91` format में normalize करने और OTP input validation का source मौजूद है।
+- [x] `lib/verified_services/` में verified-skill parser, verified-services panel, offer-skill match preview, booking-lifecycle preview और work-confirmation preview की अलग source files मौजूद हैं।
+- [x] इनके लिए चार अलग test files मौजूद हैं: `verified_services_test.dart`, `offer_skill_match_preview_test.dart`, `booking_lifecycle_preview_test.dart` और `work_confirmation_preview_test.dart`।
+- [ ] `main.dart` के import/usage audit में verified-services preview files dashboard flow से integrated नहीं दिखीं; इसलिए इन्हें live skill verification, dispatch eligibility या job execution का प्रमाण न मानें।
+- [ ] Offer details और assigned booking data अभी मौजूदा RPC names/response shape पर निर्भर हैं; GPT-2 के वर्तमान API contract की पुष्टि के बिना नई canonical category/task/skill IDs को live acceptance gate में न जोड़ें।
+- [ ] OTP resend के लिए स्पष्ट cooldown/countdown source में नहीं मिला; exact cooldown अवधि और server rate-limit contract तय हुए बिना मनमाना समय लागू न करें।
+- [ ] Profile application, KYC upload/review states, admin approval UI, online/offline availability, live location consent/tracking और multi-skill management का पूरा source-to-screen inventory आगे करना बाकी है।
+- [ ] चारों Technician test files source में मौजूद हैं; Flutter test/analyzer/build execution इस audit में नहीं हुआ, इसलिए इन्हें passing न मानें।
+- [ ] इस audit में कोई Technician source, backend API, database या production setting नहीं बदली गई।
