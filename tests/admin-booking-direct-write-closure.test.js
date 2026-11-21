@@ -28,8 +28,8 @@ test('location RPC is Main-Admin-only, row-locked, validated and records before/
 });
 
 test('legacy quote editor RPC is dropped and Admin UI has no quotation or manual customer-payment controls', () => {
-  assert.match(migration,/DROP FUNCTION IF EXISTS public\\.srk_admin_update_legacy_booking_quote\\(uuid,numeric\\)/);
-  assert.doesNotMatch(migration,/create or replace function public\\.srk_admin_update_legacy_booking_quote/);
+  assert.match(migration,/DROP FUNCTION IF EXISTS public\.srk_admin_update_legacy_booking_quote\(uuid,numeric\)/);
+  assert.doesNotMatch(migration,/create or replace function public\.srk_admin_update_legacy_booking_quote/);
   assert.doesNotMatch(admin,/quoted_amount|quote_status|service_charge|materials_amount|srk_admin_record_manual_payment/);
   assert.doesNotMatch(migration,/p_quoted_amount|QUOTE_MUST_MATCH_LABOUR_PLUS_MATERIALS/);
 });
