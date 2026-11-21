@@ -368,3 +368,9 @@ Rules:
 ## 23. Customer booking service identity rollout plan
 
 Detailed staged rollout and backend acceptance gates are documented in `docs/SRK_CUSTOMER_BOOKING_SERVICE_ID_INTEGRATION_PLAN_HI.md`. It records the current legacy create-booking payload, proposed additional structured fields, normalized booking response, immutable booking-to-offer snapshot, legacy compatibility, staging gates and rollback requirements. Draft IDs must not be sent to production before backend approval. No live API/backend/database/payment changes were made.
+
+## 24. Customer booking form picker placement update (21 Nov 2026)
+
+The new shared-catalogue picker has been moved from the Customer Dashboard preview into the existing booking form. The form stores a local `SrkServiceSelection?` draft value and displays its label/version. It explicitly tells the customer that the draft selection is not submitted before backend approval.
+
+The legacy required `service_type` dropdown remains because the current create-booking endpoint and dispatch still depend on that field. The new selection is not mapped into that legacy field: doing so could misroute non-electrical or task-specific services through the old service path. Existing OTP, customer/address, date/time, work details, payment method, GPS and request handling remain unchanged. Backend canonical catalogue approval and staging contract are required before payload integration.
