@@ -178,8 +178,9 @@ BEGIN
           AND srk_rate_version_snapshot IS NOT NULL AND srk_billing_model_snapshot IN ('hourly','fixed_per_unit')
           AND srk_estimated_labour_paise>0 AND srk_service_quantity BETWEEN 1 AND 100
           AND ((srk_billing_model_snapshot='hourly' AND srk_technician_hourly_paise_snapshot IS NOT NULL
-                AND srk_helper_hourly_paise_snapshot IS NOT NULL AND srk_fixed_labour_paise_snapshot IS NULL
-                AND srk_duration_minutes BETWEEN 1 AND 72000)
+                AND srk_helper_hourly_paise_snapshot IS NOT NULL
+                AND (NOT srk_helper_included_snapshot OR srk_helper_hourly_paise_snapshot>0)
+                AND srk_fixed_labour_paise_snapshot IS NULL AND srk_duration_minutes BETWEEN 1 AND 72000)
             OR (srk_billing_model_snapshot='fixed_per_unit' AND srk_fixed_labour_paise_snapshot IS NOT NULL
                 AND srk_technician_hourly_paise_snapshot IS NULL AND srk_helper_hourly_paise_snapshot IS NULL
                 AND srk_helper_included_snapshot=false AND srk_duration_minutes IS NULL)))
