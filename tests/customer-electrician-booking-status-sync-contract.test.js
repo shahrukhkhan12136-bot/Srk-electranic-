@@ -135,11 +135,13 @@ test('electrician profile panel transport failures do not prevent booking offers
     'loadVerificationDocuments',
     'loadEarnings',
     'loadPartnerWallet',
+    'loadMasterTechnicianRates',
+    'loadMasterTechnicianRatingTasks',
     'refreshElectricianPushState',
     'loadElectricianSupportTickets'
   ];
   for (const name of loaders) assert.ok(load.includes(name), 'refresh attempts ' + name);
-  assert.match(load, /for\(const loader of \[loadElectricianPhoneChangeHistory,loadMyAreaChangeRequests,loadVerificationDocuments,loadEarnings,loadPartnerWallet,refreshElectricianPushState,loadElectricianSupportTickets\]\)\{Promise\.resolve\(\)\.then\(\(\)=>loader\(\)\)\.catch\(e=>\{\/\* Optional profile panels must not block the offer list\. \*\/\}\);\}/);
+  assert.match(load, /for\(const loader of \[loadElectricianPhoneChangeHistory,loadMyAreaChangeRequests,loadVerificationDocuments,loadEarnings,loadPartnerWallet,loadMasterTechnicianRates,loadMasterTechnicianRatingTasks,refreshElectricianPushState,loadElectricianSupportTickets\]\)\{Promise\.resolve\(\)\.then\(\(\)=>loader\(\)\)\.catch\(e=>\{\/\* Optional profile panels must not block the offer list\. \*\/\}\);\}/);
   assert.ok(load.indexOf('Promise.resolve().then(()=>loader())') < load.indexOf("sb.rpc('srk_get_my_offer_details')"), 'optional panels are scheduled without awaiting them before offer loading');
 });
 
