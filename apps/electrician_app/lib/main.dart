@@ -107,11 +107,12 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
   List<Map<String, dynamic>> offers = [], offerDetails = [], earnings = [], offerPriceDetails = [], bookingDetails = [];
   bool loading = true;
   String? error;
+  List<String> loadWarnings = [];
   @override
   void initState() { super.initState(); load(); }
   Future<void> load() async {
     if (!mounted) return;
-    setState(() { loading = true; error = null; });
+    setState(() { loading = true; error = null; loadWarnings = []; });
     try {
       final uid = client.auth.currentUser?.id;
       if (uid == null) throw StateError('Session expired');
@@ -122,25 +123,44 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         offers = List<Map<String, dynamic>>.from(offerRows);
         final offerDetailRows = await client.rpc('srk_get_my_offer_details');
         offerDetails = List<Map<String, dynamic>>.from(offerDetailRows as List);
-        final priceDetailsRows = await client.rpc('srk_get_my_offer_price_details');
-        offerPriceDetails = List<Map<String, dynamic>>.from(priceDetailsRows as List);
+        try {
+          final priceDetailsRows = await client.rpc('srk_get_my_offer_price_details');
+          offerPriceDetails = List<Map<String, dynamic>>.from(priceDetailsRows as List);
+        } catch (_) {
+          offerPriceDetails = [];
+          loadWarnings.add('कीमत/कोटेशन का विवरण अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
+        }
         final bookingRows = await client.rpc('srk_get_my_assigned_booking_quote_details');
-        final contactRows = await client.rpc('srk_electrician_get_my_assigned_booking_contacts');
         final customerPhones = <String, String>{};
-        for (final row in List<Map<String, dynamic>>.from(contactRows as List)) {
-          final phone = row['customer_phone']?.toString().trim() ?? '';
-          if (phone.isNotEmpty) customerPhones[row['booking_id'].toString()] = phone;
+        try {
+          final contactRows = await client.rpc('srk_electrician_get_my_assigned_booking_contacts');
+          for (final row in List<Map<String, dynamic>>.from(contactRows as List)) {
+            final phone = row['customer_phone']?.toString().trim() ?? '';
+            if (phone.isNotEmpty) customerPhones[row['booking_id'].toString()] = phone;
+          }
+        } catch (_) {
+          loadWarnings.add('नियुक्त बुकिंग के ग्राहक संपर्क अभी लोड नहीं हुए। Refresh करके फिर कोशिश करें।');
         }
         bookingDetails = List<Map<String, dynamic>>.from(bookingRows as List).map((booking) {
           final phone = customerPhones[booking['booking_id'].toString()];
           return {...booking, if (phone != null) 'customer_phone': phone};
         }).toList();
-        final earningRows = await client.rpc('srk_get_my_earnings');
-        earnings = List<Map<String, dynamic>>.from(earningRows as List);
-        final walletResult = await client.rpc('srk_get_my_wallet_summary');
-        final walletData = Map<String, dynamic>.from(walletResult as Map);
-        final partnerWallet = walletData['electrician'];
-        wallet = partnerWallet == null ? null : Map<String, dynamic>.from(partnerWallet as Map);
+        try {
+          final earningRows = await client.rpc('srk_get_my_earnings');
+          earnings = List<Map<String, dynamic>>.from(earningRows as List);
+        } catch (_) {
+          earnings = [];
+          loadWarnings.add('कमाई का विवरण अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
+        }
+        try {
+          final walletResult = await client.rpc('srk_get_my_wallet_summary');
+          final walletData = Map<String, dynamic>.from(walletResult as Map);
+          final partnerWallet = walletData['electrician'];
+          wallet = partnerWallet == null ? null : Map<String, dynamic>.from(partnerWallet as Map);
+        } catch (_) {
+          wallet = null;
+          loadWarnings.add('वॉलेट का बैलेंस अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
+        }
       } else { offers = []; offerDetails = []; earnings = []; offerPriceDetails = []; bookingDetails = []; wallet = null; }
     } catch (_) { error = 'डैशबोर्ड लोड नहीं हो सका। इंटरनेट जाँचकर Refresh करें।'; }
     finally { if (mounted) setState(() => loading = false); }
@@ -263,6 +283,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         : ListView(padding: const EdgeInsets.all(16), children: [
           const SrkFounderBanner(),
           if (error != null) Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(error!, style: const TextStyle(color: Colors.red)))),
+          ...loadWarnings.map((warning) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Text(warning)))),
           Card(child: Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(p?['display_name']?.toString() ?? 'प्रोफाइल लिंक नहीं हुई', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
