@@ -558,7 +558,7 @@ BEGIN
    r.gross-v_share+CASE WHEN r.technician_id=v_materials_owner THEN f.materials_amount_paise ELSE 0 END);
  END LOOP;
  INSERT INTO public.srk_master_payment_events(booking_id,payment_id,event_type,amount_paise,provider_reference,actor_user_id)
- VALUES(p_booking_id,v_payment,'manual_recorded',f.subtotal_paise,p_reference,auth.uid());
+ VALUES(p_booking_id,v_payment,'manual_recorded',t.total_due_paise,p_reference,auth.uid());
  UPDATE public.service_bookings SET payment_status='paid',amount_paid=t.total_due_paise/100.0,
   payment_method=p_method,payment_verified_at=clock_timestamp()
  WHERE id=p_booking_id AND payment_status IN ('unpaid','pending');
