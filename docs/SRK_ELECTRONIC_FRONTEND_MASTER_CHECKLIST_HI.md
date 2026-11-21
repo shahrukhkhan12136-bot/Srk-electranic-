@@ -832,3 +832,15 @@
 
 
 - [x] विस्तृत चरणबद्ध Customer booking service-ID integration plan: `docs/SRK_CUSTOMER_BOOKING_SERVICE_ID_INTEGRATION_PLAN_HI.md` (अभी योजना; live submit payload नहीं बदला)।
+
+## 2AE. Customer booking form में सुरक्षित category-picker placement (2026-11-21)
+
+- [x] Dashboard से अलग category preview हटाकर picker को वास्तविक नई बुकिंग form के अंदर रखा।
+- [x] Form state में `SrkServiceSelection?` draft selection रखी और चुना हुआ display name/version दिखाया।
+- [x] स्पष्ट सूचना दी कि Backend मंजूरी से पहले चयन booking payload में नहीं जाएगा।
+- [x] पुराना required `service_type` dropdown और उसका submit व्यवहार सुरक्षित रखा।
+- [x] Existing OTP, customer/address, date/time, work details, payment method, GPS और create-booking request fields सुरक्षित।
+- [ ] Backend canonical catalogue/version और staging API contract मिलने के बाद ही draft selection को submit payload से जोड़ना।
+- [ ] Flutter formatter/analyzer/tests और Android build/device test अभी execute/verify नहीं किए गए।
+
+**सीमा:** केवल picker का स्थान और form-local preview state बदला। Live API payload, booking lifecycle, dispatch, Supabase/backend/database/payment अपरिवर्तित।
