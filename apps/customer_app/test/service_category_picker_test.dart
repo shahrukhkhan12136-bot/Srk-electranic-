@@ -44,6 +44,29 @@ void main() {
       expect(categoryToCatalogName.length, srkServiceCategories.length);
     });
 
+    test('picker labels, IDs and task lists come from the shared catalogue', () {
+      for (var i = 0; i < srkServiceCatalog.length; i++) {
+        final source = srkServiceCatalog[i];
+        final picker = srkServiceCategories[i];
+        expect(picker.id, source.id);
+        expect(picker.title, source.displayName);
+        expect(
+          picker.subcategories.map((item) => item.id).toList(),
+          source.options.map((item) => item.id).whereType<String>().toList(),
+        );
+        for (var j = 0; j < picker.subcategories.length; j++) {
+          expect(
+            picker.subcategories[j].title,
+            source.options[j].displayName ?? source.options[j].name,
+          );
+          expect(
+            picker.subcategories[j].children,
+            source.options[j].tasks.map((task) => task.name).toList(),
+          );
+        }
+      }
+    });
+
     testWidgets('AC and Fridge show separate task lists', (tester) async {
       Map<String, String?>? selected;
       tester.view.physicalSize = const Size(900, 1200);
