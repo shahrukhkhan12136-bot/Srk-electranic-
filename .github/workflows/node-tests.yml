@@ -5,6 +5,7 @@ on:
     branches:
       - feat/customer-login-first-dashboard-20261114
       - feature/master-technician-payment-cycle-20261121
+      - feature/master-gst-accounting-20261121
   pull_request:
     branches:
       - main
