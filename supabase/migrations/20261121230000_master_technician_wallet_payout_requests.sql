@@ -87,7 +87,7 @@ BEGIN
   RAISE EXCEPTION 'PAYOUT_REQUEST_ALREADY_OPEN';
  END IF;
  SELECT coalesce(sum(total_payable_paise),0) INTO v_total FROM public.srk_master_technician_payables
- WHERE technician_id=v_tid AND payout_status='pending' FOR UPDATE;
+ WHERE technician_id=v_tid AND payout_status='pending';
  IF v_total<=0 THEN RAISE EXCEPTION 'NO_AVAILABLE_PAYOUT_BALANCE'; END IF;
  INSERT INTO public.srk_master_payout_requests(technician_id,auth_user_id,amount_paise,destination_type,destination_reference,idempotency_key)
  VALUES(v_tid,v_uid,v_total,p_destination_type,btrim(p_destination_reference),p_idempotency_key) RETURNING id INTO v_req;
@@ -139,6 +139,26 @@ BEGIN
  RETURN v_out;
 END; $$;
 
+CREATE OR REPLACE FUNCTION public.srk_admin_review_master_payout_request(
+ p_request_id uuid,p_decision text,p_review_note text DEFAULT NULL
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $
+DECLARE r public.srk_master_payout_requests%rowtype;
+BEGIN
+ IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ONLY' USING ERRCODE='42501'; END IF;
+ IF p_decision NOT IN ('approved','rejected') OR (p_review_note IS NOT NULL AND char_length(p_review_note)>500)
+  OR (p_decision='rejected' AND char_length(btrim(coalesce(p_review_note,'')))<5) THEN
+  RAISE EXCEPTION 'INVALID_PAYOUT_REVIEW_DECISION' USING ERRCODE='22023'; END IF;
+ SELECT * INTO r FROM public.srk_master_payout_requests WHERE id=p_request_id FOR UPDATE;
+ IF NOT FOUND OR r.status<>'requested' THEN RAISE EXCEPTION 'PAYOUT_REQUEST_NOT_PENDING_REVIEW'; END IF;
+ UPDATE public.srk_master_payout_requests SET status=p_decision,reviewed_by=auth.uid(),reviewed_at=clock_timestamp(),
+  review_note=nullif(btrim(coalesce(p_review_note,'')),'') WHERE id=r.id;
+ IF p_decision='rejected' THEN
+  UPDATE public.srk_master_technician_payables p SET payout_status='pending'
+  FROM public.srk_master_payout_request_items i WHERE i.payout_request_id=r.id AND p.id=i.payable_id AND p.payout_status='requested';
+ END IF;
+ RETURN jsonb_build_object('success',true,'request_id',r.id,'status',p_decision);
+END; $;
+
 CREATE OR REPLACE FUNCTION public.srk_admin_mark_master_payout_paid(
  p_request_id uuid,p_method text,p_transfer_reference text,p_note text DEFAULT NULL
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $$
@@ -158,6 +178,8 @@ BEGIN
  IF v_unsettled>0 THEN RAISE EXCEPTION 'COMPANY_RAZORPAY_SETTLEMENT_NOT_CONFIRMED'; END IF;
  SELECT count(*) INTO v_count FROM public.srk_master_payout_request_items WHERE payout_request_id=r.id;
  IF v_count=0 THEN RAISE EXCEPTION 'PAYOUT_REQUEST_HAS_NO_ITEMS'; END IF;
+ IF (SELECT count(*) FROM public.srk_master_payout_request_items i JOIN public.srk_master_technician_payables p ON p.id=i.payable_id WHERE i.payout_request_id=r.id AND p.payout_status='requested')<>v_count THEN
+  RAISE EXCEPTION 'PAYOUT_ITEMS_NOT_IN_REQUESTED_STATE'; END IF;
  UPDATE public.srk_master_technician_payables p SET payout_status='paid',payout_method=p_method,
   payout_reference=btrim(p_transfer_reference),paid_by=auth.uid(),paid_at=clock_timestamp()
  FROM public.srk_master_payout_request_items i WHERE i.payout_request_id=r.id AND p.id=i.payable_id AND p.payout_status='requested';
@@ -176,5 +198,7 @@ REVOKE ALL ON FUNCTION public.srk_admin_confirm_master_company_settlement(uuid,t
 GRANT EXECUTE ON FUNCTION public.srk_admin_confirm_master_company_settlement(uuid,text,bigint,text) TO authenticated;
 REVOKE ALL ON FUNCTION public.srk_admin_list_master_payout_requests() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_list_master_payout_requests() TO authenticated;
+REVOKE ALL ON FUNCTION public.srk_admin_review_master_payout_request(uuid,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_review_master_payout_request(uuid,text,text) TO authenticated;
 REVOKE ALL ON FUNCTION public.srk_admin_mark_master_payout_paid(uuid,text,text,text) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_mark_master_payout_paid(uuid,text,text,text) TO authenticated;
