@@ -6,6 +6,7 @@ const bookingUi = fs.readFileSync(path.join(__dirname, '..', 'booking.html'), 'u
 
 process.env.SUPABASE_URL = 'https://supabase.test';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-test';
+process.env.SRK_MASTER_BOOKING_ENABLED = 'true';
 
 const { handler } = require('../create-booking');
 
@@ -154,6 +155,21 @@ test('booking phone is derived from OTP-verified Auth and ignores forged or miss
   const insertedWithoutPhone = callsWithoutPhone.find(call => call.method === 'POST' && call.target.endsWith('/service_bookings'));
   assert.ok(insertedWithoutPhone);
   assert.equal(JSON.parse(insertedWithoutPhone.body)[0].phone, '9876543210');
+});
+
+test('Master booking stays disabled until the complete timer/payment backend is explicitly enabled', async () => {
+  const prior = process.env.SRK_MASTER_BOOKING_ENABLED;
+  delete process.env.SRK_MASTER_BOOKING_ENABLED;
+  const calls = mockSupabase();
+  const result = await handler(event(bookingBody({
+    srk_service_code: 'residential_plumbing',
+    srk_rate_level_code: 'basic',
+    srk_duration_minutes: 60
+  })));
+  assert.equal(result.statusCode, 503);
+  assert.equal(JSON.parse(result.body).code, 'MASTER_BOOKING_BACKEND_NOT_READY');
+  assert.equal(calls.some(call => call.target.includes('/rest/v1/service_bookings')), false);
+  process.env.SRK_MASTER_BOOKING_ENABLED = prior || 'true';
 });
 
 test('Master booking calculates hourly labour from Admin rate and stores canonical category/skill snapshots', async () => {
