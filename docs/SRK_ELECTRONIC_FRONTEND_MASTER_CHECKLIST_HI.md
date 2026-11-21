@@ -663,3 +663,13 @@
 - [ ] Backend owner must publish exact deployed profile fields, RPC names, request/response JSON and version before Flutter adds skill parsing or profile selection fields.
 - [ ] After contract publication: add typed model, verified-services read-only panel, safe offer matching display and tests for pending/rejected/expired/revoked skills, AC/Fridge isolation and accept races.
 - [ ] No live offer filtering, schema/RPC changes, database, backend, production, payment or payout code was changed in this frontend audit.
+
+
+## 2S. Technician verified-services UI prototype and test wiring (2026-11-21)
+- [x] Added isolated typed skill parser and read-only “आपकी सत्यापित सेवाएँ” panel in `apps/electrician_app/lib/verified_services/`.
+- [x] Parser requires approved status, active flag, non-empty category/subcategory IDs and labels; expired records are rejected. Unknown or incomplete records fail closed.
+- [x] Added widget/model tests for approved, pending, rejected, inactive, expired, missing IDs, AC-vs-Fridge distinction and safe empty state.
+- [x] Wired Technician `flutter test` into Android CI after `dart analyze`.
+- [x] Kept this component isolated: no profile query, Supabase RPC, offer filtering, assignment, work-start or payment behavior changed.
+- [ ] Backend must confirm exact deployed response field names and IDs before this panel is connected to live profile data.
+- [ ] Flutter analyze, tests and Android APK build are not yet executed/verified.
