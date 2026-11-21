@@ -527,3 +527,17 @@
 - [x] Service task options और Technician skill/rate tiers को अलग-अलग fields में रखा गया है: `options` बनाम `skillLevels`। इससे Basic/Expert/Master को गलती से अलग service category या repair task नहीं दिखाया जाएगा।
 - [x] Painter Helper rates में प्रति घंटा इकाई स्पष्ट की गई।
 - [x] Source re-fetch में छह top-level category names, balanced braces/parentheses और intended fields की जाँच हुई। यह textual inspection है, Dart analyzer या build का विकल्प नहीं।
+
+
+## 2H. Customer six-category picker prototype (2026-11-21)
+
+- [x] Added isolated Flutter widget at `apps/customer_app/lib/service_category_picker.dart`.
+- [x] Contains six top-level categories in the approved order: Electrician, Plumber, Painter, AC + Fridge, Motor & Pump, Cooler.
+- [x] AC + Fridge first requires AC or Fridge selection, then shows only the matching task list.
+- [x] Electrician and Motor & Pump have their current catalogue sub-options; Cooler contains Cooler Repair only.
+- [x] Plumber and Painter currently remain category-level selections because detailed subcategory lists were not confirmed in the available requirements.
+- [x] Widget emits catalogue IDs and labels through a callback only. It does not submit bookings, call APIs/Supabase, calculate prices, or change the existing booking form.
+- [ ] Integrate into Customer home/booking only after backend confirms canonical category IDs, rate version and verified-skill dispatch contract.
+- [ ] Run Dart format/analyzer and Android build in CI/device; not yet performed.
+
+**Safety note:** This is an isolated prototype, not a live booking flow. Existing booking form, payment method and booking lifecycle remain unchanged.
