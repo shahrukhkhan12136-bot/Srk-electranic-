@@ -28,11 +28,13 @@ class SrkServiceSubcategory {
     required this.id,
     required this.title,
     this.children = const [],
+    this.childOptions = const [],
   });
 
   final String id;
   final String title;
   final List<String> children;
+  final List<catalog.SrkServiceOption> childOptions;
 }
 
 IconData _iconForService(String key) => switch (key) {
@@ -59,6 +61,7 @@ final List<SrkServiceCategory> srkServiceCategories =
               id: option.id!,
               title: option.displayName ?? option.name,
               children: option.tasks.map((task) => task.name).toList(),
+              childOptions: option.children,
             ))
         .toList(),
     skillLevels: category.skillLevels,
@@ -83,6 +86,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   SrkServiceCategory? _category;
   SrkServiceSubcategory? _subcategory;
   String? _selectedTaskId;
+  catalog.SrkServiceOption? _selectedChildOption;
   catalog.SrkServiceOption? _selectedSkillLevel;
   String? _selectedSkillTaskId;
 
@@ -92,6 +96,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       _category = category;
       _subcategory = null;
       _selectedTaskId = null;
+      _selectedChildOption = null;
       _selectedSkillLevel = null;
       _selectedSkillTaskId = null;
     });
@@ -108,6 +113,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     setState(() {
       _subcategory = subcategory;
       _selectedTaskId = null;
+      _selectedChildOption = null;
     });
     if (subcategory.children.isEmpty) {
       final selection = SrkServiceSelection.create(
@@ -232,6 +238,39 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
               );
             }).toList(),
           ),
+        ],
+        if (subcategory != null && subcategory.childOptions.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          Text('काम का विकल्प चुनें',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: subcategory.childOptions.map((option) {
+              final selected = _selectedChildOption?.id == option.id;
+              return ChoiceChip(
+                label: Text(option.displayName ?? option.name),
+                selected: selected,
+                onSelected: (_) {
+                  widget.onSelection(null);
+                  setState(() => _selectedChildOption = option);
+                },
+              );
+            }).toList(),
+          ),
+          if (_selectedChildOption != null &&
+              _selectedChildOption!.rates.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ..._selectedChildOption!.rates.map((rate) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                '${rate.label}: ${rate.amount} / ${rate.unit}'
+                '${rate.helperAmount == null ? '' : ' • ${rate.helperAmount}'}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            )),
+          ],
         ],
         if (subcategory != null && tasks.isNotEmpty) ...[
           const SizedBox(height: 18),
