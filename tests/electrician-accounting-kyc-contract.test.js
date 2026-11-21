@@ -60,9 +60,11 @@ test('wallet bank and ledger reads are owner scoped and query failures are not r
   assert.match(wallet, /यह ऐप का आंतरिक लेजर बैलेंस है/);
 });
 
-test('electrician app does not initiate wallet withdrawal or bank transfer actions', () => {
+test('electrician app may request a Master payout but never initiates the actual bank transfer', () => {
   assert.doesNotMatch(electrician, /srk_wallet_withdraw|srk_create_withdrawal|create_bank_transfer|razorpay_route_transfer/i);
-  assert.match(electrician, /बैंक खाता जोड़ना और निकासी अभी बंद है/);
+  assert.match(electrician, /पुराने Wallet में बैंक खाता जोड़ना और निकासी अभी बंद है/);
+  assert.match(electrician, /srk_technician_request_master_payout/);
+  assert.match(electrician, /यहाँ केवल payout request बनेगा/);
 });
 
 test('profile display-name updates validate input and use the self-service RPC', () => {
