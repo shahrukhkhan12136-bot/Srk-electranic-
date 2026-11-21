@@ -14,9 +14,9 @@
 6. वेबसाइट पर `https://YOUR-SITE/admin.html` खोलें और उसी Auth email/password से लॉगिन करें।
 
 ## महत्वपूर्ण
-- Admin record पहले से मौजूद होना चाहिए। इस प्रोजेक्ट में अपेक्षित Auth UID: `3fa1af52-2223-4203-b43d-ebd4798f8f17`। SQL चलाने के बाद अंतिम SELECT से पुष्टि करें।
+- Admin record पहले से मौजूद होना चाहिए। Main Admin की Auth UID केवल Supabase Dashboard → Authentication → Users में owner-controlled account से मिलाएँ; UID को public repository, screenshots या chat में साझा न करें। SQL चलाने के बाद अंतिम SELECT से पुष्टि करें।
 - `is_srk_admin()` को SQL Editor में सीधे चलाने पर `false` आ सकता है, क्योंकि SQL Editor में सामान्य browser user session/auth.uid() सेट नहीं होता। असली जाँच वेबसाइट में लॉगिन के बाद होती है।
-- यह पैकेज अपने-आप Netlify पर deploy नहीं होता। Netlify पर Production deploys paused होने के कारण deploy फिर शुरू करना होगा (billing/operational credits reset या Netlify की उपलब्ध resume/upgrade प्रक्रिया)।
+- यह पैकेज अपने-आप Netlify पर deploy नहीं होता। अभी Production publishing स्थगित रखें। Netlify Dashboard में deploy status केवल जाँचें; audit, migration reconciliation, testing और आपकी स्पष्ट अनुमति से पहले resume/upgrade/deploy न करें।
 - पहले से मौजूद Netlify Functions और Razorpay secrets को जस का तस रखें। कोई secret key ZIP या frontend में न डालें।
 - आवेदन approve होने पर electrician profile inactive बनेगी; KYC/manual verification के बाद ही Admin उसे activate करे।
 - कमीशन रिपोर्ट अभी completed bookings के `commission_amount` पर आधारित है; payment settlement/payout integration अलग काम है।

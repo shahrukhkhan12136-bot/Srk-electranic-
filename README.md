@@ -2,16 +2,36 @@
 
 यह repository SRK ELECTRONIC की वेबसाइट और electrician booking marketplace के लिए है। वर्तमान deployment target Netlify है।
 
-## मुख्य पेज
-- `/` ग्राहक सेवा बुकिंग और इलेक्ट्रिशियन आवेदन
-- `/admin.html` Admin email/password portal
-- `/electrician.html` Electrician phone OTP portal
+## मुख्य पेज और प्रवेश क्रम
+- `/` — Welcome Screen (`/welcome.html`) पर redirect
+- `/welcome.html` — भूमिका चुनने की स्वागत स्क्रीन; Customer, Electrician और Admin login links
+- `/customer-login.html` — Customer phone OTP login; सफल login के बाद `/booking.html` पर redirect
+- `/booking.html` — Customer Dashboard, सेवा बुकिंग और अकाउंट; Dashboard केवल authenticated customer session में खुलता है
+- `/electrician.html` — Electrician Partner phone OTP portal
+- `/admin.html` — Admin / Support Staff portal
 
 ## Netlify Functions
-- `/api/create-booking` — बुकिंग सेव करना और Supabase broadcast trigger से बने offers पढ़ना
+- `/api/create-booking` — Customer App का canonical booking endpoint; Netlify redirect इसे `/.netlify/functions/create-booking` adapter तक पहुँचाता है। यह बुकिंग सेव करता है और Supabase broadcast trigger से बने offers पढ़ता है
 - `/api/apply-electrician` — इलेक्ट्रिशियन आवेदन सेव करना
 - `/api/create-order` — Razorpay order बनाना
 - `/api/verify-payment` — signature और captured INR payment सत्यापित करना
+- `/api/razorpay-webhook` — Razorpay payment/refund webhook events को verify और process करना
+- `/api/razorpay-refund` — अधिकृत refund workflow का server-side execution
+- `/api/razorpay-refund-status` — refund status की server-side जाँच
+- `/api/razorpay-refund-recovery` — pending/uncertain refund operations की recovery/reconciliation
+
+## Scheduled Netlify Functions
+- `expire-booking-offers` — हर मिनट expired sequential electrician offers को expire करके अगला offer आगे बढ़ाने का scheduled worker। यह `/api/expire-booking-offers` HTTP endpoint नहीं है।
+- `deliver-push-outbox` — हर मिनट durable push outbox से queued notifications deliver/retry करने का scheduled worker। यह `/api/deliver-push-outbox` HTTP endpoint नहीं है।
+
+इन scheduled workers का source/config मौजूद होना deployed schedule, आवश्यक server-side secrets या सफल वास्तविक delivery का प्रमाण नहीं है।
+
+## Supabase Edge Functions
+- `admin-staff-management` — Admin द्वारा Support Staff invitation और staff lifecycle management
+- `electrician-phone-change` — Electrician phone-number change का OTP और Admin-approval workflow
+- `push-job-offer` — eligible offer के लिए push-notification delivery entry point
+
+इन server functions का source मौजूद होना Production secrets, provider configuration, scheduled invocation या वास्तविक delivery सक्रिय होने का प्रमाण नहीं है।
 
 ## Server-side environment variables
 Netlify Site configuration → Environment variables में:
@@ -26,27 +46,27 @@ Service-role key और Razorpay secret को browser, GitHub या chat म�
 मुख्य Supabase project: `gnqhoaqatmoiwwhgzkgm`। मौजूदा database में bookings, applications, profiles और offers tables मौजूद हैं। Admin review, electrician profile linking, offer inbox और single-winner accept RPC configured हैं।
 
 ## महत्वपूर्ण सीमाएँ
-- SMS/WhatsApp/push notifications अभी स्वचालित नहीं हैं; electrician dashboard में offer inbox है।
-- OTP login के लिए Supabase phone provider/SMS setup आवश्यक है।
-- Nationwide enquiry स्वीकार है, लेकिन हर PIN Code में तुरंत सेवा उपलब्ध होने की गारंटी नहीं है।
-- Razorpay Test Mode में end-to-end test अभी बाकी है।
-- Production से पहले KYC, refund/dispute, privacy/terms और support प्रक्रिया पूरी करें।
+- Electrician offer push notifications और durable delivery/retry का source implementation मौजूद है; इससे Production provider delivery चालू होने की पुष्टि नहीं होती। Main Supabase schema parity, worker/provider integration और वास्तविक delivery verification अभी अलग release gates हैं।
+- SMS/WhatsApp alert delivery को स्वचालित/सक्रिय न मानें; OTP login के लिए Supabase phone provider और SMS configuration आवश्यक है।
+- Nationwide enquiry स्वीकार है, लेकिन हर PIN Code में तुरंत सेवा उपलब्ध होने की गारंटी नहीं है; offer dispatch केवल eligible/available electrician मिलने पर आगे बढ़ता है।
+- Razorpay payment/refund के source workflows मौजूद हैं; Test Mode और isolated end-to-end provider verification अभी बाकी है।
+- Feature Branch के नए Customer profile/address/support, immutable labour bill, cancellation-fee, refund-recovery और durable Push schema को Main Supabase में उपलब्ध मानने से पहले migration parity verify करें। वर्तमान Main DB में इनमें से कई नए objects अभी अनुपस्थित हैं।
+- Browser/mobile visual QA, isolated database actor/ownership tests और final release/owner approval अभी अलग चरण हैं। Feature Branch source या CI success को Production readiness न समझें।
 
 ## Manual electrician payouts (UPI / Bank)
 - Automatic Razorpay Route transfers are not required for the current manual payout workflow.
-- After a customer's Razorpay payment is server-verified and the booking is completed, quote-approved, and assigned, the database creates a pending electrician payout ledger row using that booking's commission rate.
+- For a legacy (non-category) booking, a server-verified Razorpay payment or eligible recorded manual payment can create a pending payout only when the booking is completed, assigned, and its historical quote is approved; commission applies to labour, while materials pass through without commission.
+- New category bookings do not use quote approval or the legacy manual-payment RPC. Their payout is based on the immutable server-recorded labour bill and excludes settled cancellation-fee amounts; materials are zero in this flow.
 - An authorized Admin makes the actual UPI or bank transfer outside the website, then records the UTR / UPI reference in `/admin.html`. The website only records the transfer; it does not send money.
 - The electrician can see their own pending/paid payout status and recorded reference in `/electrician.html`. RLS restricts payout rows to the owning electrician and authorized admins.
 - Never mark a payout Paid before the actual transfer succeeds. No automatic payout or real-money test is performed by this code.
 
-## Masked calling and phone privacy
+## Customer / Electrician phone visibility — owner-approved rule
 
-- Customer and electrician phone numbers are not displayed to the other party in the customer/electrician dashboards or the corresponding contact RPC results.
-- Direct phone-call buttons remain disabled until a compliant two-way masked-calling provider is enabled and end-to-end tested.
-- The current provider candidate is Exotel Lead Assist (GreenPin): it supports virtual-number proxy calling and PIN verification, but it is an account-level feature that Exotel must enable and it uses separate credentials. Do not add provider credentials to GitHub or browser code.
-- Before a call can start from a different mobile device, the caller must enter their registered account number and complete OTP ownership verification. Merely typing a number must never authorize a call.
-- Until provider activation, both parties' real numbers remain hidden and calling is unavailable through the platform.
+- Before an electrician accepts an offer, the customer and electrician must not see each other's phone numbers.
+- Once the electrician accepts/receives the booking, both parties may see each other's full, unmasked mobile numbers and call directly.
+- No additional OTP is required to reveal the numbers after acceptance.
+- Admin may see both full numbers. Support Staff must not receive unrestricted private phone projections.
+- Phone access must remain scoped to the authenticated booking owner, the assigned/accepted electrician, and authorized Admin workflows. Never expose numbers on public pages, unassigned offers, search results, or unauthenticated APIs.
 
-
-## Updated phone visibility decision (2026-11-09)
-The owner has changed the calling requirement: do **not** implement masked calling or Exotel GreenPin for now. For an assigned booking, the customer may see the assigned electrician's phone number and use a direct Call button; the assigned, approved electrician may see the customer's booking phone number and use a direct Call button. Phone numbers must remain restricted to the authenticated booking owner / assigned electrician through the existing booking-scoped RPCs. Do not expose phone numbers in public pages, unassigned offers, search results, or unauthenticated APIs. This decision supersedes the earlier masked-calling requirement above.
+This rule supersedes the older masked-calling / Exotel notes and the intermediate wording that said only "assigned booking".

@@ -24,8 +24,7 @@ begin
   from public.service_bookings b
   join public.electrician_profiles ep on ep.id = b.assigned_electrician_id
   where b.customer_user_id = v_uid
-    and b.assigned_electrician_id is not null
-    and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress');
+    and b.assigned_electrician_id is not null;
 end;
 $function$;
 

@@ -40,7 +40,8 @@ begin
       from storage.objects o
      where o.bucket_id='srk-customer-avatars'
        and o.name=p_avatar_path
-       and (storage.foldername(o.name))[1]=v_user_id::text;
+       and (storage.foldername(o.name))[1]=v_user_id::text
+       and o.owner_id=v_user_id::text;
 
     if not found or v_object_size not between 1 and 5242880 then
       raise exception 'AVATAR_OBJECT_INVALID' using errcode = '22023';

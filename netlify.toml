@@ -29,6 +29,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/razorpay-refund"
+  to = "/.netlify/functions/razorpay-refund"
+  status = 200
+
+[[redirects]]
   from = "/api/razorpay-webhook"
   to = "/.netlify/functions/razorpay-webhook"
   status = 200
@@ -46,3 +51,23 @@
     X-Frame-Options = "DENY"
     Permissions-Policy = "camera=(), microphone=(), geolocation=(self)"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+[[redirects]]
+  from = "/api/razorpay-refund-status"
+  to = "/.netlify/functions/razorpay-refund-status"
+  status = 200
+
+[[redirects]]
+  from = "/api/razorpay-refund-recovery"
+  to = "/.netlify/functions/razorpay-refund-recovery"
+  status = 200
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

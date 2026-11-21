@@ -17,7 +17,7 @@
   - `supabase/tests/database/admin_staff_rbac_foundation.test.sql` — pgTAP `plan(69)`; assertion call count 69 (finish सहित)।
   - `supabase/tests/database/sos_admin_support_alerts.test.sql` — pgTAP `plan(28)`; assertion call count 28 (finish सहित)।
 - RBAC permission helper की row-locking implementation को `VOLATILE` करने वाली migration `20261116100000_fix_staff_permission_helper_volatility.sql` है। Test में helper का `provolatile='v'` होना भी जाँचा जाता है।
-- `docs/MIGRATION_REPLAY_MANIFEST_HI.md` में duplicate `20261109` version prefixes, missing authoritative `service_bookings.amount_paid` definition, unresolved electrician identity column baseline और historical schema/migration-history gaps दर्ज हैं। वह manifest खुद को execution-ready नहीं बताता।
+- `docs/MIGRATION_REPLAY_MANIFEST_HI.md` के नवीनतम audit के अनुसार `electrician_profiles.auth_user_id` की introducing DDL मौजूद है और `service_bookings.amount_paid` की source DDL भी अब branch में जोड़ी गई है। फिर भी `amount_paid` restore migration का timestamp कई पुराने migrations के बाद है, जबकि वे column को पहले ही GRANT/REVOKE/function logic में उपयोग करते हैं; इसलिए clean-replay dependency order unresolved है। Duplicate `20261109` lineage और authoritative baseline/migration history भी अभी unresolved हैं। Manifest execution-ready नहीं है।
 
 ## 3. Replay से पहले अनिवार्य gates
 
@@ -829,22 +829,1480 @@ Therefore:
 No workflow was dispatched or modified. No remote schema export, database connection, migration execution, pgTAP execution, Production access, or database change occurred.
 
 
-## 27. Current baseline blocker refresh — 16 Nov 2026
+## 28. Duplicate 20261109 migration body/dependency comparison — 16 Nov 2026
 
-A fresh GitHub directory inventory and direct source read were performed on the current feature branch.
+Both same-prefix files were fetched directly from the current feature branch and compared at statement level.
 
-### Verified current source facts
-- `supabase/migrations` currently contains **87 SQL migration files**.
-- Exactly one duplicate filename-version prefix group was found: the two distinct files beginning with `20261109`:
-  - `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
-  - `20261109_allow_quote_approval_booking_states.sql`
-- The prior baseline concern about `electrician_profiles.auth_user_id` is no longer a missing-introducing-DDL blocker: `20261109000500_harden_electrician_profile_identity_linking.sql` adds it as nullable `uuid REFERENCES auth.users(id) ON DELETE SET NULL`, and contains subsequent synchronization/backfill logic. This source fact does not establish live schema parity or safe replay against unknown starter data.
-- The prior baseline concern about `service_bookings.amount_paid` is also no longer a missing-introducing-DDL blocker: `20261116200000_restore_service_bookings_amount_paid.sql` adds nullable `numeric(12,2)` and a nonnegative CHECK constraint marked `NOT VALID`. This does not prove existing data validation or Production application.
+### File A — `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+This larger feature migration adds quote fields to `public.service_bookings`, quote amount/status checks, commission calculation logic, electrician quote submission/customer response/work-status RPCs, and a replacement electrician offer-details RPC with grants/revokes. At its end it drops and recreates the two booking status/assignment CHECK constraints.
 
-### Remaining replay gate
-The duplicate `20261109` version/remote lineage ambiguity remains unresolved. The repository directory inventory cannot establish how the two files map to deployed migration history, nor whether a clean replay should include both under their current filenames. No filename or migration history was changed.
+### File B — `20261109_allow_quote_approval_booking_states.sql`
+This file contains only the same two status/assignment CHECK constraint drop-and-recreate operations. The status values and assignment-required status set match the definitions at the end of File A.
 
-The broader approved starter baseline is still not established by this source inventory: exact core table definitions, Auth schema prerequisites, roles/extensions, grants, RLS, policies, triggers, functions, and their dependency order still require a complete source baseline and isolated harness review.
+### Source-level conclusion
+- File B repeats the constraint-definition step already present at the end of File A; it adds no distinct status value relative to File A.
+- File A has materially broader schema/function/grant effects and cannot be treated as interchangeable with File B.
+- File B looks redundant if File A has already run successfully, but source redundancy alone does not prove it is safe to delete, omit, rename, or merge in a clean replay chain.
+- The two files have the same 8-digit filename prefix but distinct SQL bodies. The exact remote migration identity/order remains unverified; Git chronology and matching live constraint definitions do not resolve it.
+- Both files rely on an existing `public.service_bookings` table and other pre-existing schema objects. This comparison does not reconstruct the authoritative starter schema or prove every referenced column/function dependency exists at replay time.
 
-### Safety boundary
-This was GitHub source-only inspection. No Supabase CLI, Docker, PostgreSQL, pgTAP, migration replay, Production query, remote schema export, or database write was performed. The two column-source gaps are reclassified as resolved in current branch source only; **the overall replay gate remains closed**.
+### Decision
+No migration file was edited, removed, renamed, merged, reordered, replayed, or repaired. Do not treat either file as approved for omission. The duplicate-version replay gate remains **BLOCKED** pending authoritative migration lineage and an approved baseline/reconciliation decision. No Supabase CLI, PostgreSQL, pgTAP, Production query, or database write was run.
+
+
+## 29. Historical starter-schema candidates vs current migration dependencies — 16 Nov 2026
+
+Read-only source inspection covered the repository-root files `COMPLETE_DATABASE_SETUP.sql`, `SUPABASE_SCHEMA.sql`, and `PORTAL_SCHEMA.sql`, plus the customer-booking and electrician-identity migrations.
+
+### What the starter files establish
+- `SUPABASE_SCHEMA.sql` and the first section of `COMPLETE_DATABASE_SETUP.sql` define a historical starter form of `public.service_bookings`, `electrician_applications`, `electrician_profiles`, and `job_offers`.
+- They enable RLS and define early public-insert and electrician/admin access policies.
+- `PORTAL_SCHEMA.sql` adds the historical admin table, electrician `user_id) link, identity-linking trigger/function, and related portal policies/RPCs.
+- These files are useful historical design evidence, but they are not a complete current replay baseline by themselves.
+
+### Concrete differences against current migration dependencies
+- The starter `service_bookings` definition has the original status set `new/confirmed/assigned/in_progress/completed/cancelled`; later migrations add quote and work-approval states.
+- The starter table definition does not include the later `customer_user_id` column introduced by `20261108121115_add_customer_account_booking_access.sql`.
+- It does not include later quote workflow columns such as quote status/note/timestamps, nor the newer customer-approved work-start timer fields.
+- The starter `electrician_profiles` definition and portal script use `user_id`; the later hardening migration `20261109000500_harden_electrician_profile_identity_linking.sql` adds `auth_user_id`, reconciliation/synchronization logic, identity guard triggers, and a partial unique index.
+- The starter file contains `commission_rate` and `commission_amount`, but the later reporting migration `20261109003000_secure_commission_reporting.sql` references `service_bookings.amount_paid`; that column is supplied by the later restore migration, not by the historical starter table.
+- The starter SQL includes auth-linked objects and triggers on `auth.users`; a disposable local baseline must therefore use the matching Supabase Auth schema and required roles/extensions rather than plain PostgreSQL alone.
+
+### Replay-readiness conclusion
+The repository-root SQL files are historical setup scripts, not an approved immutable snapshot of the current Production schema or a complete clean-replay baseline. They must not be treated as a direct `supabase db reset` input without a separately reviewed baseline and dependency manifest. This finding does not imply that the historical scripts are wrong for their original purpose.
+
+No files were edited except this report. No SQL was executed, no Supabase CLI/Docker/PostgreSQL/pgTAP was run, and no Production connection, query, migration, or data change occurred.
+
+
+## 30. Support/complaint schema, Storage policy और Admin helper provenance — 16 Nov 2026
+
+इस चरण में current feature branch के source और संबंधित pgTAP test का read-only निरीक्षण किया गया। खास तौर पर complaint base tables, private Storage bucket/policies और `public.is_srk_admin()` की introducing source खोजी गई।
+
+### 30.1 Complaint base tables — introducing source अभी नहीं मिला
+
+`20261113230000_support_attachment_paths_and_admin_message_list.sql` में ये पहले से मौजूद objects उपयोग किए गए हैं:
+
+- `public.srk_booking_complaints` — customer ownership और complaint existence जाँचने के लिए;
+- `public.srk_booking_complaint_messages` — Admin message thread पढ़ने के लिए;
+- `public.srk_booking_complaint_message_attachments` — attachment metadata पढ़ने के लिए।
+
+यह migration इन तीनों base tables को CREATE नहीं करती। संबंधित support pgTAP test अतिरिक्त रूप से `srk_booking_complaint_messages_id_thread_uidx` unique index और `srk_complaint_attachment_message_thread_fk` foreign key की अपेक्षा करता है।
+
+इस read-only branch search में इन base tables/index/FK को बनाने वाली कोई अलग migration या historical starter SQL definition नहीं मिली। इसलिए इनके exact columns, constraints, indexes, RLS policies और introducing migration अभी **unverified** हैं। Search results की सीमा के कारण इसे पूरे repository में अनुपस्थिति का अंतिम प्रमाण न माना जाए; अगली inventory pass में migration tree की प्रत्यक्ष सूची और हर candidate file की जाँच आवश्यक होगी।
+
+### 30.2 Private support Storage bucket/policies — source gap
+
+Customer frontend `srk-customer-support` नाम के Storage bucket में file upload और 300-second signed URL बनाता है। Support pgTAP test इन objects/functions की मौजूदगी और सुरक्षा की अपेक्षा करता है:
+
+- `public.srk_customer_support_object_access(text,boolean)`;
+- Storage object policy `srk_customer_support_read_own_or_admin` on `storage.objects`;
+- `public.srk_customer_link_complaint_message_attachment(uuid,uuid,text,text,text,bigint)`;
+- bucket `srk-customer-support`, object owner और complaint linkage की जाँच।
+
+मौजूदा attachment-listing migration इन Storage objects/functions को define नहीं करती। Exact-name branch search में इनके introducing SQL का परिणाम नहीं मिला। इस कारण bucket creation/configuration, private/public setting, upload/read/delete policies, object ownership checks और attachment-link RPC का source provenance **unresolved** है। केवल frontend reference या test assertion से Storage bucket/policy का अस्तित्व सिद्ध नहीं होता।
+
+### 30.3 `public.is_srk_admin()` — historical setup में definition मिली, migration में नहीं
+
+अब historical root SQL में exact definition की पुष्टि हुई:
+
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` में `CREATE OR REPLACE FUNCTION public.is_srk_admin()` मौजूद है; यह `SECURITY DEFINER`, `STABLE`, `SET search_path = public, auth` है और `public.srk_admin_users` में `auth.uid()` की मौजूदगी जाँचता है। यह PUBLIC से EXECUTE revoke कर `authenticated` को grant करता है।
+- `COMPLETE_DATABASE_SETUP.sql` में इसी function की Admin email-login compatibility definition भी मौजूद है।
+- उसी historical setup में पहले `public.srk_is_admin()` नाम का अलग helper भी है। दोनों नाम अलग database objects हैं; इन्हें interchangeable नहीं माना जा सकता।
+- इस branch search में `public.is_srk_admin()` की introducing versioned migration नहीं मिली। कई बाद की migrations (booking read policy, commission reporting, wallet और support message listing) इसे dependency के रूप में call करती हैं।
+
+अतः helper का historical setup source ज्ञात है, लेकिन current migration chain में इसे स्थापित करने वाला authoritative versioned migration और clean-replay placement अभी नहीं मिला। Baseline में helper मौजूद होने की पुष्टि के बिना dependent migrations का replay सुरक्षित घोषित नहीं किया जा सकता।
+
+### 30.4 प्रभाव और अगला read-only कदम
+
+यह support area केवल attachment-listing function तक सीमित नहीं है। इसकी runtime dependency chain में complaint tables, message/attachment relational integrity, private Storage bucket/policies, attachment-link RPC और Admin helper सभी शामिल हैं। इनके बिना support pgTAP file की function/policy introspection assertions भी fail या unresolved हो सकती हैं।
+
+अगला सुरक्षित कदम migration directory की प्रत्यक्ष पूरी inventory से support/complaint/Storage candidate files पहचानना और उनके complete SQL bodies की जाँच करना है। यदि कोई introducing source वास्तव में branch में नहीं है, तो उसे स्पष्ट missing-baseline item के रूप में दर्ज किया जाए; अनुमान से नया schema या migration न बनाया जाए।
+
+**सीमा:** यह source-only निरीक्षण है। कोई SQL execute नहीं हुआ; pgTAP, Supabase CLI, Docker या PostgreSQL नहीं चलाया गया; Production से संपर्क/पढ़ाई/बदलाव नहीं हुआ; कोई migration, application source या Storage object नहीं बदला गया।
+
+
+## 31. Support migration directory की प्रत्यक्ष inventory से Section 30 का संशोधन — 16 Nov 2026
+
+Section 30 के बाद migration directory की GitHub Contents API inventory को प्रत्यक्ष रूप से पढ़ा गया। कुल 87 migration filenames की सूची मिली। इस पूरी सूची में support के वे दो महत्वपूर्ण migration files मिले जो पहले exact-name code search में सामने नहीं आए थे। इसलिए Section 30 में complaint base tables और Storage setup को “introducing source नहीं मिला” कहना अधूरा था। नीचे corrected source-of-truth दर्ज है।
+
+### 31.1 Complaint base schema का source मिल गया
+
+`20261110040000_customer_admin_complaints.sql` ये objects बनाती है:
+
+- `public.srk_booking_complaints` — customer booking complaint, category, description, status, Admin note और resolution metadata;
+- `public.srk_booking_complaint_events` — complaint status/activity history;
+- complaint created/booking/status indexes;
+- customer complaint create/list RPCs और Admin complaint list/update RPCs;
+- दोनों base tables पर RLS enable और direct table privileges revoke।
+
+यह migration `service_bookings.customer_user_id` और `public.is_srk_admin()` पर निर्भर है। Customer account field पहले वाली `20261108121115_add_customer_account_booking_access.sql` migration में जोड़ी जाती है। `is_srk_admin()` की migration-chain introducing definition फिर भी नहीं मिली; इसका ऐतिहासिक root setup source Section 30.3 में दर्ज है।
+
+### 31.2 Conversation/attachment schema और private Storage source मिल गया
+
+`20261113220000_customer_support_conversation_schema.sql`:
+
+- `srk_booking_complaint_messages` और `srk_booking_complaint_message_attachments` tables बनाती है;
+- attachment thread integrity के लिए composite unique index और composite foreign key बनाती है;
+- customer message send/list और attachment-link RPCs बनाती है;
+- `srk-customer-support` bucket को private (`public=false`) बनाकर 10 MiB size limit और JPEG/PNG/WebP/PDF MIME allowlist सेट करती है;
+- `srk_customer_support_object_access(text,boolean)` helper बनाती है;
+- authenticated customer के complaint-folder upload/delete और customer-owner-or-Admin read के लिए Storage object policies बनाती है;
+- base support message/attachment tables पर RLS enable और direct privileges revoke करती है।
+
+Attachment linker Storage object के bucket ID, path prefix, customer ownership, complaint ownership, customer-authored message और file metadata की जाँच के बाद metadata row insert करता है।
+
+### 31.3 Support dependency order — source के अनुसार
+
+1. `20261108121115_add_customer_account_booking_access.sql` — `service_bookings.customer_user_id` prerequisite।
+2. Authoritative baseline में `public.is_srk_admin()` और `srk_admin_users` उपलब्ध होना चाहिए; current migrations में helper की introducing definition अब भी नहीं मिली।
+3. `20261110040000_customer_admin_complaints.sql` — complaint/event base tables और customer/Admin complaint RPCs।
+4. `20261113220000_customer_support_conversation_schema.sql` — complaint FK पर conversation/attachment tables, bucket, object access helper और Storage policies।
+5. `20261113230000_support_attachment_paths_and_admin_message_list.sql` — customer attachment listing और Admin message/attachment listing RPCs।
+6. `20261114300000_admin_customer_support_thread_replies.sql` — Admin reply RPC; prior complaint/message tables और Admin helper पर निर्भर।
+
+`20261114350000_electrician_support_tickets_and_admin_inbox.sql` अलग electrician-support subsystem है। यह electrician profile identity fields (`user_id`, `auth_user_id`), booking, Auth users और Admin helper पर निर्भर होकर ticket/message tables तथा electrician/Admin RPCs बनाती है। इसे customer complaint Storage chain के साथ एक ही table family न समझें।
+
+### 31.4 Corrected conclusion
+
+- Complaint base table source **मिल गया**: migration `20261110040000`।
+- Customer/Admin conversation, attachment schema और private Storage bucket/policies source **मिल गया**: migration `20261113220000`।
+- Attachment/Admin listing और Admin reply migrations बाद के क्रम में मौजूद हैं।
+- शेष प्रमुख unresolved dependency: `public.is_srk_admin()` का authoritative versioned migration/baseline source और उसका grants/privileges provenance।
+- Source order एक उपयोगी dependency sequence देता है, लेकिन इससे Production application या migration replay safety सिद्ध नहीं होती। Duplicate 20261109 prefix, approved baseline, remote migration lineage और Production provenance gates पहले जैसे खुले हैं।
+
+यह Section 30 की “support base/Storage source नहीं मिला” वाली provisional बात को supersede करता है। Section 30 का `is_srk_admin()` provenance finding अभी भी लागू है। कोई SQL execute, migration replay, pgTAP run, Production access/change, DDL या application source modification नहीं हुआ।
+
+
+## 32. Admin Staff RBAC migration और Main Admin helper dependency — 16 Nov 2026
+
+Read-only inspection of `20261114390000_admin_staff_rbac_foundation.sql`, `20261116100000_fix_staff_permission_helper_volatility.sql`, and `20261115230000_admin_booking_direct_write_closure.sql` confirms:
+
+- `20261114390000_admin_staff_rbac_foundation.sql` introduces `public.srk_has_admin_permission(text)` and the staff/session/audit/support-assignment RPC family. Its Main Admin bypass and multiple management paths call `public.is_srk_admin()`; it does not define that Main Admin helper.
+- The staff migration explicitly keeps Main Admin identity in `public.srk_admin_users` and states that staff identities must not be inserted there. This is an important role-separation rule: delegated staff permissions are not equivalent to Main Admin identity.
+- The 16 Nov volatility-fix migration replaces `srk_has_admin_permission(text)`; it still calls `public.is_srk_admin()` and does not create the Main Admin helper.
+- The 15 Nov direct-write closure RPCs also call `public.is_srk_admin()` without defining it.
+
+Therefore the Admin helper gap is not isolated to the older complaint/commission migrations: later Staff RBAC and booking-write-closure migrations also depend on it. A future approved baseline must supply the exact Main Admin helper and its allow-list table before these dependents. Do not substitute `srk_is_admin()` or `srk_has_admin_permission()` for `is_srk_admin()`; they have different names and roles.
+
+No migration or policy was changed. No database execution, Production access, migration replay, or deployment occurred.
+
+
+## 33. Main Admin allow-list table और helper — exact historical source cross-check — 16 Nov 2026
+
+Exact-definition search और historical root SQL cross-check से निम्न बातें स्थापित हुईं:
+
+- `PORTAL_SCHEMA.sql` में `public.srk_admin_users` का source DDL है: `user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE`, साथ में `created_at timestamptz NOT NULL DEFAULT now()`।
+- `ADMIN_EMAIL_LOGIN_SETUP.sql` इस table पर RLS enable करता है, `srk_admin_users_self_read` policy authenticated user को केवल `user_id = auth.uid()` row पढ़ने देती है, और `public.is_srk_admin()` को `SECURITY DEFINER`, `STABLE`, `SET search_path = public, auth` के साथ define करता है। Function `srk_admin_users` में current `auth.uid()` की मौजूदगी देखता है; PUBLIC EXECUTE revoke और authenticated EXECUTE grant भी स्पष्ट हैं।
+- `COMPLETE_DATABASE_SETUP.sql` में यही table/helper setup सम्मिलित है। ये historical setup SQL artifacts हैं; वर्तमान versioned migration chain का हिस्सा होने का प्रमाण नहीं।
+- Current 87-file migration inventory और exact-definition search में `CREATE OR REPLACE FUNCTION public.is_srk_admin()` या `CREATE TABLE public.srk_admin_users` वाली कोई versioned migration नहीं मिली। Migration files इसे call करती हैं, पर helper/table को introduce नहीं करतीं।
+- अतः exact historical definition और grants ज्ञात हैं; लेकिन clean migration replay में इन्हें कौन-सा approved versioned baseline स्थापित करता है, यह अब भी unresolved है। Historical SQL को स्वतः replay करने की अनुमति या सुरक्षितता इससे नहीं मिलती।
+
+यह finding Sections 30–32 को और स्पष्ट करती है: Main Admin allow-list identity (`srk_admin_users`) और delegated staff permission helper (`srk_has_admin_permission`) अलग authorization layers हैं। Main Admin helper/table के बिना dependent migrations को replay-ready नहीं कहा जा सकता।
+
+कोई historical SQL execute नहीं किया गया; कोई Admin identity/allow-list row नहीं पढ़ी या बदली गई; Production access, migration replay, DDL या deployment नहीं हुआ।
+
+
+## 34. Finance, refunds, cancellation-fee और booking idempotency dependency audit — 16 Nov 2026
+
+इस चरण में financial/refund/cancellation migrations और उनकी table/function dependencies का source-level मिलान किया गया।
+
+### 34.1 Financial audit core — मुख्य finance base tables
+
+`20261114125844_restore_financial_audit_core_schema.sql` निम्न relations बनाती है:
+
+- `srk_booking_labour_bills`;
+- `srk_manual_payment_entries`;
+- `srk_electrician_payouts`;
+- `srk_admin_audit_events`;
+- `srk_razorpay_refunds`;
+- `srk_booking_refund_requests`;
+- `srk_manual_refund_entries`.
+
+इनमें से अधिकांश पर RLS enable, browser roles के direct table privileges revoke और service_role grants लगाए गए हैं। Payouts के लिए authenticated SELECT को Admin predicate या संबंधित electrician profile ownership से सीमित policy दी गई है। Audit/refund capture triggers भी इसी migration में बनते हैं।
+
+**Critical baseline dependency:** इसी migration में `ALTER FUNCTION public.is_srk_admin() SET search_path=''` है, फिर PUBLIC/anon execute revoke और authenticated/service_role execute grant हैं। यदि clean replay से पहले historical helper स्थापित नहीं है, तो यह migration उस बिंदु पर fail होगी। Current versioned migration inventory में helper/table का introducing migration नहीं मिला; इसलिए finance chain भी उसी unresolved Admin baseline पर निर्भर है।
+
+### 34.2 Finance/refund chain का source-level क्रम
+
+- `20261109010000_create_secure_wallet_ledger_foundation.sql` — wallet ledger foundation और Admin wallet RPCs; यह शुरुआती wallet base है।
+- `20261114125844_restore_financial_audit_core_schema.sql` — bill/payment/payout/refund/audit core relations; receipt/history consumers से पहले रखने का migration comment है।
+- `20261114190000` और `20261114200000` — customer receipt और payment-history RPCs; finance core relations पढ़ते हैं।
+- `20261114270000` — cancellation request/event tables, direct booking cancellation guard और customer/Admin cancellation RPCs।
+- `20261114280000` — wallet ledger में cancellation-fee type, cancellation-fee debt/item/ledger tables, reserve/release triggers, receipt/payment RPC replacements।
+- `20261114290000` — full-refund पर cancellation-fee ledger और wallet reversal; prior cancellation-fee schema, wallet ledger और refund records पर निर्भर।
+- `20261114410000` — Razorpay webhook event inbox और service-role claim/complete RPCs।
+- `20261115100000`–`20261115130000` — customer refund request, Admin review, durable provider recovery evidence और manual refund completion RPCs।
+- `20261115150000`, `15170000`, `15180000` — Admin accounting reconciliation RPCs की successive replacements/extensions; बाद के definitions पहले वाले function को replace करते हैं।
+- `20261115200000` — payout/manual-refund SECURITY DEFINER RPC search_path hardening; पहले उन functions का मौजूद होना आवश्यक।
+- `20261115240000` और `15250000` — refund recovery/finalization और refund reconciliation functions की successive hardening replacements।
+- `20261115210000` — legacy manual payment और itemized receipt RPCs; पहले के finance tables और booking columns पर निर्भर।
+
+यह sequence source chronology और explicit references पर आधारित dependency map है; complete executable topological order नहीं। Historical baseline, duplicate 20261109 version ambiguity और Production history reconciliation अभी बाकी हैं।
+
+### 34.3 Booking submission idempotency
+
+`20261114150000_customer_booking_submission_idempotency.sql` केवल `service_bookings` पर दो nullable columns जोड़ती है: `customer_request_key` और `customer_request_fingerprint`। साथ में fingerprint format CHECK और non-null request key पर unique partial index बनाती है। यह booking table की पहले से मौजूदगी पर निर्भर है। इस migration में client retry behavior या server RPC implementation नहीं है; वह application/RPC path में separately verify होना चाहिए। इसलिए schema idempotency columns की मौजूदगी अकेले end-to-end duplicate booking रोकने का runtime proof नहीं है।
+
+### 34.4 Cancellation-fee/refund correctness review — सीमित static observations
+
+- Cancellation-fee carry-forward migration `srk_wallet_ledger` के entry_type CHECK को replace करती है; wallet ledger की introducing migration और उसके exact prior constraint definition को replay baseline में शामिल करना होगा।
+- Full-refund reversal trigger `service_bookings.payment_status` को refunded होते समय matching processed Razorpay refund या matching manual refund record की पुष्टि करता है; partial refund के लिए fail-closed path है।
+- Cash cancellation-fee path में reversal electrician wallet ledger entry को credit करता है; इसलिए wallet ledger columns, enum/check values, unique/idempotency constraints और wallet row identity उसी exact source lineage से validate करनी होगी।
+- ये static source conditions हैं; concurrency, transaction rollback, trigger firing, financial invariants और provider webhook behavior का runtime proof नहीं।
+
+### 34.5 Current gate
+
+Finance/refund source family काफी हद तक map हो चुकी है, लेकिन इसे replay-ready नहीं कहा जा सकता। अभी भी authoritative core baseline, `is_srk_admin()` helper provenance, exact wallet schema lineage, all booking columns, remote migration history और duplicate 20261109 reconciliation आवश्यक हैं। कोई finance RPC, payment/refund operation, webhook, migration, pgTAP test या Production action execute नहीं हुआ; कोई data या schema बदला नहीं गया।
+
+
+## 35. Push delivery, KYC activation और SOS dependency audit — 16 Nov 2026
+
+### 35.1 Push subscription और durable delivery chain
+
+- `20261111020000_add_electrician_push_subscriptions.sql` पहली बार `public.srk_push_subscriptions` table बनाती है; यह `auth.users` पर निर्भर है और owner-scoped RLS policy लगाती है।
+- `20261115170001_durable_push_delivery_outbox.sql` स्पष्ट preflight में `srk_private` schema, subscription table/columns, `job_offers.expires_at`, `electrician_profiles.available_for_work`, और electrician identity/approval columns मांगती है। यह prerequisites के बिना fail-fast करती है।
+- `20261115180001_push_subscription_delivery_ledger.sql` outbox तथा subscription IDs पर per-device delivery ledger बनाती है।
+- `20261115190001_push_delivery_health_monitoring.sql` outbox और device ledger के बाद health summary और dead-letter recovery RPC जोड़ती है।
+- `20261115200001_push_delivery_lease_fencing.sql` पुराने finish RPC signatures हटाकर attempt-count/fencing-token signatures बनाती है; worker contract को उसी signature पर update करना जरूरी होगा।
+- Push worker RPCs service_role-only हैं; delivery tables private schema में हैं और browser roles को direct access नहीं मिलता।
+
+**नया baseline blocker:** मौजूदा 87 versioned migration files की inventory तथा `CREATE SCHEMA` source search में `srk_private` schema बनाने वाला कोई migration नहीं मिला। Push outbox migration इसे preflight में अनिवार्य मानती है। इसलिए इसका creator वर्तमान versioned migration chain में नहीं मिला। यह संभव है कि schema किसी पहले से मौजूद external/bootstrap setup से आता हो, लेकिन ऐसा authoritative evidence इस source audit में नहीं मिला। जब तक Database Owner उस schema की approved origin/ownership पुष्टि न करे या अलग approved baseline उपलब्ध न हो, clean replay gate बंद रहेगा। इसे स्वयं जोड़ना या Production में बनाना इस read-only scope में नहीं है।
+
+### 35.2 KYC और electrician activation chain
+
+- `20261115140000_electrician_kyc_review_and_activation_gate.sql` private Storage bucket `srk-electrician-verification` बनाता/अपडेट करता है; KYC document और append-only review event tables बनाता है; owner upload, owner/Admin read और unregistered-object delete Storage policies लगाता है।
+- यह migration electrician profile, Auth users, Storage schema/bucket/object infrastructure, availability events, job offers, rate-tier activation guard और Main Admin helper पर निर्भर है।
+- `20261114330000` document path lookup RPC और `20261114380000` phone-change approval workflow इसी identity/KYC domain के अलग components हैं।
+- KYC event table के direct client privileges revoke हैं; document access RPCs और Storage object policies के माध्यम से नियंत्रित है।
+- Bucket upsert existing bucket configuration बदल भी सकता है; इसलिए replay में existing bucket state/approved settings का parity check जरूरी है। कोई bucket या document बदला नहीं गया।
+
+### 35.3 SOS और delegated staff permissions
+
+- `20261115260000_sos_admin_support_alerts.sql` पहले `srk_admin_permissions` और `srk_admin_role_permissions` में SOS read/acknowledge permissions insert करता है; फिर SOS alert और append-only event tables तथा Main Admin/authorized Support Staff RPCs बनाता है।
+- इन permission tables का introducing source `20261114390000_admin_staff_rbac_foundation.sql` है। इसलिए RBAC foundation से पहले SOS migration चलाना dependency failure होगा।
+- SOS migration के comments स्पष्ट करते हैं कि इस backend source में SMS/Push provider configured नहीं है और automatic police/112 notification नहीं है। Database record/acknowledgement RPC को वास्तविक alert-delivery समझना गलत होगा।
+- SOS RPC authorization `srk_has_admin_permission(text)` और Main Admin helper `is_srk_admin()` की existing provenance/behavior पर निर्भर है; helper baseline gap पहले के sections में unresolved है।
+
+### 35.4 Test और replay निष्कर्ष
+
+Push/KYC/SOS source definitions और dependency checks अब map किए गए हैं, पर वर्तमान branch के इस GPT-2 run में कोई migration apply, PostgreSQL/pgTAP runtime test, push worker invocation, Storage write, KYC upload/review, SOS creation, provider delivery या Production query नहीं किया गया। Historical checklist/search snippets को वर्तमान branch runtime proof नहीं माना गया। Replay readiness अभी भी BLOCKED है: `srk_private` schema origin, core baseline, Main Admin helper, worker contract/version parity और authoritative remote migration lineage की पुष्टि बाकी है।
+
+
+## 36. Search-path hardening chronology और amount_paid column-order risk — 16 Nov 2026
+
+### 36.1 SECURITY DEFINER search_path pin migrations
+
+मौजूदा 16 Nov pin migrations की source-level समीक्षा:
+
+- `20261116110000`: commission report, wallet summary और Admin wallet overview functions पर empty search_path।
+- `20261116120000`: private customer-call implementation और public wrapper पर empty search_path।
+- `20261116130000`: wallet summary/Admin overview को फिर से pin करता है; साथ में electrician earnings और customer receipt RPC pin करता है।
+- `20261116140000`: electrician offer-details RPC pin।
+- `20261116150000`: Admin application-review RPC pin।
+- `20261116160000`: तीन legacy quote/work-status RPC signatures को `ALTER FUNCTION IF EXISTS` से pin; यह पहले retire किए गए installations पर missing-function error को टालता है।
+- `20261116170000`: public rate-limit RPC pin।
+
+**Duplicate pin observation:** `srk_get_my_wallet_summary()` और `srk_admin_wallet_overview()` पर 16110000 और 16130000 दोनों में वही empty search_path सेट होता है। यह duplicate hardening statement है; source text में अलग function body/ACL बदलाव नहीं। इसे अपने आप में runtime failure नहीं माना गया। Replay review में इसे harmless redundancy के रूप में note किया जाए, स्वतः edit/remove नहीं।
+
+इन ALTER statements का सफल होना उनके exact function signatures के पहले से मौजूद होने पर निर्भर है। संबंधित creator/replace migrations और IF EXISTS exceptions को replay manifest में रखना होगा। Source inspection ने इन ALTER statements को execute नहीं किया।
+
+### 36.2 `amount_paid` का chronology / clean-replay risk
+
+Current branch inventory में `service_bookings.amount_paid` जोड़ने वाला स्पष्ट DDL केवल:
+`20261116200000_restore_service_bookings_amount_paid.sql`
+में मिला; यह nullable `numeric(12,2)` column और nonnegative CHECK (`NOT VALID`) जोड़ता है।
+
+इससे पहले की source migrations में:
+- `20261109003000_secure_commission_reporting.sql` — authenticated role को column-level UPDATE grant में `amount_paid` शामिल करता है और commission reporting function इसे पढ़ता है।
+- `20261115160000_legacy_booking_status_write_guard.sql` — column-level UPDATE grant में `amount_paid` शामिल करता है।
+- `20261115230000_admin_booking_direct_write_closure.sql` — `amount_paid` का उपयोग करता है और column-level UPDATE revoke में इसे शामिल करता है।
+- `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` — payment/receipt RPC logic में `amount_paid` पढ़ता और update करता है।
+- `20261114190000` और `20261114200000` — receipt/payment-history functions में `amount_paid` पढ़ते हैं।
+
+Function body में कुछ column references PL/pgSQL runtime पर resolve हो सकते हैं, पर column-level GRANT/REVOKE statements को target column का मौजूद होना आवश्यक है। इसलिए खास तौर पर 09003000 और 15160000 के column-level grants, और 15230000 के column-level revoke, यदि उस समय column अनुपस्थित हो तो migration application रोक सकते हैं।
+
+**स्थिति को सावधानी से समझें:** यह source chronology से निकला conditional clean-replay risk है। किसी ऐतिहासिक starter SQL या live schema में column पहले से मौजूद हो सकता है; लेकिन उपलब्ध source inventory ने ऐसा authoritative starter definition स्थापित नहीं किया। बाद की 16200000 “restore” migration स्वयं इस सवाल का जवाब नहीं देती कि पहले की migrations किस baseline पर सफल हुई थीं। इसलिए:
+1. exact approved starter schema में `amount_paid` की मौजूदगी/अनुपस्थिति स्थापित करनी होगी;
+2. Production/remote migration history और execution evidence अलग से reconcile करनी होगी;
+3. उसके बाद ही migration order/forward-fix पर authorized owner निर्णय ले सकता है।
+
+इस खोज के आधार पर migration reorder, rename, edit, repair या replay नहीं किया गया।
+
+### 36.3 निष्कर्ष
+
+Search-path hardening family source-level mapped है; दो repeated ALTER statements दर्ज हैं। `amount_paid` chronology एक अधिक गंभीर conditional replay gate है और authoritative baseline के बिना clean replay को सुरक्षित घोषित नहीं किया जा सकता। कोई DB query, PostgreSQL/pgTAP execution, Production access, payment action, DDL, data change या deployment नहीं हुआ।
+
+
+
+## 37. Historical starter SQL में amount_paid की अनुपस्थिति की पुष्टि — 16 Nov 2026
+
+Section 36 के conditional column-order risk को जाँचने के लिए current branch पर उपलब्ध दोनों historical starter files के पूरे शुरुआती `service_bookings` table definitions पढ़े गए:
+
+- `SUPABASE_SCHEMA.sql` में `service_bookings` की पूरी CREATE TABLE definition में `amount_paid` column नहीं है।
+- `COMPLETE_DATABASE_SETUP.sql` के consolidated starter section में भी वही base table definition है और उसमें `amount_paid` नहीं है।
+- `20261116200000_restore_service_bookings_amount_paid.sql` इस column को बाद में `ADD COLUMN IF NOT EXISTS` से जोड़ती है।
+- इसके विपरीत `20261109003000_secure_commission_reporting.sql`, `20261115160000_legacy_booking_status_write_guard.sql` और `20261115230000_admin_booking_direct_write_closure.sql` पहले ही column-level GRANT/REVOKE में `amount_paid` का नाम लेते हैं।
+
+**इससे क्या सिद्ध होता है:** उपलब्ध दोनों ऐतिहासिक starter SQL definitions इस column को स्थापित नहीं करतीं; इसलिए यदि इन्हीं definitions को शुरुआती schema baseline मानकर migration chronology replay की जाए, तो पहले के column-level privilege statements का target column अनुपस्थित होगा। यह source-level clean-replay blocker को पहले से अधिक मजबूत बनाता है।
+
+**क्या अभी भी सिद्ध नहीं है:** ये दो ऐतिहासिक SQL files authoritative/approved Production bootstrap baseline हैं, ऐसा प्रमाण उपलब्ध नहीं। किसी अलग manual bootstrap, dashboard SQL, external migration, या पुराने schema snapshot में column पहले जोड़ा गया हो सकता है। Production history और execution logs की स्वतंत्र पुष्टि अभी भी Database Owner से चाहिए।
+
+इसलिए निर्णय अभी भी **REPLAY BLOCKED / OWNER EVIDENCE REQUIRED** है। कोई migration reorder/edit/repair/replay, DDL, Production query या data change नहीं किया गया।
+
+
+
+## 38. Customer/Admin booking SELECT policy replacement और direct-write ACL chronology — 16 Nov 2026
+
+### 38.1 Booking read policies additive नहीं, explicit replacement हैं
+
+Current branch source में:
+- `20261108121115_add_customer_account_booking_access.sql` customer ownership column/index और अलग `srk_customer_read_own_bookings` SELECT policy बनाती है।
+- `20261108234000_combine_booking_read_policy.sql` पहले पुराने `srk_admin_read_bookings` और `srk_customer_read_own_bookings` दोनों को DROP करती है, फिर एक `srk_admin_or_customer_read_bookings` policy बनाती है।
+- Combined policy में केवल Main Admin predicate `public.is_srk_admin()` या `auth.uid() = customer_user_id` से row visibility मिलती है।
+
+इसलिए इन दोनों migration files का क्रम महत्वपूर्ण है: combined-policy migration पुराने policy names को हटाकर एक स्पष्ट OR-policy स्थापित करती है। इस pair में पुरानी customer policy के साथ duplicate permissive policy बचने का source-level संकेत नहीं मिला। लेकिन यह निष्कर्ष केवल इन दो files तक सीमित है; सभी tables की सभी policy combinations का exhaustive runtime audit नहीं है।
+
+### 38.2 Booking direct UPDATE privilege chronology
+
+- `20261109003000_secure_commission_reporting.sql` authenticated role का table-wide UPDATE revoke करके सीमित columns पर UPDATE grant करती है; इस सूची में `amount_paid` शामिल है।
+- `20261115160000_legacy_booking_status_write_guard.sql` table-wide UPDATE फिर revoke करके केवल quote/payment columns पर सीमित grant देती है; इसमें भी `amount_paid` शामिल है।
+- `20261115230000_admin_booking_direct_write_closure.sql` अंत में table-wide UPDATE और status/quote/payment/location column UPDATE privileges revoke करती है; intended write path validated SECURITY DEFINER RPCs/server payment workflows है।
+
+यह source chronology दिखाती है कि direct-write privilege posture क्रमशः tighten होती है। पहले के grants को बाद की closure migration से अलग पढ़ना पर्याप्त नहीं; clean replay में अंतिम effective ACL और RLS policies दोनों का संयुक्त परीक्षण चाहिए। केवल GRANT/REVOKE statements से row-level authorization सिद्ध नहीं होता।
+
+### 38.3 अभी बाकी सत्यापन
+
+- सभी `service_bookings` policies की complete inventory और permissive/restrictive mode का एक consolidated matrix।
+- सभी relevant tables पर RLS enabled status तथा table/column privileges का final effective-state snapshot।
+- RPC execute grants के साथ SECURITY DEFINER owner, search_path और called helper authorization का मिलान।
+
+ये तीनों checks source/runtime parity के लिए शेष हैं। कोई SQL execution, ACL परिवर्तन, policy परिवर्तन, migration replay या Production access नहीं हुआ।
+
+
+
+## 39. RLS/ACL/RPC संयुक्त जाँच — private schema, server-only ledger और Storage dependencies — 16 Nov 2026
+
+### 39.1 `private` और `srk_private` अलग schemas हैं
+
+अब current migration source में `private` schema के explicit creators मिल गए:
+- `20261108120608_add_public_api_rate_limiting.sql` में `create schema if not exists private` और server-only rate-limit table/function।
+- `20261109103143_move_customer_call_contact_lookup_to_private.sql` में भी `create schema if not exists private` और private contact-lookup implementation।
+
+इससे `private` schema के source-level creator का gap बंद होता है। लेकिन यह `srk_private` schema से अलग नाम है। Section 35 में `srk_private` के migration creator का न मिलना अभी भी unresolved है; दोनों schemas को एक न माना जाए।
+
+### 39.2 Server-only table ACL का उदाहरण
+
+`20261109020000_create_server_only_razorpay_route_transfer_ledger.sql`:
+- `public.srk_route_transfers` पर RLS enable करती है।
+- `anon` और `authenticated` से सभी table privileges revoke करती है।
+- `service_role` को SELECT/INSERT/UPDATE देती है।
+- Source comment स्पष्ट करता है कि DB ledger write अपने-आप Razorpay money movement नहीं करता।
+
+`20261108120608` की rate-limit table भी `anon`/ `authenticated` से बंद है और `service_role` के लिए है; rate-limit RPC execute भी केवल `service_role` को मिलता है।
+
+### 39.3 SECURITY DEFINER / Storage boundary
+
+`20261114180000_harden_customer_avatar_object_integrity.sql` में profile RPC SECURITY DEFINER और empty search_path के साथ है। Function Storage object metadata, bucket ID, owner, MIME type, size और user-folder path जाँचता है; execute privilege `authenticated` को दिया गया है, जबकि public/anon revoke हैं। यह Storage schema/table/bucket की पहले से मौजूद Supabase infrastructure पर निर्भर है। Source पढ़ने से bucket/object policies की live स्थिति सिद्ध नहीं होती।
+
+### 39.4 संयुक्त जाँच-सूची की वर्तमान स्थिति
+
+| जाँच क्षेत्र | Source से मिला निष्कर्ष | शेष प्रमाण |
+|---|---|---|
+| Booking read policies | Customer/Admin policy replacement स्पष्ट | सभी tables की पूर्ण policy inventory और effective mode |
+| Booking direct UPDATE | privilege grants बाद में closure से revoke | effective table/column ACL + RLS संयुक्त snapshot |
+| Server-only ledger | RLS + anon/authenticated revoke + service_role grants | Production effective ACL snapshot |
+| Rate limiting | private schema/table और service_role-only RPC source में | private schema/table runtime parity |
+| RPC execute grants | कई RPCs में public/anon revoke और authenticated/service_role grant स्पष्ट | सभी overloads/signatures और अंतिम grants की exhaustive सूची |
+| SECURITY DEFINER | अलग-अलग search_path patterns, कुछ empty path | प्रत्येक function में object qualification, owner और helper chain review |
+| Storage | avatar RPC storage.objects metadata पढ़ती है | bucket existence/config, RLS policies और ownership metadata parity |
+| Internal schema | `private` का creator मिला | `srk_private` creator अभी नहीं मिला |
+
+**स्थिति:** यह source-only ACL/RLS/RPC reconciliation है, complete effective-state certification नहीं। विशेष रूप से `private` की मौजूदगी `srk_private` की मौजूदगी सिद्ध नहीं करती। कोई SQL/Production query, migration execution, permission edit, data write या deployment नहीं किया गया।
+
+
+## 40. SECURITY DEFINER RPC सूची और authorization review — 16 Nov 2026
+
+### 40.1 Source में पहचाने गए प्रमुख RPC समूह
+
+निम्न migrations में SECURITY DEFINER functions और उनके explicit EXECUTE grants मिले:
+
+| Migration / RPC समूह | Search path | Authorization/source observation |
+|---|---|---|
+| `20261109003000` — Admin commission report | `public, pg_temp` | `auth.uid()` और `public.is_srk_admin()` दोनों जाँचता है; PUBLIC/anon revoke, authenticated grant |
+| `20261109003000` — electrician earnings | `pg_catalog, public, auth, pg_temp` | `auth.uid()` से approved electrician profile सीमित; PUBLIC/anon revoke |
+| `20261109010000` — wallet summary | `public, pg_temp` | login अनिवार्य; wallet summary current UID से सीमित; authenticated grant |
+| `20261109010000` — Admin wallet overview | `public, pg_temp` | `is_srk_admin()` gate; authenticated grant |
+| `20261109001000` — Admin application review | `pg_catalog, public, auth, pg_temp` | `auth.uid()` + `is_srk_admin()` gate |
+| `20261109...` quote workflow | `pg_catalog, public, auth, pg_temp` | quote submit/work status approved active assigned electrician से; quote response customer_user_id से |
+| `20261109...` offer details | `pg_catalog, public, auth, pg_temp` | authenticated electrician profile के user_id से offer list सीमित |
+| `20261114190000` — payment receipt | `pg_catalog, public, auth, pg_temp` | login और customer booking ownership checks; PUBLIC/anon revoke |
+| `20261114200000` — payment/refund history | empty search_path | fully qualified object references और UID-owned bookings; PUBLIC/anon revoke |
+| `20261113230000` — support attachment/message RPCs | empty search_path | Admin listing functions `is_srk_admin()` gate करती हैं; customer listing अलग ownership checks करती है |
+
+यह source-discovered सूची है, database की exhaustive function catalog नहीं। GitHub code search की सीमाओं के कारण इसे सभी functions की पूर्ण inventory न माना जाए।
+
+### 40.2 Authorization और grants के बारे में निष्कर्ष
+
+- Admin commission, wallet overview, application review और support Admin listing RPCs authenticated role को execute देती हैं, लेकिन function body में Main Admin helper check भी है। इसलिए केवल EXECUTE grant से Admin authorization सिद्ध नहीं होता; helper की वास्तविक definition और runtime behavior निर्णायक हैं।
+- Customer receipt/history RPCs UID-आधारित booking ownership लागू करती हैं।
+- Quote workflow में customer response को `customer_user_id=auth.uid()` से बाँधा गया है; electrician operations को approved/active profile और assigned booking से।
+- Offer details RPC customer contact fields तभी लौटाती है जब booking उसी electrician profile को assigned हो; source में यह conditional masking दिखती है।
+- Rate-limit RPC केवल `service_role` execute के लिए है; सामान्य authenticated/anon execute revoke है।
+- Customer contact lookup का private implementation SECURITY DEFINER है, पर outer public wrapper SECURITY INVOKER है। Private implementation में customer UID के अपने bookings पर filter है।
+
+### 40.3 Search path और unresolved proof
+
+- कई पुराने RPCs `search_path = public, pg_temp` उपयोग करते हैं; नए customer-facing RPCs में `pg_catalog` पहले या empty search_path का उपयोग मिलता है।
+- Empty search_path वाले functions में schema-qualified object references का source review किया गया; runtime owner, object ownership और function body की वास्तविक deployed definition फिर भी Production catalog से ही सिद्ध होगी।
+- Source code से SECURITY DEFINER function का effective owner, live EXECUTE privileges, PUBLIC default privileges, overload collisions, और helper function का deployed body प्रमाणित नहीं हो सकता।
+- Main Admin helper `public.is_srk_admin()` की versioned migration provenance अब भी नहीं मिली। कई Admin RPCs इसी helper पर निर्भर हैं; इसलिए यह एक साझा unresolved dependency है।
+- `srk_has_admin_permission(text)` Staff RBAC helper को `is_srk_admin()` से अलग identity/authorization layer समझना होगा; इसे Main Admin helper का विकल्प नहीं माना जाए।
+
+### 40.4 अगला आवश्यक authoritative read-only evidence
+
+DBA/GPT-1 से केवल read-only catalog evidence चाहिए:
+1. प्रत्येक listed function का exact identity/signature, `prosecdef`, owner, `proconfig/search_path`, और deployed definition hash/definition।
+2. प्रत्येक signature के लिए `PUBLIC`, `anon`, `authenticated`, `service_role` EXECUTE ACL और overload inventory।
+3. `is_srk_admin()` तथा `srk_has_admin_permission(text)` के deployed owner, body, EXECUTE ACL और dependency chain।
+4. संबंधित roles की schema USAGE/CREATE permissions, विशेषकर `public`, `private` और `srk_private`।
+
+**स्थिति:** source-level review में कई RPCs के explicit grants और UID/Admin gates मिले; इसे effective Production security certification नहीं कहा जा सकता। कोई Production query, SQL execution, grant/revoke, function replacement या deployment नहीं किया गया।
+
+
+## 41. GPT-1/DBA के लिए न्यूनतम Production catalog evidence request — केवल read-only — 16 Nov 2026
+
+Source audit से अब यह स्पष्ट है कि शेष प्रश्न GitHub source से हल नहीं हो सकते: Production में function का वास्तविक owner, deployed body/config और प्रभावी ACL catalog से ही प्रमाणित होंगे। इसलिए अगला कदम किसी remediation का नहीं, केवल metadata-only catalog evidence का है।
+
+### 41.1 सभी SECURITY DEFINER functions का catalog snapshot
+
+GPT-1/DBA नीचे का SELECT Production SQL Editor में read-only रूप से चला सकते हैं। यह application/customer/payment rows नहीं पढ़ता; केवल function metadata और ACL दिखाता है।
+
+```sql
+select
+  n.nspname as schema_name,
+  p.proname as function_name,
+  pg_get_function_identity_arguments(p.oid) as identity_arguments,
+  pg_get_userbyid(p.proowner) as function_owner,
+  p.prosecdef as security_definer,
+  p.provolatile as volatility,
+  p.proconfig as function_settings,
+  pg_get_function_result(p.oid) as result_type,
+  p.proacl as function_acl,
+  pg_get_functiondef(p.oid) as deployed_definition
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname in ('public','private','srk_private')
+  and p.prosecdef = true
+order by n.nspname, p.proname,
+         pg_get_function_identity_arguments(p.oid);
+```
+
+### 41.2 Main Admin और Staff helper के exact signatures
+
+```sql
+select
+  n.nspname as schema_name,
+  p.proname as function_name,
+  pg_get_function_identity_arguments(p.oid) as identity_arguments,
+  pg_get_userbyid(p.proowner) as function_owner,
+  p.prosecdef as security_definer,
+  p.provolatile as volatility,
+  p.proconfig as function_settings,
+  p.proacl as function_acl,
+  pg_get_functiondef(p.oid) as deployed_definition
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in ('is_srk_admin','srk_has_admin_permission')
+order by p.proname, pg_get_function_identity_arguments(p.oid);
+```
+
+### 41.3 Schema usage/create ACL और default function ACL
+
+```sql
+select
+  n.nspname as schema_name,
+  r.rolname as role_name,
+  has_schema_privilege(r.oid, n.oid, 'USAGE') as has_usage,
+  has_schema_privilege(r.oid, n.oid, 'CREATE') as has_create
+from pg_namespace n
+cross join pg_roles r
+where n.nspname in ('public','private','srk_private')
+  and r.rolname in ('anon','authenticated','service_role','postgres')
+order by n.nspname, r.rolname;
+
+select
+  coalesce(n.nspname, '<all schemas>') as schema_name,
+  pg_get_userbyid(d.defaclrole) as grantor_role,
+  d.defaclobjtype as object_type,
+  d.defaclacl as default_acl
+from pg_default_acl d
+left join pg_namespace n on n.oid = d.defaclnamespace
+where d.defaclobjtype = 'f'
+order by 1,2;
+```
+
+### 41.4 Evidence लौटाने का न्यूनतम प्रारूप
+
+GPT-1/DBA से केवल ऊपर के result sets और query timestamp/environment label चाहिए। कोई password, API key, service-role secret, customer row, phone, payment record या personal data नहीं चाहिए। अगर output में deployed function definition लौटाना policy के अनुसार संभव न हो, तो कम-से-कम owner, signature, `prosecdef`, `provolatile`, `proconfig` और ACL लौटाएँ।
+
+### 41.5 Source provenance पर निष्कर्ष
+
+- `public.is_srk_admin()` का exact SECURITY DEFINER implementation केवल historical `ADMIN_EMAIL_LOGIN_SETUP.sql` और `COMPLETE_DATABASE_SETUP.sql` में मिला; इसे introduce करने वाली versioned migration source search में नहीं मिली।
+- `public.srk_has_admin_permission(text)` का current helper implementation `20261116100000_fix_staff_permission_helper_volatility.sql` में है; यह Main Admin helper को call करता है।
+- `srk_private` schema creator और function/schema effective ACL अभी भी source evidence से सिद्ध नहीं।
+- Production catalog output मिलने तक function ownership, deployed helper body, default ACL, और schema-level access को **UNVERIFIED / OWNER EVIDENCE REQUIRED** माना जाएगा।
+
+**सुरक्षा सीमा:** ऊपर के statements SELECT-only catalog inspection हैं। GPT-2 ने इन्हें Production में execute नहीं किया। कोई migration, DDL, grant/revoke, function edit, data change या deployment नहीं किया गया।
+
+
+## 42. Local Supabase harness और वास्तविक test inventory की पुनः जाँच — 16 Nov 2026
+
+### 42.1 Local harness अभी repository में अधूरा है
+
+Current Feature Branch पर सीधे जाँच में:
+- `supabase/` directory में `functions/`, `migrations/`, `tests/` मौजूद हैं।
+- `supabase/config.toml` नहीं मिला (GitHub Contents API पर exact path 404)।
+- Root `package.json` में `npm test` केवल `node --test tests/*.test.js` चलाता है; PostgreSQL या pgTAP script नहीं है।
+- इसलिए वर्तमान checkout अपने-आप `supabase start` / `supabase test db` के लिए complete, initialized local Supabase project नहीं है। पहले isolated scratch/worktree में pinned Supabase CLI से config/harness बनाना और review करना होगा; अभी branch में generated config commit नहीं की गई।
+
+### 42.2 Database pgTAP inventory की स्थिति
+
+- `supabase/tests/database/` में **32** SQL test files मौजूद हैं।
+- Staff RBAC और SOS Admin/Support के targeted contracts क्रमशः `plan(69)` और `plan(28)` के रूप में दर्ज हैं; §2 और §25 में static count verification पहले दर्ज है।
+- इन 32 SQL files का होना runtime pass नहीं है। कोई pgTAP test अभी execute नहीं हुआ।
+
+### 42.3 Migration version gate की exact स्थिति
+
+- Current migration directory में **87** SQL files हैं।
+- `20261109_allow_quote_approval_booking_states.sql` और `20261109_electrician_inspection_quotes_and_service_only_commission.sql` दोनों का extracted version ठीक `20261109` है।
+- `tests/database-migration-version-uniqueness.test.js` इस duplicate को सामान्य valid unique pair नहीं मानता; यह इसे एक explicit `approvedLegacyCollision` allow-list exception में दर्ज करता है। इसका अर्थ केवल इतना है कि repository test इस ज्ञात collision को फिलहाल स्वीकार करता है—यह Supabase CLI replay compatibility या remote history correctness का प्रमाण नहीं।
+- Staff RBAC foundation file का वास्तविक नाम `20261114390000_admin_staff_rbac_foundation.sql` मिला। इस migration में Staff tables, RLS, browser-role revokes, permission helper और session/audit structures हैं; इसलिए local test में Auth schema/session prerequisites निर्णायक हैं। यह अलग से कोई नया Production finding नहीं है।
+
+### 42.4 इस pass का निष्कर्ष और अगला सुरक्षित कदम
+
+**Local DB creation: NOT STARTED. Runtime tests: NOT RUN.**
+
+अभी local replay शुरू न करने के दो प्रत्यक्ष repository blockers हैं:
+1. `supabase/config.toml` / reviewed local harness अनुपस्थित है।
+2. duplicate `20261109` version collision का CLI-compatible resolution और authoritative migration-history reconciliation बाकी है।
+
+इसके अतिरिक्त §37 में दर्ज base-schema/column provenance और §41 में माँगा गया owner catalog evidence भी unresolved है। अगला सुरक्षित technical step isolated scratch checkout में pinned Supabase CLI + Docker availability की पुष्टि करके केवल disposable dummy migrations पर समान 8-digit version behavior जाँचना है; उसके बाद ही project migration replay design पर लौटना चाहिए। Production credentials/network का उपयोग नहीं करना है।
+
+**इस pass में:** GitHub branch files और directory inventory ही पढ़े गए। कोई config generate/commit, migration edit/rename/reorder, SQL execution, Docker stack start, pgTAP run, Production query या deployment नहीं किया गया।
+
+
+## 43. Scratch runtime की वास्तविक executable availability — 16 Nov 2026
+
+इस execution environment में shell से सीधे executable lookup किया गया:
+
+| Tool | परिणाम |
+|---|---|
+| Node.js | उपलब्ध — v22.16.0 |
+| npm | उपलब्ध — 10.9.2 |
+| Supabase CLI (`supabase`) | उपलब्ध नहीं |
+| Docker CLI (`docker`) | उपलब्ध नहीं |
+| Podman (`podman`) | उपलब्ध नहीं |
+| PostgreSQL client (`psql`) | उपलब्ध नहीं |
+| pgTAP runner (`pg_prove`) | उपलब्ध नहीं |
+
+इसलिए अभी इसी environment में disposable Supabase stack शुरू करना, PostgreSQL server उपलब्ध कराना, या pgTAP runtime चलाना संभव नहीं है। Dummy migration collision का वास्तविक Supabase CLI experiment भी CLI के बिना नहीं किया गया; केवल filename/source collision पहले से प्रमाणित है। कोई package install, Docker daemon access, remote connection या database command चलाने का प्रयास नहीं किया गया।
+
+### निर्णय
+
+- **Node test tooling:** runtime मौजूद है, लेकिन repository checkout इस shell में उपलब्ध न होने के कारण repository का `npm test` इस pass में नहीं चलाया।
+- **Supabase/PostgreSQL runtime:** BLOCKED — आवश्यक binaries अनुपस्थित।
+- **Migration replay / pgTAP:** NOT RUN।
+- **अगला आवश्यक सक्षम वातावरण:** isolated machine/runner जिसमें Docker daemon और pinned Supabase CLI हों, repository checkout scratch worktree में हो, और Production credentials/network secrets अनुपस्थित हों। वहाँ पहले dummy duplicate-version fixture पर CLI behavior जाँचा जाए; project migrations को अभी replay न किया जाए।
+
+यह Section 43 केवल environment capability evidence है; इससे Production की स्थिति या Supabase CLI के duplicate-version behavior के बारे में कोई नया निष्कर्ष नहीं निकाला गया।
+
+
+## 44. Staff RBAC और SOS pgTAP contracts: structural बनाम behavioral coverage — 16 Nov 2026
+
+दो targeted pgTAP files को पूरा पढ़कर उनके assertion bodies और test harness calls की जाँच की गई:
+
+- `admin_staff_rbac_foundation.test.sql`: 375 lines, `plan(69)`, `finish()`, `ROLLBACK`.
+- `sos_admin_support_alerts.test.sql`: 111 lines, `plan(28)`, `finish()`, `ROLLBACK`.
+
+### 44.1 ये tests अभी क्या प्रमाणित करते हैं
+
+इनका मुख्य तरीका catalog और stored function source inspection है:
+- `has_table`, `has_column`, `has_function`, `has_trigger`;
+- `has_table_privilege` और `has_function_privilege`;
+- `pg_get_functiondef`, `pg_get_function_result`, `pg_proc.provolatile`;
+- stored function body में expected permission names, ownership checks, row-lock clauses और audit insert text की उपस्थिति।
+
+इससे schema objects, grants और function source contracts का अच्छा structural guard मिलता है।
+
+### 44.2 वास्तविक runtime authorization cases अभी इस pair में execute नहीं होते
+
+दोनों files में निम्न behavioral harness calls नहीं मिले:
+- `set_config` / `request.jwt.claims` से अलग-अलग JWT/Auth identities स्थापित करना;
+- `SET ROLE anon` / `SET ROLE authenticated` करके वास्तविक caller privilege context में RPC call;
+- pgTAP `throws_ok`, `lives_ok`, `results_eq` या `is_empty` से allow/deny परिणाम assert करना;
+- Staff invite/activation, exact Auth session registration, revocation, suspension, assignment, reply और status transitions के लिए fixture rows बनाकर RPC invoke करना;
+- concurrent revoke/suspend और in-flight permission-check के बीच वास्तविक lock serialization test करना।
+
+विशेष रूप से Staff contract में `FOR SHARE` clauses के source text और `VOLATILE` catalog property की जाँच है; इससे concurrency race का runtime pass सिद्ध नहीं होता। SOS test में भी function bodies में expected INSERT/permission text की जाँच है, actual caller identity से RPC behavior नहीं।
+
+### 44.3 Test coverage classification
+
+| क्षेत्र | मौजूदा targeted pgTAP evidence | शेष runtime evidence |
+|---|---|---|
+| Tables / functions / triggers | Structural presence checks | Clean replay में object creation |
+| Table/function grants | Catalog privilege checks | अलग role context से direct access attempts |
+| Staff permission helper | Definition text + volatility + lock clauses | Auth UID/JWT/session fixture के साथ true/false results |
+| Staff lifecycle | RPC existence और source text | Invite, verify, activate, suspend, disable, revoke behavior |
+| Support assignment | RPC/body source assertions | Assigned vs unassigned staff callers |
+| Support reply/status | permission/assignment/source assertions | Actual allowed and denied RPC calls |
+| SOS acknowledgement | Function/body source assertions | Pending/acknowledged state transitions, duplicate/concurrent calls |
+| Concurrency | Lock-order/source assertions | Two-session transaction test |
+
+### 44.4 सुरक्षित अगला test-design कदम
+
+Replay gates पूरे होने और disposable local Supabase harness उपलब्ध होने के बाद targeted test suite में अलग behavioral pgTAP file जोड़ने का प्रस्ताव है। उसमें केवल synthetic local Auth users, synthetic Staff/Support records और synthetic cases हों; हर test transaction rollback हो। पहले negative authorization cases (anon, ordinary user, inactive Staff, wrong/revoked session, unassigned case) और फिर positive authorized flows चलें। Concurrency को अलग two-connection harness में जाँचा जाए, क्योंकि एक सामान्य single-transaction pgTAP test वास्तविक race reproduce नहीं करता।
+
+**निष्कर्ष:** मौजूदा 69 + 28 assertions structural contract coverage हैं; इन्हें 97 runtime authorization scenarios कहना गलत होगा। Behavioral coverage अभी **NOT PRESENT IN THESE TWO TARGETED FILES** है। यह source-only finding है—कोई test execute, SQL write, migration replay या Production access नहीं किया गया।
+
+
+## 45. High-risk workflow pgTAP files का source-level behavior audit — 16 Nov 2026
+
+इस pass में पाँच महत्वपूर्ण test files की पूरी सामग्री पढ़ी गई: work timer, legacy booking status guard, sequential offer dispatch, push delivery lease fencing और Razorpay webhook inbox.
+
+### 45.1 पाँचों files का साझा test pattern
+
+इन पाँचों में `BEGIN`, घोषित `plan(...)`, `finish()` और `ROLLBACK` मौजूद हैं। लेकिन इनके assertions मुख्यतः catalog metadata और `pg_get_functiondef(...)` में अपेक्षित SQL text की उपस्थिति पर निर्भर हैं। Test files में अलग-अलग JWT identity स्थापित करना, `SET ROLE`, या pgTAP `throws_ok/lives_ok/results_eq/is_empty` के जरिए caller behavior execute/assert करना नहीं मिला।
+
+### 45.2 विशिष्ट coverage और gaps
+
+| Test | मौजूदा assertions | जो अभी runtime में सिद्ध नहीं |
+|---|---|---|
+| `server_authoritative_work_timer.test.sql` — plan 20 | columns, tables, RPCs, triggers, rounding formula, protected status/timer source, anonymous execute denial | customer/electrician identities से request-start → customer approval → elapsed time → completion → bill; forged client writes; dispute/reject outcomes |
+| `legacy_booking_status_write_guard.test.sql` — plan 9 | Admin RPC definition, row-lock text, status transition guard, grants, search_path | non-admin/Admin caller invoke; actual legacy row state transition और denied state |
+| `sequential_nearest_offer_dispatch.test.sql` — plan 16 | queue objects, RPC grants, geographic/tier source, decline/expiry dispatch source | synthetic booking/electrician fixtures, actual candidate ordering, one-at-a-time offer, expiry worker and concurrent accept/decline |
+| `push_delivery_lease_fencing.test.sql` — plan 20 | service-role grants, attempt-count fencing, row-lock text, processing/terminal states, retry bounds/backoff, search_path | stale/current worker calls against fixture rows; lease renewal/finish races and actual persisted status |
+| `razorpay_webhook_event_inbox.test.sql` — plan 15 | RLS/grants, unique constraints, claim/complete source, token/hash/lease text | duplicate event claims, expired lease reclaim, wrong token rejection, idempotent completion against local synthetic events |
+
+### 45.3 Local behavioral suite के लिए प्राथमिकता
+
+1. **Timer lifecycle (P0):** अलग customer और electrician Auth users; customer approval से पहले timer न चले; customer approval के बाद server timestamps; completion पर final bill; customer/electrician cross-booking denial; direct timer/snapshot writes denied.
+2. **Webhook lease fencing (P0):** synthetic event ID/hash; duplicate claim; active lease conflict; expired lease reclaim; old token completion denied; current token completion accepted; terminal event idempotency.
+3. **Offer dispatch (P1):** synthetic eligible candidates; exact rate tier/area; decline/expiry next candidate; simultaneous accept attempts में एक winner.
+4. **Push delivery fencing (P1):** stale attempt rejected; current processing attempt accepted; terminal state immutable; retry/dead-letter boundaries.
+5. **Legacy status guard (P1):** anonymous/ordinary authenticated denied; Main Admin valid transition; already transitioned or payment-protected booking denied.
+
+ये proposed synthetic-local tests हैं, अभी जोड़े या चलाए नहीं गए हैं। Concurrency scenarios के लिए दो अलग DB connections/transactions चाहिए; एक साधारण pgTAP transaction पर्याप्त नहीं।
+
+**निष्कर्ष:** पाँचों high-risk workflow tests अभी implementation text/metadata की regression checks हैं, end-to-end behavioral runtime proof नहीं। इससे उनके SQL logic में defect सिद्ध नहीं होता; केवल test coverage की सीमा स्पष्ट होती है। कोई SQL execute, test run, migration replay, fixture write या Production access नहीं किया गया।
+
+
+## 46. पाँच workflow tests के synthetic fixture prerequisites — 16 Nov 2026
+
+§45 में पहचाने गए behavioral gaps के आधार पर पाँचों मौजूदा test files दोबारा पढ़ीं और test-design से पहले आवश्यक fixture boundaries दर्ज कीं। यह केवल तैयारी है; कोई test file बदली या जोड़ी नहीं गई।
+
+| Workflow | न्यूनतम isolated local fixture | निर्णायक behavioral assertions |
+|---|---|---|
+| Work Timer | दो local Auth users (एक customer, एक assigned electrician), एक नई category booking, approved rate snapshot | customer approval से पहले elapsed time शून्य; केवल संबंधित customer approval timer शुरू करे; दूसरे customer/electrician को deny; final bill server elapsed minutes से बने; dispute/reject path bill को गलत तरीके से finalize न करे |
+| Razorpay Inbox | service-role-only local invocation context, दो synthetic event IDs, अलग payload hashes | समान event दोबारा claim करने पर duplicate; active lease रहते दूसरा worker claim न करे; expiry के बाद नया fencing token; पुराना token completion reject; terminal event repeat idempotent |
+| Offer Dispatch | एक synthetic booking, समान क्षेत्र के कम-से-कम दो eligible electricians और एक ineligible control electrician; अलग rate-tier control | exact area/tier eligibility; एक समय में केवल एक current offer; decline/expiry पर अगला candidate; stale area/tier acceptance reject; concurrent accept में अधिकतम एक winner |
+| Push Delivery | एक outbox row और एक per-device row, processing state तथा attempt counters | stale attempt number reject; current attempt accept; delivered/dead terminal rows immutable; retry boundary और capped backoff persisted values से verify |
+| Legacy Status Guard | एक eligible legacy new booking, एक new-category booking, एक paid/refunded booking; local Main Admin और ordinary authenticated user | ordinary user deny; Main Admin केवल eligible legacy new को confirm करे; new-category और paid/refunded bookings unchanged रहें; direct authenticated status UPDATE deny |
+
+### 46.1 Test harness boundaries
+
+- हर Auth user और business row केवल disposable local Supabase database में synthetic हो; Production IDs या records fixture में न आएँ।
+- auth.uid() / JWT claim को test helper से सेट करने के बाद वास्तविक authenticated role context में RPC चलाया जाए। service_role workflow को अलग privileged local invocation में जाँचा जाए।
+- हर non-concurrency test transaction rollback करे; database-wide shared fixtures या स्थायी seed records न छोड़े।
+- Lease expiry के लिए वास्तविक sleep की जगह controllable timestamps/fixture clock तभी उपयोग हों जब function contract उसे सुरक्षित रूप से support करता हो; अन्यथा isolated local transaction में समय-सीमा को स्पष्ट रूप से test किया जाए।
+- Concurrent winner/lease race के लिए दो स्वतंत्र DB connections और coordinated transactions चाहिए; single pgTAP transaction को concurrency proof न माना जाए।
+- Local Auth schema, helper functions और authoritative base schema provenance उपलब्ध होने तक इन fixtures को runnable test code में बदलना अभी blocked है।
+
+### 46.2 Source-level inventory की पुष्टि
+
+इस pass में पाँच files के exact वर्तमान आकार/plan दोबारा जाँचे:
+- Work Timer: 54 lines, plan 20, INSERT fixture नहीं।
+- Razorpay Inbox: 69 lines, plan 15, INSERT fixture नहीं।
+- Sequential Offer Dispatch: 91 lines, plan 16; `INSERT INTO public.job_offers` केवल `pg_get_functiondef(...)` पर चलने वाले `position(...)` source-text assertion के भीतर है—test fixture के रूप में कोई booking/offer row insert नहीं होती।
+- Push Delivery: 82 lines, plan 20, INSERT fixture नहीं।
+- Legacy Status Guard: 51 lines, plan 9, INSERT fixture नहीं।
+
+पाँचों में JWT/session setup, role switching या throws_ok / lives_ok / results_eq / is_empty behavioral assertion calls नहीं मिले। यह पाँचों targeted files की सीमा तक का निष्कर्ष है, पूरे 32-file suite का दावा नहीं।
+
+**निर्णय:** अगला coding step अभी production या current branch पर test edits नहीं है। पहले approved isolated runner, local Supabase config/harness, base-schema provenance और migration-version collision gate उपलब्ध होने चाहिए। उसके बाद पहले Work Timer और Webhook के local-only behavioral tests बनाए जाएँ; शेष तीन उसके बाद। इस pass में केवल GitHub source files पढ़ीं—कोई file write, SQL execution, test run, migration replay या Production access नहीं हुआ।
+
+
+## 47. Work Timer behavioral test blueprint — fixture और assertion क्रम — 16 Nov 2026
+
+Work Timer migration 20261114240000_server_authoritative_customer_approved_work_timer.sql और मौजूदा 20-assertion pgTAP file को पढ़कर runnable test लिखने से पहले exact fixture contract तैयार किया गया। अभी केवल design है; कोई SQL test file नहीं बनाई या चलाई गई।
+
+### 47.1 न्यूनतम synthetic fixture contract
+
+एक isolated test case में:
+- दो अलग local Auth users: customer और electrician; दोनों के UUID स्थिर test variables से बनें।
+- Electrician के लिए एक profile: user_id और auth_user_id उसी electrician Auth UUID से मेल खाएँ; verification_status='approved', active=true; approved_rate_tier booking के selected_rate_tier के बराबर हो; approved_rate_card_version, rate_tier_approved_by, rate_tier_approved_at सभी non-null हों।
+- Identity-linking trigger के कारण electrician Auth fixture में confirmed phone होना चाहिए और profile phone उसी normalized phone से match करे। Test phone केवल synthetic हो और उसी test fixture में unique रहे।
+- एक booking: customer_user_id customer UUID, assigned_electrician_id profile UUID, non-null selected_category, matching selected_rate_tier, status='assigned', timer defaults बंद/zero।
+- Customer और electrician के अतिरिक्त एक दूसरा customer तथा एक unrelated electrician identity negative authorization checks के लिए हों; उनके पास target booking का ownership/assignment न हो।
+
+### 47.2 Behavioral test sequence
+
+1. **Initial state:** timer बंद, work_started_at null, elapsed seconds zero और कोई labour bill नहीं।
+2. **Unauthenticated / wrong electrician:** बिना identity और unrelated electrician से srk_electrician_request_work_start(booking_id) deny; booking अपरिवर्तित रहे।
+3. **Assigned electrician request:** सही approved assigned electrician request करे; status awaiting_work_start_approval, approval pending, request timestamp non-null; timer अभी भी बंद और start timestamp null।
+4. **Wrong customer:** दूसरा customer approve/reject करने की कोशिश करे; deny और pending request अपरिवर्तित रहे।
+5. **Customer rejects:** owner customer reject करे; status वापस assigned, approval rejected, timer बंद। फिर assigned electrician नया request कर सके।
+6. **Customer approves:** owner customer approve करे; rate tier/version/8-hour paise snapshot approved profile से match हों; status in_progress, approval approved, running true, server start timestamp non-null।
+7. **Direct-write guard:** authenticated client timer, start timestamp, elapsed seconds या rate snapshot बदलने की कोशिश करे; protected authorization के बिना deny हो।
+8. **Completion request:** assigned electrician completion request करे; timer बंद हो, start timestamp clear हो, elapsed seconds positive हों, completion approval pending हो।
+9. **Wrong customer completion:** unrelated customer approve न कर सके।
+10. **Completion approval:** owner customer approve करे; immutable labour bill बने; bill minutes ceil(elapsed_seconds/60) हों; paise amount floor(rate8h_paise*minutes/480+0.5) से मेल खाए; booking completed हो।
+11. **Bill immutability:** bill पर UPDATE और DELETE deny हों; duplicate approval दूसरा bill न बना सके।
+12. **Bill read access:** owner customer और assigned electrician अपने bill को पढ़ सकें; unrelated customer/electrician को कोई row न मिले।
+
+### 47.3 अलग test transactions में rejection/dispute branches
+
+- Work-start rejection को अलग fixture/transaction में जाँचा जाए ताकि primary approval path के state transitions उससे contaminate न हों।
+- Completion rejection: elapsed time सुरक्षित रहे, timer फिर चालू हो और नई work_started_at server से बने; अगली completion request में accumulated elapsed time जुड़ना चाहिए।
+- Completion dispute: कम-से-कम 20 अक्षरों का note अनिवार्य; complaint row बने; bill न बने और booking completed न हो। इस branch के बाद operational dispute-resolution/resume path का अलग owner-approved contract आवश्यक है—इस test को अपने-आप timer restart मानकर pass नहीं करना चाहिए।
+
+### 47.4 महत्वपूर्ण fixture blockers
+
+- Historical starter SQL को authoritative baseline नहीं माना जा सकता; clean local schema provenance अभी unresolved है।
+- Local Auth users, auth.uid() claim helper, authenticated role switching और srk_private schema prerequisites स्थापित होने चाहिए।
+- Electrician profile identity trigger confirmed-phone uniqueness लागू करता है; साधारण profile INSERT पर्याप्त नहीं होगा।
+- Main Admin helper इस Work Timer happy path के लिए आवश्यक नहीं दिखता; test को Main Admin allowlist पर निर्भर न बनाया जाए।
+- Time assertions में exact wall-clock duration पर brittle equality न रखें। Server-generated timestamps के क्रम, positive elapsed value और bill formula को उसी transaction के stored snapshot से assert करें।
+- Concurrency (दो customer replies या completion race) को अलग two-connection test harness में रखें; single pgTAP transaction से concurrency proof न दें।
+
+**निर्णय:** Work Timer का पहला runnable behavioral test तब बनाया जा सकता है जब disposable local Supabase/Auth harness और base-schema provenance gate उपलब्ध हों। अभी यह blueprint implementation-ready test specification है, executable test नहीं। इस pass में केवल migration और source test पढ़े गए; कोई fixture write, SQL execution, test run, migration replay या Production access नहीं किया गया।
+
+
+## 40. amount_paid replay blocker — safe remediation decision record — 16 Nov 2026
+
+### Evidence consolidated
+
+- दोनों उपलब्ध historical starter SQL files में `service_bookings.amount_paid` नहीं है (Section 37)।
+- पहली ज्ञात migration `20261109003000_secure_commission_reporting.sql` column-level UPDATE grant में `amount_paid` का उल्लेख करती है; बाद की 15 Nov migrations भी इसे grant/revoke में target करती हैं (Sections 36–37)।
+- Explicit `ADD COLUMN IF NOT EXISTS` केवल `20261116200000_restore_service_bookings_amount_paid.sql` में है, जो इन references के बाद क्रमित है।
+
+### Safe conclusion
+
+उपलब्ध starter SQL को clean-replay baseline मानने पर यह dependency वास्तविक blocker है: migration runner पहले की column-level GRANT/REVOKE statements तक पहुँचने से पहले column नहीं बना पाएगा। इसे केवल बाद में आने वाली `ADD COLUMN IF NOT EXISTS` migration से ठीक नहीं किया जा सकता। हालांकि starter SQL की Production authority अभी प्रमाणित नहीं है, इसलिए इसे live schema defect या Production data-loss risk घोषित नहीं किया जा रहा।
+
+### Remediation paths — अभी कोई path लागू नहीं किया गया
+
+1. **यदि Owner प्रमाणित करे कि यही canonical bootstrap है:** approved canonical bootstrap definition में `service_bookings.amount_paid numeric(12,2)` को सही nullability/default/check सहित स्थापित करें; बाद की restore migration को idempotent compatibility guard के रूप में रखें। Bootstrap files historical snapshots हैं या active deploy inputs, यह पहले स्पष्ट हो।
+2. **यदि canonical bootstrap कोई दूसरा source है:** उसी authoritative baseline में column की मौजूदगी साबित करें और उसका version/hash तथा provenance replay manifest में दर्ज करें। कोई source edit आवश्यक न हो सकता है।
+3. **यदि पहले से deployed migration history में पुराने migrations सफलतापूर्वक apply हैं:** deployed migration files को rename/reorder/edit न करें। नई clean-install bootstrap strategy या forward-only repair केवल Owner-approved migration design और verified remote history के बाद तय करें।
+
+### Required evidence before implementation
+
+- Owner से canonical bootstrap file/path और approval;
+- remote migration history का read-only export/screenshot (secrets हटाकर), खासकर 09003000, 15160000, 15230000 और 16200000 entries;
+- deployed schema में `service_bookings.amount_paid` की column type, nullability, default और CHECK constraint का sanitized schema-only evidence;
+- पुष्टि कि staging/local replay target disposable है और उसमें कोई user/payment data नहीं है।
+
+### Guardrails and next action
+
+- तब तक migrations को reorder/rename/edit नहीं करना; `supabase db reset`, hosted DB command, remote schema dump या Production query नहीं चलाना।
+- इस pass में केवल source inspection और यह decision record है; कोई database connection, SQL execution, schema mutation या deployment नहीं हुआ।
+- Owner evidence उपलब्ध होने पर पहले एक reviewable migration plan और diff तैयार होगा; execution अलग explicit approval के बाद ही।
+
+
+## 41. Migration version uniqueness audit — 16 Nov 2026
+
+Current Feature Branch `supabase/migrations` directory की GitHub contents listing में कुल 87 migration SQL files मिलीं। Filename के शुरुआती numeric version token के आधार पर exact duplicate version की जाँच में एक duplicate pair मिला:
+
+- `20261109_allow_quote_approval_booking_states.sql`
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql`
+
+दोनों का migration version token ठीक `20261109` है। बाकी timestamped files में पूर्ण numeric version token duplicate नहीं मिला। एक ही version वाली दो files migration tooling में version collision/ambiguous ordering का जोखिम पैदा कर सकती हैं; वास्तविक व्यवहार प्रयुक्त Supabase CLI/version parser और migration history से सत्यापित होना बाकी है।
+
+**निर्णय:** इसे migration-history/replay audit में दूसरा blocker candidate दर्ज किया गया है। अभी किसी filename को rename नहीं किया गया, क्योंकि deployed `supabase_migrations.schema_migrations` history और पहले apply हो चुकी versions अज्ञात हैं। पहले से लागू migration का version बदलना remote history से mismatch पैदा कर सकता है।
+
+**सुरक्षित अगला कदम:** Owner से sanitized remote migration history और इस्तेमाल हो रहे Supabase CLI version की पुष्टि; फिर तय करना कि दोनों files कभी deploy हुई हैं या नहीं। यदि clean-install के लिए नया क्रम चाहिए, तो अलग approved forward-only/clean-bootstrap योजना बनाएं; live history को अनुमान से edit न करें। इस audit में केवल GitHub directory listing पढ़ी गई—कोई database connection या migration execution नहीं हुआ।
+
+
+## 42. Duplicate 20261109 migration pair — Git commit history और SQL overlap — 16 Nov 2026
+
+दोनों exact files की GitHub path-specific commit history और SQL body पढ़ी गई:
+
+| File | उपलब्ध Git commit history |
+|---|---|
+| `20261109_electrician_inspection_quotes_and_service_only_commission.sql` | 08:00:19Z, 08:01:17Z, 08:04:11Z (9 Nov 2026) |
+| `20261109_allow_quote_approval_booking_states.sql` | 08:04:25Z (9 Nov 2026) |
+
+यह केवल Git commit timestamps हैं; ये Supabase में apply होने या remote migration history में दर्ज होने का प्रमाण नहीं हैं।
+
+### SQL overlap
+
+- बड़ी `electrician_inspection_quotes_and_service_only_commission` migration booking quote columns, commission trigger/function और quote/work RPCs बनाती है।
+- उसी बड़ी migration के अंतिम भाग में `service_bookings_status_check` और `service_bookings_assignment_status_requires_electrician` constraints को drop/recreate किया गया है।
+- छोटी `allow_quote_approval_booking_states` migration का पूरा SQL इन्हीं दो constraints को drop/recreate करने तक सीमित है और वही allowed statuses तथा assignment predicate रखती है।
+
+अर्थात् छोटी migration का SQL effect बड़ी migration के अंत में पहले से मौजूद है। यह source-level overlap/redundancy है। इससे यह साबित नहीं होता कि छोटी file को हटाना सुरक्षित है: दोनों का migration version `20261109` समान है और deployment history अज्ञात है।
+
+### Supabase migration identity का अर्थ
+
+दोनों filenames underscore से पहले समान version token `20261109` देती हैं। इसलिए version-based migration ledger में वे अलग unique versions नहीं दर्शातीं; migration tooling इन्हें एक version identity के रूप में देख सकती है। वास्तविक CLI version और deployed history से व्यवहार की पुष्टि अभी नहीं हुई।
+
+### Safe decision
+
+- किसी file को delete/rename/edit नहीं किया गया।
+- Git commit history को deployment history नहीं माना गया।
+- दोनों SQL effects का overlap अब documented है; duplicate version collision अभी भी replay blocker candidate है।
+- अगला आवश्यक प्रमाण: sanitized remote `supabase_migrations.schema_migrations` entries और deployed migration source/body/hash। उसके बिना यह तय नहीं किया जा सकता कि छोटी file कभी apply हुई, बड़ी file apply हुई, या दोनों में से कौन-सी production history में canonical है।
+
+इस जाँच में केवल GitHub source/history पढ़ी गई; Supabase credentials, database connection, migration execution या Production बदलाव नहीं हुए।
+
+
+## 43. electrician_profiles.auth_user_id — introducing DDL और downstream order — 16 Nov 2026
+
+### Source evidence
+- `20261109000500_harden_electrician_profile_identity_linking.sql` सबसे पहले `public.electrician_profiles.auth_user_id` को `uuid REFERENCES auth.users(id) ON DELETE SET NULL` के रूप में जोड़ती है।
+- यही migration पुराने `user_id` और नए `auth_user_id` के बीच conflict check, दोनों दिशाओं में backfill, partial unique index, synchronization trigger और verified-phone identity guard स्थापित करती है।
+- अगली `20261109001000_add_google_maps_location_support.sql` में Admin approval function `user_id,auth_user_id` दोनों columns में insert/update करती है। इसलिए उपलब्ध timestamped Feature Branch chain में introducing DDL, इस downstream use से पहले है।
+- `20261109001500_unique_electrician_admin_identity_linking.sql` बाद में Admin review function को replace करती है; यह `user_id` set करती है और पहले migration का sync trigger `auth_user_id` को mirror करता है।
+- उपलब्ध starter-schema audit में `electrician_profiles.user_id` मौजूद है; `auth_user_id` को starter schema में मानकर नहीं चला गया है।
+
+### निष्कर्ष
+इस source chain में `auth_user_id` के लिए कोई “बाद में add, पहले use” ordering defect नहीं मिला: introducing migration `20261109000500` downstream use `20261109001000` से पहले आती है। अतः केवल इस आधार पर migration reorder/edit करने की आवश्यकता सिद्ध नहीं होती।
+
+यह clean-replay readiness का पूर्ण प्रमाण नहीं है। Canonical bootstrap की authority, remote migration ledger, deployed schema और actual Supabase CLI replay अभी भी स्वतंत्र रूप से सत्यापित होने चाहिए। विशेषकर `amount_paid` chronology और duplicate `20261109` version collision unresolved हैं।
+
+### सुरक्षा निर्णय
+- कोई migration rename/delete/edit नहीं किया गया।
+- कोई SQL execute, DB connection, migration replay, Production access या schema/data mutation नहीं हुआ।
+- अगला source-audit focus: `user_id` / `auth_user_id` को पढ़ने वाले policies, indexes, RPCs और trigger ordering की cross-reference सूची; फिर isolated disposable replay के लिए आवश्यक authoritative baseline evidence की सूची।
+
+
+## 44. Identity trigger provenance और repeated hardening migration — 16 Nov 2026
+
+### Trigger provenance
+- `PORTAL_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` दोनों में `auth.users` पर `srk_link_electrician_profile_trigger` नाम का `AFTER INSERT OR UPDATE OF phone, phone_confirmed_at` trigger मौजूद है; यह `public.srk_link_electrician_profile()` को call करता है।
+- `20261109000500_harden_electrician_profile_identity_linking.sql` इस function body को unique verified phone/profile matching के साथ replace करती है, लेकिन स्वयं auth.users trigger को create/drop नहीं करती। इसलिए clean replay में इस trigger का अस्तित्व bootstrap contract पर निर्भर है।
+- दोनों starter files में trigger होने का source evidence मिला; पर कौन-सी file canonical deployed bootstrap है, यह अभी Owner से प्रमाणित नहीं है। इसे Production trigger का प्रमाण नहीं मानना है।
+
+### Repeated migration / function definition
+- `20261114130000_harden_electrician_profile_identity_linking.sql` फिर से `auth_user_id` add-if-not-exists, backfill, partial unique index, identity sync/guard triggers और `srk_link_electrician_profile()` function को recreate करती है। इन identity DDL/function blocks का बड़ा हिस्सा `20261109000500` में पहले से है।
+- बाद की migration Admin review RPC को भी recreate करती है; `20261116150000_pin_admin_application_review_search_path.sql` फिर उसी RPC का `search_path=''` pin करती है। यह repeated definition source chronology में स्पष्ट है; कौन-सा deployed version मौजूद है, remote migration history के बिना अज्ञात है।
+- `20261115140000_electrician_kyc_review_and_activation_gate.sql` की KYC upload/read/delete policies और activation RPC दोनों `electrician_profiles.user_id = auth.uid()` तथा `auth_user_id = auth.uid()` की समानता पर निर्भर हैं। Identity sync/guard सही क्रम और trigger presence इसलिए KYC lifecycle के लिए महत्वपूर्ण है।
+- `electrician_profile_identity_linking.test.sql` में 13 pgTAP assertions हैं, जिनमें identity columns, partial unique index, sync-before-guard trigger naming/order, verified phone matching और Admin unique-only link शामिल हैं। यह test file source में है; pgTAP अभी execute नहीं हुआ।
+
+### Safe conclusion and action
+- `auth_user_id` introduction `20261109000500` में है और `20261109001000` के downstream use से पहले है؛ यह order सही दिखता है।
+- `srk_link_electrician_profile_trigger` का source definition starter files में मौजूद है, migration files में नहीं; clean replay baseline प्रमाणित करना अनिवार्य है।
+- `20261114130000` की repeated identity definitions को अभी delete/merge/reorder नहीं किया गया। पहले canonical bootstrap, remote migration ledger और deployed function/trigger definitions की sanitized evidence चाहिए।
+- कोई SQL execute, DB connection, migration replay, Production access, schema/data mutation या deployment नहीं हुआ।
+
+
+## 45. Electrician Identity — Admin/RPC/Wallet/KYC cross-reference — 16 Nov 2026
+
+### Cross-reference findings
+- `20261109001000_add_google_maps_location_support.sql`: Admin review RPC checks `auth.uid()` and `public.is_srk_admin()`, then writes both `user_id` and `auth_user_id`. The identity sync/guard from `20261109000500` must be installed before this function is exercised.
+- `20261109002000_expose_assigned_booking_map_pin.sql` and the later quote/offer RPC in `20261109_electrician_inspection_quotes_and_service_only_commission.sql` identify the electrician profile by `p.user_id=auth.uid()` and require approved + active. They do not independently compare `auth_user_id`; their safety relies on the profile identity sync/guard invariant.
+- `20261109003000_secure_commission_reporting.sql` uses `p.user_id=auth.uid()` for electrician earnings and Admin-only RPC guard for the global commission report. The same identity invariant applies.
+- `20261109010000_create_secure_wallet_ledger_foundation.sql` recognizes an approved electrician through `coalesce(ep.auth_user_id,ep.user_id)=auth.uid()`. The sync/guard should make both identifiers equal; if drift exists in an older schema before hardening, `coalesce` prioritizes `auth_user_id` and can differ from RPCs using only `user_id`.
+- `20261115140000_electrician_kyc_review_and_activation_gate.sql` is stricter: Storage owner upload/read/delete checks require both columns to equal `auth.uid()`, and activation checks `auth_user_id IS NOT DISTINCT FROM user_id` plus confirmed Auth phone and approved latest identity/address documents. It depends on identity sync/guard and the auth.users link trigger.
+- `20261109103143_move_customer_call_contact_lookup_to_private.sql` reads assigned electrician contact details only for the authenticated customer’s own booking (`b.customer_user_id=auth.uid()`). It does not use profile identity for authorization; it is a customer ownership check.
+
+### Admin and policy conclusion
+- The reviewed migration files do not add a direct client-facing RLS policy on `electrician_profiles`; the reviewed electrician access paths are SECURITY DEFINER RPCs with per-function checks. Existing base-table RLS/grants still need canonical bootstrap verification; this review is not proof of deployed policy state.
+- No cross-role escalation path was established from the reviewed snippets. However, the `user_id`-only RPCs, `auth_user_id`-first wallet check, and dual-column KYC checks are consistent only if the identity synchronization triggers are present and functioning. This is a material invariant and should remain a required pgTAP/runtime check.
+- The 13-assertion identity pgTAP test covers sync/guard triggers and unique-only linking, but it does not by itself prove every dependent RPC's behavior under mismatched or missing identity columns. Extend test coverage in a later reviewed change only after runtime harness/baseline is established.
+
+### Safety / next gate
+- No policies, migrations, or SQL were changed; only this audit document was updated.
+- No SQL execution, database connection, migration replay, Production access, schema/data mutation, payment action, or deployment occurred.
+- Before runtime: Owner must identify the canonical starter schema and provide sanitized evidence of remote migration ledger + deployed identity columns, indexes, trigger definitions, table grants/RLS policies. Then run pgTAP only against an isolated disposable TEST database, never Production.
+
+
+## 46. Identity dependent RPC — अतिरिक्त pgTAP coverage plan — 16 Nov 2026
+
+### मौजूदा टेस्ट की सीमा
+`electrician_profile_identity_linking.test.sql` में `plan(13)` है। यह columns/indexes/triggers और stored function definitions की मौजूदगी/कुछ source fragments जाँचता है। यह अभी वास्तविक Auth users/profile rows बनाकर `srk_get_my_offer_details`, quote/work RPC, wallet summary, commission earnings या KYC Storage policies को execute करके owner/non-owner व्यवहार साबित नहीं करता। इसलिए 13/13 मौजूद assertions को पूर्ण end-to-end identity authorization coverage नहीं माना जाएगा।
+
+### प्रस्तावित isolated-TEST pgTAP matrix (केवल test harness उपलब्ध होने के बाद)
+1. **Booking / offer ownership:** linked approved+active electrician को केवल अपने profile के offers दिखें; दूसरे UID को वही offer/booking न दिखे; unlinked UID को खाली परिणाम/authorization error मिले; inactive या unapproved profile quote submit/work-status update न कर सके।
+2. **Quote RPC:** assigned electrician quote submit कर सके; दूसरे electrician का UID उसी booking पर असफल हो; customer केवल अपने booking quote को approve/reject कर सके; unrelated customer असफल हो।
+3. **Wallet identity:** `user_id=auth.uid()` और `auth_user_id=auth.uid()` synced profile पर electrician wallet बनता है; mismatched columns trigger से reject हों; profile absent/unapproved पर electrician wallet न बने; दूसरे UID को ledger/account rows न दिखें।
+4. **Commission:** Admin RPC non-admin से `42501`/denial दे; electrician earnings केवल उसी profile के assigned bookings लौटाएँ; mismatched profile identity दूसरे UID को earnings न दे; unpaid/incomplete bookings earning में शून्य रहें।
+5. **KYC Storage:** dual-linked owner सही UID/type folder में upload/read कर सके; दूसरे UID, unlinked profile, गलत folder या wrong bucket से denial; Admin read allowed; KYC event UPDATE/DELETE denied; latest identity/address proof pending/rejected होने पर activation gate बंद रहे।
+6. **Identity uniqueness / phone:** zero या multiple verified Auth users पर auto-link न हो; duplicate approved phone profile पर link fail-closed; phone mismatch/unconfirmed phone reject; user_id/auth_user_id drift insert/update दोनों में reject/sync हो।
+7. **Admin RBAC interaction:** Main Admin review अनुमत; Support staff को KYC review, commission report, wallet overview, payment/refund/payout permissions न मिलें; inactive/revoked staff session पर permission false हो।
+
+### Test implementation guardrails
+- `auth.uid()`/JWT claims को pgTAP harness के supported तरीके से set करें; fixtures को transaction के भीतर बनाकर rollback करें। वास्तविक customer/electrician data या live Auth account न छुएँ।
+- Storage policy assertions के लिए disposable Supabase Storage schema + test bucket आवश्यक है; केवल `pg_get_functiondef` inspection पर्याप्त नहीं।
+- Exception tests में exact SQLSTATE/expected denial assert करें; केवल function text में शब्द खोजने को runtime proof न मानें।
+- Test harness/TEST schema अभी अनुपलब्ध है; इसलिए यह coverage plan है, executed test result नहीं। कोई नया test SQL अभी नहीं जोड़ा गया।
+
+### निर्णय
+पहले TEST database bootstrap + Supabase CLI/Postgres/pgTAP reproducible harness स्थापित और Owner-approved हो। उसके बाद matrix को छोटे pgTAP files में लागू कर isolated DB पर चलाएँ। Production connection, migration replay या live data पर परीक्षण निषिद्ध रहेगा।
+
+
+## 47. Existing pgTAP inventory और safe runtime harness gap — 16 Nov 2026
+
+### Repository inventory (source tree checked)
+- `supabase/tests/database/` में कुल **32 `.test.sql` pgTAP contract files** मौजूद हैं। इनमें Identity `plan(13)`, KYC/Activation `plan(21)`, और Admin Staff RBAC `plan(69)` शामिल हैं।
+- इसलिए पिछले section 46 का matrix पूरी तरह नया test set नहीं है: KYC/Activation और RBAC के कई schema/function/privilege checks पहले से मौजूद हैं। Section 46 को **missing runtime behavior coverage proposal** के रूप में पढ़ें, न कि इन पूरे विषयों के test files न होने के रूप में।
+- KYC test पहले से bucket privacy, Storage policy names, client table SELECT denial, activation/KYC function gates, Admin-only review और append-only event guard की source/schema assertions करता है। यह actual JWT-owner vs other-user Storage upload/download behavior का end-to-end execution नहीं दिखाता।
+- RBAC test `plan(69)` में role permissions, browser table privileges, Main Admin separation, session tracking/revocation, support assignment ownership, private contact exclusions और Staff mutation restrictions के कई checks हैं। यह भी runtime JWT actor fixtures के साथ पूरा multi-role scenario test होने का प्रमाण नहीं है।
+- `tests/database-pgtap-plan-counts.test.js` एक Node static test है जो सभी SQL test files में declared `plan(n)` और assertion-call count का मिलान करता है। यह SQL/pgTAP को execute नहीं करता।
+
+### Harness / CI readiness findings
+- Feature Branch tree में `supabase/config.toml` मौजूद नहीं है; इसलिए standard Supabase local project/test command का project config अभी उपलब्ध नहीं।
+- `package.json` का `npm test` केवल `node --test tests/*.test.js` चलाता है; pgTAP SQL files execute नहीं करता।
+- `.github/workflows/node-tests.yml` भी केवल Node tests चलाता है।
+- मौजूदा `.github/workflows/supabase-schema-ci.yml` को GPT-2 ने dispatch नहीं किया: यह `SUPABASE_DB_URL` secret से Production schema-only dump पढ़ता है, दूसरे branch `feature/platform-fee-cash-online-cycle` पर gated है, और केवल पुराने hardcoded पाँच migrations चलाता है; यह current Feature Branch के सभी 32 pgTAP files का isolated clean replay नहीं है। इसे वर्तमान सुरक्षित TEST harness नहीं माना जा सकता।
+
+### अगला सुरक्षित काम
+1. Owner-approved dedicated disposable TEST Supabase project/DB तय हो; Production credentials/URL का उपयोग न हो।
+2. Feature Branch में pinned Supabase CLI version, `supabase/config.toml`, local Postgres/Storage services, pgTAP enablement और reproducible fixture/bootstrap contract तैयार हो।
+3. Migration replay plan को duplicate `20261109` version और baseline-dependent columns/triggers की ज्ञात समस्याओं से पहले रोकने वाला fail-closed preflight चाहिए।
+4. पहले isolated clean replay और मौजूदा 32 pgTAP contracts चलें; फिर section 46 के वास्तविक owner-vs-non-owner JWT/Storage/RPC behavior tests जोड़े जाएँ।
+5. CI केवल disposable TEST database/container पर चले; Production schema export, remote Production connection, deployment या secrets की जरूरत न हो।
+
+**स्थिति:** अभी कोई `supabase test db`, pgTAP, local stack, migration replay या CI dispatch नहीं चलाया गया। यह केवल source inventory और readiness audit है।
+
+
+## 48. Disposable TEST harness — सुरक्षित स्थापना निर्णय — 16 Nov 2026
+
+### सत्यापित repository prerequisites
+- Feature Branch में `supabase/config.toml` नहीं है और कोई Compose/Docker project file या Supabase local harness tree में नहीं मिला।
+- 32 SQL pgTAP test files मौजूद हैं, पर `package.json` का `npm test` केवल Node test runner चलाता है; SQL tests का runner command नहीं है।
+- Migration tree में duplicate version token `20261109` है; साथ ही पहले के sections में `amount_paid` और electrician identity bootstrap chronology के unresolved dependencies दर्ज हैं। अतः पूरी migration directory को अभी blind `supabase db reset`/replay करना भरोसेमंद नहीं।
+- `supabase-schema-ci.yml` remote `SUPABASE_DB_URL` से Production schema export करता है और दूसरे branch पर gated है। इसे disposable TEST bootstrap के रूप में reuse/dispatch नहीं करना है।
+
+### Safe setup blueprint (अभी लागू नहीं किया गया)
+1. **Isolation:** पहले local Docker-based Supabase stack या अलग disposable Supabase TEST project चुनें। TEST project का URL/credentials Production से अलग हों; कोई Production secret workflow में न आए।
+2. **Pinned tooling:** Supabase CLI का एक reviewed exact version pin करें; CI में Docker service health-check और fixed timeout रखें। Version upgrade अलग reviewed PR हो।
+3. **Project config:** Owner की मंजूरी के बाद `supabase/config.toml` में project id, local API/DB ports, Auth settings, Storage buckets और migration/test paths explicit करें। Secrets या Production URL config में न रखें।
+4. **pgTAP:** TEST database में pgTAP extension उपलब्ध कराएँ और runner से `supabase/tests/database/*.test.sql` क्रमबद्ध चलाएँ। SQL tests को Node `npm test` का विकल्प न मानें; दोनों suites अलग-अलग run हों।
+5. **Bootstrap contract:** एक canonical, sanitized baseline तय करें जिसमें आवश्यक Supabase `auth`/`storage` schemas, roles, extensions, buckets, triggers, functions और starter tables reproducibly निर्मित हों। `PORTAL_SCHEMA.sql` बनाम `COMPLETE_DATABASE_SETUP.sql` की authority Owner से स्पष्ट कराएँ।
+6. **Migration gate:** replay से पहले unique migration version audit, required-column-before-GRANT check, `auth_user_id`/`amount_paid` baseline checks और `auth.users` identity trigger preflight चलाएँ। किसी ambiguity/duplicate version पर pipeline fail-closed हो; files को silently rename/reorder न करें।
+7. **Tests:** isolated DB पर clean bootstrap → approved migration replay → DB lint → all 32 pgTAP files → Node tests. Test reports artifacts हों; secrets/DB URLs logs में redact हों.
+8. **No remote mutation:** workflow में `SUPABASE_DB_URL`, `supabase db dump --remote`, `supabase link`, Production ref, deployment, seed of real data या remote migration push बिल्कुल न हो।
+
+### Approval / implementation boundary
+- यह section blueprint और prerequisite audit है; कोई `supabase/config.toml`, workflow, Docker file, package dependency या SQL test file अभी create/modify नहीं की गई।
+- इसे लागू करने से पहले Owner से दो निर्णय चाहिए: (a) केवल local disposable Docker stack या dedicated TEST project; (b) canonical bootstrap file कौन-सी है और क्या वह sanitized TEST baseline के रूप में authoritative है।
+- Owner decision के बाद भी पहले isolated config/harness PR बनेगा; workflow manual/local validation से शुरू होगा। Production integration अलग explicit approval के बिना नहीं होगी।
+
+
+## 49. Local Docker TEST चयन और Starter Bootstrap तुलना — 16 Nov 2026
+
+### Owner decision recorded
+- Owner के “Ha” के आधार पर अगला TEST target **Local Docker-based Supabase** चुना गया है। यह चयन केवल environment direction की स्वीकृति है; इससे Production access, remote TEST project, schema mutation, migration replay या deployment की अनुमति नहीं मिलती।
+
+### तीन starter SQL files की तुलना
+- `SUPABASE_SCHEMA.sql`: 93 lines; मूल `service_bookings`, `electrician_applications`, `electrician_profiles`, `job_offers`, basic RLS और पुराना `electrician_profiles.user_id` field.
+- `PORTAL_SCHEMA.sql`: 146 lines; header स्पष्ट कहता है कि इसे `SUPABASE_SCHEMA.sql` के बाद चलाएँ। यह `auth.users` पर `srk_link_electrician_profile_trigger` बनाता है और पुराने Admin/Electrician policies/RPCs जोड़ता है.
+- `COMPLETE_DATABASE_SETUP.sql`: 402 lines; base schema + portal setup का consolidated/expanded रूप और पुराने अतिरिक्त RPC/policies. इसमें कुछ policy/function definitions बाद में दोबारा आती हैं.
+- `COMPLETE_DATABASE_SETUP.sql` में भी वर्तमान migrations के `electrician_profiles.auth_user_id` और `service_bookings.amount_paid` baseline definitions नहीं मिले। `SUPABASE_SCHEMA.sql` + `PORTAL_SCHEMA.sql` में भी ये modern columns नहीं मिले।
+- इसलिए इन तीनों में से कोई भी अभी Feature Branch की 87 migrations के लिए प्रमाणित current canonical bootstrap नहीं है। `PORTAL_SCHEMA.sql` का documented dependency `SUPABASE_SCHEMA.sql` है; `COMPLETE_DATABASE_SETUP.sql` consolidated legacy starter है, लेकिन modern migration prerequisites का विकल्प नहीं।
+
+### सुरक्षित निष्कर्ष / अगला कदम
+1. Local Docker path चुना हुआ है, पर पहले TEST bootstrap contract बनाना होगा: Supabase-managed `auth`/`storage` schemas, roles, extensions, bucket definitions और current baseline tables.
+2. Owner से authoritative sanitized baseline / schema snapshot की पुष्टि जरूरी है; starter SQL को current baseline घोषित नहीं किया जाएगा।
+3. Duplicate `20261109` version और earlier migration column dependencies पर fail-closed preflight के बिना `supabase db reset` या replay नहीं चलाया जाएगा।
+4. इस audit में केवल GitHub source पढ़ा गया; कोई Docker container, Supabase stack, PostgreSQL instance या SQL test run नहीं किया गया। कोई file/row/schema/Production data नहीं बदला।
+
+
+## 50. Local TEST Bootstrap — dependency inventory और fail-closed gate — 16 Nov 2026
+
+### Bootstrap dependencies observed in source
+- Base app relations: `public.service_bookings`, `public.electrician_applications`, `public.electrician_profiles`, `public.job_offers`.
+- Supabase-managed dependencies referenced by migrations/tests: `auth.users`, `auth.uid()`, `auth.jwt()`, roles `anon`/`authenticated`/`service_role`, `storage.objects`, `storage.buckets`, `storage.foldername()`, Realtime publication/schema reload hooks where used.
+- Extension requirement visible in starter SQL: `pgcrypto`; pgTAP is additionally required for SQL contract tests. Exact extension schema/availability should be validated against the pinned local Supabase stack, not assumed.
+- Finance baseline is not just a single `amount_paid` field: `20261114125844_restore_financial_audit_core_schema.sql` creates core finance/audit relations used by downstream refund/payment/payout migrations. This file must be part of ordered migration replay and its prerequisite `service_bookings`, `electrician_profiles`, and `auth.users` must exist first.
+- Identity baseline: `20261109000500` adds `electrician_profiles.auth_user_id` and creates sync/guard triggers; later identity consumers require these invariants. `PORTAL_SCHEMA.sql`'s older `auth.users` trigger is not a replacement for the hardened migration function.
+- Wallet foundation creates wallet accounts/ledger/bank links and RLS in migration `20261109010000`; it assumes Auth users and electrician profile identity foundation are already present.
+- `amount_paid` is currently added only by late migration `20261116200000`, while earlier migrations include column-level grants/revokes referencing it. This is a clean-replay blocker until migration chronology is resolved from source and canonical baseline; a late additive fix does not automatically make earlier column-level grants valid.
+
+### Proposed Local Docker layout (not yet created)
+- `supabase/config.toml`: local project/API/DB/Auth/Storage config only; no remote project ref or secrets.
+- `supabase/seed.sql`: synthetic fixtures only, disabled by default until tests define deterministic requirements.
+- `scripts/db-test-preflight.mjs`: read-only static gate for duplicate migration version tokens, migration filename/order anomalies, required columns before GRANT/REVOKE, starter baseline gaps, and unsafe remote/Production workflow references.
+- `.github/workflows/supabase-local-pgtap.yml`: later, after local Docker proof; starts local Supabase/Postgres, runs preflight, applies only local migrations, executes pgTAP and Node tests. It must not read any remote DB secret.
+- Local run guide documents Docker/Supabase CLI versions, reset command, pgTAP command, logs/artifact redaction, and cleanup.
+
+### Explicit blockers before executable harness
+1. Resolve duplicate `20261109` migration version collision without rewriting history until deployment ledger is known.
+2. Resolve `amount_paid` chronology: move/introduce the column only through a reviewed forward-safe migration strategy after verifying historical deployed baseline; do not edit old applied migrations.
+3. Confirm the canonical sanitized base schema for local replay; neither legacy starter SQL is sufficient evidence by itself.
+4. Confirm required Supabase local services and Storage buckets from current migration contracts.
+5. Add behavioral test fixtures and ensure rollback/isolation for each pgTAP file.
+
+### Gate result
+- **Local Docker direction: approved by Owner.**
+- **Executable bootstrap: BLOCKED** on migration chronology + canonical baseline confirmation.
+- No config, workflow, script, seed, SQL, dependency or runtime was changed/created in this step. GitHub-only source review and documentation update performed; no DB connection, Docker startup, SQL execution, migration replay, remote schema export, Production data access or deployment occurred.
+
+
+## 51. Migration collision और `amount_paid` — सुरक्षित remediation decision — 16 Nov 2026
+
+### A. Duplicate `20261109` migration pair
+- `20261109_allow_quote_approval_booking_states.sql` केवल दो booking constraints drop/recreate करता है (8 lines).
+- `20261109_electrician_inspection_quotes_and_service_only_commission.sql` quote/commission schema + functions/triggers बनाता है और अंत में वही दो constraints उसी allowed-state logic के साथ drop/recreate करता है (108 lines).
+- अतः छोटा migration SQL-effect के स्तर पर बड़े migration के अंतिम constraint block का duplicate है; दोनों को अलग-अलग version migrations की तरह सुरक्षित रूप से क्रमित मानना उचित नहीं।
+- **Remediation:** अभी किसी file का नाम/contents/history rewrite नहीं करना। पहले Owner-approved remote migration ledger (version + name) और deployed schema evidence लें। यदि इनमें से कोई version deployed है तो applied history immutable मानें; केवल नई forward migration से corrective change करें। यदि किसी environment में दोनों में से कोई apply नहीं हुआ, तो disposable local harness के लिए explicit reviewed migration manifest/temporary test-only normalization strategy बनाएं; repository history को बिना निर्णय के rewrite न करें। Preflight duplicate version पर fail करे।
+
+### B. `amount_paid` chronology
+- `20261109003000` में `GRANT UPDATE(status, quoted_amount, amount_paid, payment_status)` है; `20261115160000` में भी `GRANT UPDATE(quoted_amount,amount_paid,payment_status)` है। PostgreSQL column-level grant/revoke target column को statement execution पर resolve करता है।
+- `amount_paid` add करने वाली migration `20261116200000` बाद में आती है। इसलिए clean replay में earlier column-level GRANT statements से पहले column absent हो तो replay fail हो सकता है।
+- `20261109003000` और `20261115160000` को पहले apply कर चुके deployed DB पर बाद की `20261116200000` additive migration सामान्यतः missing column जोड़ सकती है; यह deployment state पर निर्भर है और remote ledger के बिना पुष्टि नहीं की जा सकती।
+- **Remediation:** historical migrations को चुपचाप edit न करें। पहले remote migration ledger + actual column presence/definition लें। यदि किसी deployed environment में earlier GRANT migrations applied हैं, नई forward-only migration में सही column definition/constraints और आवश्यक grants को reconcile करें। Disposable local clean replay के लिए केवल तभी baseline column pre-provision करें जब Owner-approved canonical schema evidence इसे स्थापित करे; test-only shortcut को Production baseline का प्रमाण न मानें।
+
+### C. Required evidence before unblock
+1. Owner-provided sanitized migration ledger export (migration version/name only; no row data/secrets).
+2. Sanitized schema evidence for `public.service_bookings.amount_paid` type, nullability, constraints, and column grants.
+3. Confirmation whether either `20261109` migration was applied in any shared/deployed environment.
+4. Canonical base schema snapshot provenance and intended environment/version.
+
+### Gate decision
+- Duplicate migration collision: **BLOCKED — preserve history pending ledger evidence**.
+- `amount_paid` clean replay: **BLOCKED — baseline/deployed-state evidence pending**.
+- No migration file, SQL, bootstrap, workflow or test harness changed. This update is documentation-only. No remote database, Production, Docker, or SQL runtime accessed.
+
+
+## 52. Owner evidence request pack — बिना credentials / row data — 16 Nov 2026
+
+इस pack का उद्देश्य केवल migration state और schema shape की पुष्टि है। Password, connection URI, API key, JWT, service-role key, customer/electrician row data, phone, email, payment identifiers या वास्तविक user IDs कभी साझा न करें।
+
+### A. Migration ledger — केवल metadata
+Owner/authorized DB administrator से केवल इन columns का sanitized export माँगा जाए:
+- `version` (migration version)
+- `name` (migration name)
+- यदि ledger में उपलब्ध हो तो `statements`/`created_at` जैसी गैर-संवेदनशील migration metadata वैकल्पिक; कोई SQL secret/row payload नहीं।
+
+विशेष रूप से पुष्टि चाहिए:
+- क्या version `20261109` ledger में है? यदि है, exact recorded name क्या है?
+- क्या दोनों `20261109` source filenames किसी environment में apply हुए, या केवल एक?
+- क्या `20261109003000`, `20261115160000`, `20261116200000` लागू हैं और किस क्रम में?
+- क्या कोई migration failed/repair/marked-applied हुई थी? केवल version/name/status बताएं।
+
+### B. `amount_paid` schema shape — metadata only
+Sanitized schema report में केवल ये विवरण:
+- Column exists: yes/no
+- Type: expected `numeric(12,2)` या actual type
+- Nullable: yes/no
+- Default: present/absent (default expression तभी दें जब उसमें कोई secret न हो)
+- Check constraint name + validated status; check expression `amount_paid IS NULL OR amount_paid >= 0` से मेल खाता है या नहीं
+- `authenticated` role के लिए column-level UPDATE grant present/absent; table-level UPDATE grant present/absent
+
+कोई booking row, amount value, customer identity या payment record साझा न करें।
+
+### C. Canonical baseline provenance
+केवल ये उत्तर चाहिए:
+- Authoritative baseline file/snapshot का नाम और revision/date.
+- यह Production schema का sanitized structure export है या TEST baseline?
+- क्या इसमें `service_bookings`, `electrician_profiles`, `auth.users` dependency contract और Storage bucket definitions शामिल हैं?
+- क्या `amount_paid` और `electrician_profiles.auth_user_id` baseline में मौजूद हैं?
+
+### D. Share method / handling
+- Output को plain text या sanitized CSV/SQL DDL-only रूप में दें; credentials और सभी row-level `INSERT`/`COPY` data हटाएँ।
+- यदि sanitized export बनाना संभव न हो, तो Owner/DB administrator से केवल ऊपर के yes/no + metadata answers लें।
+- Evidence आने पर GPT-2 source history और expected migration order से मिलान करेगा; mismatch होने पर harness को BLOCKED ही रखेगा।
+
+### E. Acceptance criteria
+- Migration ledger में exact duplicate-version state स्पष्ट हो।
+- `amount_paid` column + constraints + grants का deployed shape स्पष्ट हो।
+- Canonical baseline का provenance और intended target स्पष्ट हो।
+- इन तीनों के मेल के बाद ही Local Docker TEST migration manifest / preflight implementation शुरू होगी।
+
+**Safety:** कोई remote SQL command यहाँ execute नहीं की गई और यह pack Production credentials/access नहीं माँगता। यह केवल sanitized metadata request है।
+
+## 53. KYC filename reconciliation — source cross-check — 16 Nov 2026
+
+- नवीनतम source test `tests/electrician-accounting-kyc-contract.test.js` अब uncertain KYC submit response में owner-list reconciliation, preflight document IDs, exact document type/MIME/size matching, और confirmed private storage path की जाँच करता है।
+- `electrician.html` में submit RPC को `file.name.slice(0,180)` भेजा जाता है; migration `20261115140000_electrician_kyc_review_and_activation_gate.sql` database insert पर `btrim(p_file_name)` रखती है। इसलिए owner-list में लौटने वाला canonical filename trimmed रूप है; reconciliation test का `.trim()` comparison SQL contract से मेल खाता है।
+- सफल reconciliation और नया matching document न मिलने पर ही uploaded private object हटता है। Reconciliation fail हो या नया matching record मिले लेकिन path confirmation न हो, object को सुरक्षित रखा जाता है और user को Refresh करके जाँचने को कहा जाता है।
+- Static source cross-check: **PASS** — frontend filename normalization, SQL `btrim`, owner-scoped list RPC और exact-path confirmation परस्पर मेल खाते हैं।
+- यह source review है; Node test suite इस pass में execute नहीं हुई और PostgreSQL/pgTAP runtime test नहीं चला। कोई SQL, migration, database, Storage object, deployment या Production state नहीं बदली।
+
+## 54. KYC Storage bucket enforcement — source cross-check — 16 Nov 2026
+
+- KYC migration bucket `srk-electrician-verification` को private (`public=false`) रखती है; `file_size_limit=5242880` और MIME allowlist PDF/JPEG/PNG है।
+- Frontend upload guard वही 5 MiB limit और MIME allowlist लागू करता है; Storage bucket configuration server-side पर भी समान सीमा रखती है।
+- Upload policy केवल authenticated, दोनों identity columns से linked electrician को उसके अपने UID/type folder में insert करने देती है। Read policy owner या Admin तक सीमित है; owner delete policy केवल unregistered KYC object cleanup helper से नियंत्रित है।
+- Submit RPC storage object के अस्तित्व, UID/type path prefix, path length/control characters, filename length, MIME allowlist और file-size bounds को फिर जाँचता है; document insert और audit event एक transaction में होते हैं।
+- Existing pgTAP KYC plan 21 में private bucket, policy names, client table SELECT denial, activation/KYC RPC guards और append-only event controls की structural assertions हैं। यह वास्तविक JWT actors के साथ Storage upload/download end-to-end exercise नहीं करता।
+- Static source cross-check: **PASS** — frontend और bucket size/MIME limits मेल खाते हैं; ownership और private-bucket guards source में मौजूद हैं।
+- Runtime limitation: pgTAP अभी execute नहीं हुआ; वास्तविक Storage JWT owner-vs-other-user upload/read/delete scenarios बाकी हैं। कोई Storage bucket, object, DB, SQL migration या Production state बदली नहीं गई।
+
+## 55. KYC orphan-object deletion guard — source audit — 16 Nov 2026
+
+- Storage delete policy केवल private KYC bucket में authenticated linked owner के UID folder पर लागू होती है।
+- `srk_electrician_can_delete_unregistered_kyc_object(text)` helper authenticated UID, non-null path, own-UID prefix और dual-linked electrician profile जाँचता है; यदि उसी `storage_path` का document database record मौजूद हो तो deletion false लौटाता है।
+- Helper `SECURITY DEFINER` और pinned empty `search_path` के साथ है; execute privilege `authenticated` को दिया गया है, `public/anon` से revoke है। Policy bucket ID और UID folder को अलग से जाँचती है।
+- Frontend uncertain-submit cleanup में केवल successful owner-list reconciliation और कोई नया matching document न मिलने पर object remove करता है। यदि reconciliation असफल हो या document मिल जाए, file सुरक्षित रखी जाती है।
+- Source review: **PASS** — registered KYC document का Storage object owner cleanup policy से delete नहीं होना चाहिए; केवल unregistered own-path object candidate है।
+- Test gap: वर्तमान pgTAP suite helper/function और delete policy की मौजूदगी जाँचती है, पर वास्तविक owner-vs-other-user JWT के साथ Storage delete attempts तथा registered-object deletion denial end-to-end साबित नहीं करती। इस scenario को disposable TEST Storage harness में जोड़ना आवश्यक है।
+- कोई SQL/migration/test file, Storage object, database या Production state नहीं बदली गई; यह documentation-only audit है।
+
+## 56. Existing KYC pgTAP plan(21) — assertion-by-assertion coverage boundary — 16 Nov 2026
+
+- वर्तमान `electrician_kyc_review_and_activation_gate.test.sql` में `begin; plan(21); ... finish(); rollback;` है।
+- 21 assertions का source inventory:
+  1–2. KYC documents और append-only events tables मौजूद।
+  3–8. Submit/list/Admin queue/review/activation/orphan-cleanup functions मौजूद।
+  9–10. Profile activation और rate-tier guard triggers मौजूद।
+  11–15. पाँच RPCs के authenticated-vs-anon EXECUTE privileges।
+  16. KYC documents table पर authenticated/anon direct SELECT निषिद्ध।
+  17. Bucket private और 5 MiB सीमा।
+  18. तीन Storage policy names मौजूद।
+  19–20. Activation और rate-tier functions में latest identity/address KYC approval guard marker।
+  21. Review RPC में `public.is_srk_admin()` Main Admin gate marker।
+- इस test का वास्तविक scope schema/catalog/function-definition inspection है। यह केवल `pg_policies` में policy नाम देखकर policy की वास्तविक JWT behavior सिद्ध नहीं करता; function source में marker खोजकर complete branch behavior भी सिद्ध नहीं होता।
+- स्पष्ट रूप से अनुपस्थित runtime assertions: (a) Owner A सही UID path में upload कर सके; (b) Owner B, unlinked user और गलत UID folder upload न कर सकें; (c) Owner A तथा Main Admin read कर सकें, अन्य electrician/Support न कर सके; (d) registered KYC object delete न हो; (e) unregistered own object ही cleanup हो; (f) event row UPDATE/DELETE अस्वीकार हो; (g) latest rejected/pending KYC पर activation अस्वीकार और approved latest KYC पर सही अनुमति।
+- प्रस्तावित runtime fixture matrix को disposable Local Supabase TEST में अलग test file में जोड़ना होगा; वास्तविक Storage behavior के लिए Storage schema/API harness आवश्यक है। केवल SQL catalog test जोड़ने से end-to-end Storage test का विकल्प नहीं मिलेगा।
+- Static inventory cross-check: **PASS** — plan(21) और 21 assertion calls मौजूद। pgTAP अभी execute नहीं हुआ; कोई runtime PASS दावा नहीं।
+- कोई test/migration/SQL/Storage object/DB state नहीं बदली गई; केवल audit documentation बदला गया।
+
+## 57. KYC runtime TEST cases — executable acceptance matrix — 16 Nov 2026
+
+Disposable Local Supabase environment बनने के बाद नीचे दिए गए cases को अलग runtime test file में लागू करना है। अभी ये **test specifications हैं, executed tests नहीं**।
+
+| ID | Actor / setup | Action | Expected result |
+|---|---|---|---|
+| KYC-ST-01 | Linked electrician A; own UID folder; allowed PDF/JPEG/PNG under 5 MiB | Upload | Allow; object path remains private |
+| KYC-ST-02 | Linked electrician A | Upload into B UID folder | Deny |
+| KYC-ST-03 | Linked electrician B | Read/download A object | Deny |
+| KYC-ST-04 | Unlinked authenticated user | Upload/read/delete KYC object | Deny |
+| KYC-ST-05 | Main Admin | Read A KYC object | Allow only via intended Admin read policy |
+| KYC-ST-06 | Support Staff | Read A KYC object | Deny |
+| KYC-ST-07 | Owner A; document row references object path | Delete object | Deny |
+| KYC-ST-08 | Owner A; own object has no document row | Orphan cleanup delete | Allow |
+| KYC-ST-09 | Owner B; A owns orphan object | Delete A object | Deny |
+| KYC-ST-10 | Any actor | Upload disallowed MIME / >5 MiB | Deny at Storage layer |
+| KYC-DB-01 | Owner A and valid profile | Submit metadata for actual own object | One document + one submitted event |
+| KYC-DB-02 | Owner A submits path owned by B / missing object | Submit RPC | Deny; no document/event row |
+| KYC-DB-03 | Existing event row | UPDATE / DELETE event | Trigger rejects both |
+| KYC-DB-04 | Profile latest required KYC pending or rejected | Main Admin activation attempt | Deny |
+| KYC-DB-05 | Profile latest required KYC approved and phone verified | Main Admin activation attempt | Allow if all other guards pass |
+| KYC-DB-06 | Profile has older approved and newer rejected required document | Activation attempt | Deny; latest document controls |
+| KYC-DB-07 | Support Staff | Review KYC / activate electrician | Deny |
+| KYC-DB-08 | Electrician A | List own KYC documents | Only A's rows |
+| KYC-DB-09 | Electrician B | Attempt direct table SELECT | Deny |
+
+### Runtime fixture and harness requirements
+- Synthetic-only Auth users: Electrician A, Electrician B, unlinked user, Main Admin, Support Staff; never use real customer/electrician records or production credentials.
+- Profiles A/B must have both `user_id` and `auth_user_id` equal to their corresponding Auth UID; unlinked profile fixture must remain genuinely unlinked.
+- Use distinct JWT claims per actor and assert `auth.uid()` identity for each call. Never treat `SET ROLE authenticated` alone as proof of actor identity.
+- Storage cases require a running disposable Supabase Storage service and its supported upload/download/delete API path; direct catalog inspection alone is insufficient.
+- Each test must assert both response and side effects (document row, event row, object existence); cleanup must be confined to synthetic fixture paths.
+- Keep each scenario isolated and rollback DB fixtures where possible. Storage objects do not necessarily participate in SQL transaction rollback; remove only test-prefixed objects after assertions and fail closed if ownership cannot be confirmed.
+- Harness must use a dedicated local project, pinned CLI/runtime versions, pgTAP enabled, and no remote `SUPABASE_DB_URL`. Do not create a remote TEST project, run migration replay, or alter CI until owner approval and environment evidence are available.
+- Acceptance gate: all existing 32 pgTAP files plus new KYC runtime cases pass on clean disposable replay; duplicate migration token and baseline dependency blockers from Sections 50–52 must be resolved through reviewed test-only replay manifest, not silent production migration edits.
+- Current state: **specification written only**. No `supabase/config.toml`, Docker harness, runtime test file, Auth fixture, Storage upload/delete, pgTAP execution, migration replay or CI dispatch created/run.
+
+## 58. Admin RBAC + Electrician identity — runtime actor matrix — 16 Nov 2026
+
+### Existing static pgTAP scope
+- `admin_staff_rbac_foundation.test.sql` declares `plan(69)`. Source checks include staff/permission/session/audit tables, Support's seven seeded permissions, absence of finance/payment/wallet/refund/payout/KYC/staff-management/private-contact grants, SECURITY DEFINER + empty search_path, active staff/live Auth session/revoked-session guards, session locking, assigned customer/electrician support RPC presence, audit append-only trigger and selected schema constraints.
+- `electrician_profile_identity_linking.test.sql` declares `plan(13)`. Source checks identity columns/index, sync and guard triggers, verified phone match, ambiguous Auth/profile rejection, unique auto-link behavior, identity mismatch rejection, trigger coverage/order and Admin review uniqueness.
+- These are static catalog/function-definition assertions. They do not yet establish that distinct live JWT actors receive the intended allow/deny outcomes under concurrent or mismatched runtime data.
+
+### Required disposable TEST runtime scenarios
+| ID | Actor / setup | Action | Expected result |
+|---|---|---|---|
+| RBAC-01 | Active Support staff with assigned customer case | List assigned case and reply | Allow only assigned case; sender audit identifies staff UID |
+| RBAC-02 | Same Support staff; unassigned customer case | Read/reply/update | Deny |
+| RBAC-03 | Active Support staff; assigned electrician ticket | Read/reply/update | Allow only assigned ticket |
+| RBAC-04 | Support staff | Read KYC, commission, wallet, payment/refund/payout or staff registry | Deny |
+| RBAC-05 | Suspended or disabled Support staff | Call otherwise permitted support RPC | Deny |
+| RBAC-06 | Revoked tracked staff session | Call permission helper and support RPC | Deny immediately |
+| RBAC-07 | Main Admin | Assign/reassign support case and inspect staff audit | Allow; immutable audit entry recorded |
+| RBAC-08 | Support staff | Attempt Main Admin assignment/status/session-revoke RPC | Deny |
+| ID-01 | Exactly one phone-confirmed Auth user + one eligible approved profile with matching normalized phone | Link profile | Allow and synchronize both identity columns |
+| ID-02 | Two verified Auth users share normalized phone | Auto-link | Fail closed; no profile linked |
+| ID-03 | Two eligible profiles share normalized phone | Auto-link | Fail closed; no ambiguous profile selected |
+| ID-04 | Existing profile has conflicting non-null `user_id` and `auth_user_id` | Update identity | Reject; preserve prior linkage |
+| ID-05 | Auth user phone is unconfirmed or mismatched | Link profile | Reject |
+| ID-06 | Same Auth UID already linked to another profile | Link second profile | Unique constraint rejects duplicate linkage |
+| ID-07 | Concurrent attempts to link same profile / same Auth UID | Run two transactions | At most one valid link; no cross-user linkage |
+| ID-08 | Phone or approval status changes after linking | Update profile | Guard revalidates; invalid identity transition rejected |
+
+### Safety and test design
+- Every role scenario must use distinct synthetic Auth users and JWT claims, not just database role switching. Include positive and negative calls for the same RPC.
+- Session revocation/suspension tests must prove the next request is denied, not merely that a revoked_at/status column changed.
+- Identity race tests require two concurrent transactions in isolated TEST; sequential static assertions are insufficient.
+- Use synthetic contact/case/document records only. Never seed real user PII or use production Auth identities.
+- Runtime acceptance requires RBAC, identity, KYC and existing remaining database contracts all passing on clean isolated replay; current repo has no `supabase/config.toml`, no Docker harness, and no executable pgTAP run recorded.
+- Current state: **matrix specification only**. No test code, config, Docker, Auth fixture, SQL execution, remote DB connection or CI workflow was created or run.
+
+## 59. Local Docker TEST harness — repository readiness recheck — 16 Nov 2026
+
+### Current repository facts
+- `package.json` defines only Node test scripts (`node --test tests/*.test.js`); no Supabase CLI, pgTAP runner or Docker command is wired into npm scripts.
+- `supabase/config.toml` is absent.
+- Root `docker-compose.yml` is absent.
+- `supabase/seed.sql` is absent.
+- Existing `.github/workflows/node-tests.yml` installs Node 22 dependencies and runs only `npm test`; it has no PostgreSQL, Supabase CLI, Storage service, pgTAP or migration replay stage.
+- Existing `.github/workflows/supabase-schema-ci.yml` remains unsuitable as the first runtime harness: it uses remote `SUPABASE_DB_URL` schema export, is branch-gated elsewhere, and is not a disposable local TEST workflow.
+- The repository does contain 32 SQL pgTAP files, but the above infrastructure is not present to execute them.
+
+### Fail-closed readiness decision
+- **Do not add a speculative `supabase/config.toml` or run migration replay yet.** The duplicate `20261109` migration token and unresolved canonical baseline/`amount_paid` dependency evidence from Sections 50–52 mean a clean replay recipe is not currently established.
+- **Do not add a CI job that connects to a remote database.** A future workflow must start an isolated disposable Postgres/Supabase stack, use synthetic fixtures only, and have no Production secrets or remote DB URL.
+- First required owner evidence remains: sanitized migration ledger, deployed `amount_paid` schema/grants evidence, duplicate-version applied/not-applied confirmation, and canonical base-schema provenance.
+- After evidence review, create a reviewed test-only replay manifest, pin Supabase CLI/runtime versions, configure local Auth/Storage and pgTAP, then run all SQL tests and the actor matrix. Keep test-only baseline adjustments explicitly separate from production migrations.
+
+### Recheck result
+- Repository infrastructure inventory: **PASS** (absence/presence facts verified against current branch).
+- Runtime readiness: **BLOCKED** (safe canonical replay baseline not proven).
+- No Docker command was run; no config, compose file, seed, workflow or test file was created; no DB connection, migration replay, Storage API call or CI dispatch occurred. Documentation-only update.
+
+
+## 60. नवीनतम PR head और deploy-preview recheck — 16 Nov 2026, 14:36 IST
+
+- Branch `feat/customer-login-first-dashboard-20261114` का वर्तमान tip और PR #8 का refreshed head दोनों `5d00930a554461732ffda455b9588204a50e794c` हैं। इससे पहले देखे गए `f8c94cd` head को अब current head न मानें।
+- नवीनतम commit `Test saved customer address auth isolation` ने केवल `tests/customer-profile-auth-isolation.test.js` में regression assertion जोड़ा: Auth identity बदलने पर saved-address state clear होना, in-flight load request invalidate होना और response के समय user ID दोबारा verify होना।
+- इस commit पर provider checks: Netlify Deploy Preview **SUCCESS** (`https://deploy-preview-8--srk-electronic-india.netlify.app`); Vercel **FAILURE** (build rate limit)। इस commit के लिए GitHub Actions PR workflow runs की सूची खाली मिली।
+- यह नया Node regression test source में मौजूद है; उपलब्ध CI evidence से इसे independently executed/pass घोषित नहीं किया जा रहा। PostgreSQL/pgTAP runtime स्थिति इससे नहीं बदलती।
+- PR #8 अभी **OPEN / DRAFT / NOT MERGED** है। कोई Production deployment, DB migration, remote DB query या migration replay नहीं किया गया।
+- Section 59 का Local Docker TEST readiness निर्णय यथावत है: repository में `supabase/config.toml`, root `docker-compose.yml`, `supabase/seed.sql` और executable pgTAP harness अनुपस्थित हैं; duplicate `20261109` migration lineage के लिए authoritative remote ledger/evidence अभी भी चाहिए।
+- अगला सुरक्षित कदम owner से sanitized migration ledger और schema-only evidence लेना है; उसके बाद ही pinned CLI के disposable scratch project में duplicate-version parsing/replay behavior जाँचा जा सकता है। कोई Production migration file rename/delete/resequence नहीं होगी।
+
+### Recheck result
+- PR/branch head synchronization: **PASS**.
+- Netlify Deploy Preview: **SUCCESS**.
+- Vercel: **BLOCKED — build rate limit**.
+- Database runtime: **BLOCKED — canonical replay evidence and harness missing**.
+
+
+## 61. Owner के लिए read-only metadata evidence queries — 16 Nov 2026
+
+नीचे की queries केवल authorized Owner/DB administrator अपने चुने हुए environment में चलाएँ। GPT-2 ने इन्हें किसी remote या Production database पर execute नहीं किया है। सभी queries catalog metadata पढ़ती हैं; इनमें booking/customer/payment rows, secrets या credentials नहीं पढ़े जाते। Output share करने से पहले project URL, host, user names और अन्य identifying metadata हटा दें।
+
+### A. Migration ledger columns की उपलब्धता
+
+\`\`\`sql
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'supabase_migrations'
+  AND table_name = 'schema_migrations'
+ORDER BY ordinal_position;
+\`\`\`
+
+यदि version और name columns उपलब्ध हों, तब केवल relevant migration identifiers निकालें:
+
+\`\`\`sql
+SELECT version, name
+FROM supabase_migrations.schema_migrations
+WHERE version LIKE '20261109%'
+   OR version IN (
+     '20261109003000',
+     '20261115160000',
+     '20261116200000'
+   )
+ORDER BY version, name;
+\`\`\`
+
+यदि ledger table/columns अलग हों, तो अनुमान से query न बदलें; पहले sanitized column list दें।
+
+### B. service_bookings.amount_paid column shape
+
+\`\`\`sql
+SELECT column_name, data_type, numeric_precision, numeric_scale,
+       is_nullable, column_default
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'service_bookings'
+  AND column_name = 'amount_paid';
+\`\`\`
+
+### C. संबंधित CHECK constraints
+
+\`\`\`sql
+SELECT conname, convalidated, pg_get_constraintdef(oid) AS definition
+FROM pg_constraint
+WHERE conrelid = 'public.service_bookings'::regclass
+  AND contype = 'c'
+  AND (
+    conname ILIKE '%amount_paid%'
+    OR pg_get_constraintdef(oid) ILIKE '%amount_paid%'
+  )
+ORDER BY conname;
+\`\`\`
+
+### D. Column-level और table-level grants
+
+\`\`\`sql
+SELECT grantee, privilege_type, is_grantable
+FROM information_schema.column_privileges
+WHERE table_schema = 'public'
+  AND table_name = 'service_bookings'
+  AND column_name = 'amount_paid'
+  AND grantee IN ('authenticated', 'anon', 'PUBLIC')
+ORDER BY grantee, privilege_type;
+\`\`\`
+
+\`\`\`sql
+SELECT grantee, privilege_type, is_grantable
+FROM information_schema.table_privileges
+WHERE table_schema = 'public'
+  AND table_name = 'service_bookings'
+  AND grantee IN ('authenticated', 'anon', 'PUBLIC')
+ORDER BY grantee, privilege_type;
+\`\`\`
+
+### E. electrician_profiles identity columns
+
+\`\`\`sql
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'electrician_profiles'
+  AND column_name IN ('user_id', 'auth_user_id')
+ORDER BY column_name;
+\`\`\`
+
+### Output handling / limitations
+- केवल query results के metadata rows साझा करें; कोई full schema dump, table data, connection string, API key या JWT नहीं।
+- यदि supabase_migrations.schema_migrations मौजूद न हो या permission denied आए, तो इसे bypass न करें; Owner/DB administrator से sanitized ledger metadata माँगें।
+- information_schema grants effective privileges का पूरा runtime proof नहीं हैं; ये केवल declared grant metadata हैं। Actor-level authorization का प्रमाण अलग disposable TEST JWT tests से ही मिलेगा।
+- इन queries को चलाना भी Owner/DB administrator की जिम्मेदारी और अनुमति के अधीन है। GPT-2 ने कोई database connection या SQL execution नहीं किया।
+
+
+## 62. Node test workflow और पुराने Supabase workflow का execution-safety audit — 16 Nov 2026
+
+### Node workflow
+- \`package.json\` में \`npm test\` का command \`node --test tests/*.test.js\` है।
+- \`.github/workflows/node-tests.yml\` Node 22 स्थापित करके \`npm install --ignore-scripts --no-audit --no-fund\` और \`npm test\` चलाता है। इसमें PostgreSQL, Supabase CLI, Storage या pgTAP service नहीं है।
+- यह workflow Node source-contract/regression tests के लिए उपयुक्त है; इसे database runtime evidence नहीं माना जाएगा।
+
+### Existing Supabase schema workflow — do not dispatch
+- \`.github/workflows/supabase-schema-ci.yml\` केवल manual \`workflow_dispatch\` है और job condition \`refs/heads/feature/platform-fee-cash-online-cycle\` पर gate है; वर्तमान PR branch इस gate से मेल नहीं खाती।
+- Workflow में \`SUPABASE_DB_URL\` secret के जरिए remote database से \`public,private\` schema-only dump लेने का स्पष्ट step है, जिसका नाम “Export schema only from production” है। इसके बाद temporary local Supabase stack में restore करके पाँच hard-coded पुरानी migrations apply होती हैं।
+- यह current branch की सभी migrations का clean canonical replay नहीं है; यह remote Production schema export पर निर्भर है और current duplicate \`20261109\` migration lineage को resolve नहीं करता।
+- इसलिए इसे current PR branch पर dispatch, gate बदलकर चलाना, या किसी remote/Production URL से जोड़ना **नहीं** है। यह केवल source audit में देखा गया existing workflow है; कोई run नहीं किया गया।
+- Workflow की least-privilege checks होने से भी Production schema export की owner authorization या इस project के लिए suitability अपने-आप सिद्ध नहीं होती।
+
+### Decision
+- Node workflow: source-only test path; database test substitute नहीं।
+- Existing Supabase workflow: current objective के लिए unsuitable / **DO NOT DISPATCH**.
+- Safe next path: Owner द्वारा उपलब्ध कराए गए sanitized metadata की review; फिर no-remote-credentials वाला disposable local Postgres/Supabase project और अलग test-only manifest। पहले pinned CLI में duplicate migration parser behavior को scratch copy में verify करें।
+- इस audit में कोई workflow बदला/चलाया नहीं गया; कोई secret, remote DB URL, Production schema या row data access नहीं हुआ।
+
+
+## 63. Customer auth-switch UI isolation — residual display-state review
+
+### Source evidence
+- \`booking.html\` auth listener on \`SIGNED_IN\`, \`SIGNED_OUT\`, and \`USER_DELETED\` increments request counters for saved addresses, payment history, profile load/save, cancellation fees and refunds; it also clears the saved-address array and selector.
+- \`syncCustomerSession()\` clears customer profile name, phone, current avatar path and avatar preview in its no-session branch.
+- When a different authenticated session is present, \`syncCustomerSession()\` starts loading that session's profile but does not first clear the previous profile name/phone/avatar preview in the signed-in branch.
+
+### Residual risk / interpretation
+- The existing request guards reduce the risk of an old asynchronous response overwriting current account state.
+- However, during an account-to-account switch where the new session is already present, the previous account's profile name/avatar may remain visible until the new profile load replaces them. This is a **stale UI display / privacy presentation concern**, not evidence that the new user can read the prior user's database records or that RLS is bypassed.
+- The Node test \`tests/customer-profile-auth-isolation.test.js\` checks source markers and invalidation logic; it does not simulate two real Auth users in a browser or verify immediate clearing of identity-bound DOM state.
+
+### Recommended acceptance test
+1. Sign in as synthetic User A and load profile/avatar/saved-address list.
+2. Switch to synthetic User B while the dashboard remains open; verify A's profile name, phone, avatar preview, saved-address options and in-flight responses are cleared before B's data is rendered.
+3. Delay A's profile/avatar/address responses, complete switch to B, then release A's responses; verify none repopulate the UI.
+4. Sign out and verify all identity-bound fields/previews are cleared.
+5. Repeat with refresh/focus and network reconnect.
+
+### Boundary
+- This is a source-level review only. No code changed, no browser test executed, no Auth users created, and no database/Storage calls made.
+- Route the UI reset recommendation to the customer-dashboard implementation owner (GPT-1); GPT-2 records the residual acceptance gap for the runtime test plan.
+
+
+## 64. Implementation प्रतिशत और CI score की माप — 16 Nov 2026
+
+### Implementation checklist
+- उपलब्ध consolidated GPT-2 inventory में दर्ज baseline **27/39 = 69% पूरा; 12/39 बाकी** है। Overall project baseline **56/86 = 65%** है।
+- ये प्रतिशत checklist-item counts हैं, पूरे application की live readiness या release confidence score नहीं।
+- किसी item को तभी complete गिना जाएगा जब उसके लिए अपेक्षित deliverable वास्तव में मौजूद हो और उसकी निर्धारित verification सीमा पूरी हो। केवल documentation/source audit, issue पहचानना, test plan लिखना या दूसरे GPT owner को recommendation देना नया completed item नहीं है।
+- इस कारण Sections 61–63 जैसे documentation-only audits से implementation प्रतिशत नहीं बढ़ता। Section 63 का UI fix GPT-1 implementation owner के scope में है; GPT-2 उसे अपना code completion नहीं गिनेगा।
+- अगली गणना में denominator 39 तभी रहेगा जब checklist scope अपरिवर्तित हो। कोई item split/add/remove हुआ तो पहले checklist version और denominator दर्ज होंगे; पुराने प्रतिशत से सीधे तुलना नहीं होगी।
+
+### CI score — अभी कोई प्रमाणित प्रतिशत नहीं
+- Repository में “CI score” नाम का एकल, परिभाषित denominator उपलब्ध evidence में स्थापित नहीं है। इसलिए अनुमान से 80%, 90% या कोई अन्य score नहीं लिखा जाएगा।
+- CI report में अलग-अलग वास्तविक checks दिखेंगे: Node tests, database/pgTAP runtime, browser E2E, deploy preview/build। हर check का status PASS / FAIL / PENDING / BLOCKED / NOT RUN और संबंधित commit SHA दर्ज होगा।
+- केवल उसी commit के completed successful run को PASS माना जाएगा। Pending, failed, missing run या पुराना commit current PASS नहीं है।
+- Node test PASS को PostgreSQL/pgTAP, browser E2E, Production schema parity या deployment PASS नहीं माना जाएगा।
+- यदि owner एक संयुक्त CI प्रतिशत चाहता है, तो पहले required checks की fixed सूची और denominator स्वीकृत होगा; score = completed PASS checks ÷ total required checks × 100. Scope बदलने पर नया denominator/version दर्ज होगा।
+
+### इस recheck पर लागू स्थिति
+- GPT-2 checklist: **27/39 = 69%** (इस documentation-only audit से अपरिवर्तित)।
+- Overall project: **56/86 = 65%** (इस audit से अपरिवर्तित)।
+- CI percentage: **Not measured — denominator formally defined नहीं**। Latest commit पर प्रत्येक provider/workflow status को अलग-अलग evidence के साथ report करना होगा; कोई fabricated combined score नहीं।
+- यह section metric/reporting policy है; कोई application code, test, workflow, database, payment provider, merge या deployment नहीं बदला/चलाया गया।
+
+
+## 65. Admin legacy booking/payment UI contract — source-string verification
+
+- Re-read the current `admin.html` and `tests/admin-legacy-quote-retirement.test.js` at the branch head after the assertion correction.
+- Performed an in-memory source-string verification of the five test-case areas and their concrete predicates:
+  1. Status confirmation control is exposed only for an unassigned legacy `new` booking.
+  2. Historical quote display cell is read-only (no input/select/button/onclick).
+  3. Status confirmation uses the dedicated `srk_admin_confirm_legacy_booking` RPC.
+  4. Non-editable status value remains present in the hidden field used by the shared Save handler.
+  5. Manual payment controls and dedicated RPC paths exist; payment status guard matches current source; no direct `service_bookings.update()` write is exposed in this Admin source.
+- Result: **7/7 source predicates PASS**. These are in-memory source checks only, not execution of Node's `node --test` runner. No test-runner PASS is claimed.
+- Current handler also requires an actual completed booking and valid receipt/UTR before recording manual payment; online Razorpay-linked bookings remain on the verified Razorpay flow. This was source-inspected, not runtime-tested.
+- No application code, SQL, database, workflow, payment provider, CI dispatch, merge, or deployment was changed or invoked by this verification.
+
+
+## 66. Clean-baseline blocker: amount_paid is referenced before its restore migration — 16 Nov 2026
+
+### Source files re-read at the current Feature Branch head
+
+- `COMPLETE_DATABASE_SETUP.sql` defines `public.service_bookings` without an `amount_paid` column.
+- `SUPABASE_SCHEMA.sql` likewise defines `public.service_bookings` without `amount_paid`.
+- `supabase/migrations/20261109003000_secure_commission_reporting.sql` references `amount_paid` in its Admin commission report, its column-level privilege statement, and the SQL-language electrician earnings function. In particular it executes:
+  `GRANT UPDATE (status, quoted_amount, amount_paid, payment_status) ON TABLE public.service_bookings TO authenticated;`
+  and later creates a SQL-language function whose SELECT reads `b.amount_paid`.
+- `supabase/migrations/20261116200000_restore_service_bookings_amount_paid.sql` is the source migration that adds nullable `amount_paid numeric(12,2)` and a nonnegative CHECK constraint; its timestamp is later than the commission-reporting migration.
+- The 20261109 electrician quote/commission migration also contains a PL/pgSQL trigger function body that reads `NEW.amount_paid`. Its function-body reference is a separate concern from the immediate SQL/column-privilege parse-time dependency in the earlier 14-digit commission migration.
+
+### Precise replay implication
+
+A clean replay starting from either checked-in starter schema, applying migrations in timestamp order, reaches `20261109003000_secure_commission_reporting.sql` before `20261116200000_restore_service_bookings_amount_paid.sql`. At that point the referenced column does not exist. The column-level GRANT cannot be applied to a missing column, and the later SQL-language function also requires the column to resolve when created. Therefore this is a source-proven clean-baseline ordering blocker, not merely a runtime test gap.
+
+This does **not** establish that the historical Production database lacked `amount_paid`: the live database may have had an out-of-band/manual column or a different prior baseline. No remote schema or migration history was accessed in this review.
+
+### Safe decision
+
+1. Keep both starter schemas and all numbered migrations unchanged until authoritative environment history is obtained.
+2. Do not simply move the 20261116 restore migration backwards, rename it, or repair remote history; doing so could conflict with an already-applied hosted schema.
+3. Record the required evidence: approved baseline identity, whether `amount_paid` existed before 20261109003000 in each hosted environment, and the matching `supabase_migrations.schema_migrations` rows.
+4. Once owner/DBA supplies sanitized read-only evidence, prepare a separate migration reconciliation proposal and test it only against a disposable local baseline. No Production action is implied.
+
+### Verification boundary
+
+- Source files and relevant SQL statements: **READ / SOURCE CONFIRMED**.
+- Clean-baseline ordering conflict: **SOURCE CONFIRMED**.
+- Supabase CLI replay / PostgreSQL execution: **NOT RUN**.
+- Hosted schema and migration-history rows: **NOT ACCESSED / UNKNOWN**.
+- Migration files, starter schemas, workflows, Production and remote DB: **UNCHANGED / NOT CONTACTED**.
+
+
+## 67. Legacy manual-payment बनाम immutable labour-bill settlement — compatibility boundary recheck — 16 Nov 2026
+
+### Source-confirmed separation
+
+- `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` में `srk_admin_record_manual_payment` स्पष्ट रूप से `selected_category IS NOT NULL` वाले नए category bookings को `NEW_CATEGORY_BOOKING_USES_DEDICATED_SETTLEMENT` से रोकता है।
+- उसी RPC का legacy path केवल completed, assigned, `quote_status='approved'`, unpaid/pending और Razorpay-unlinked legacy booking स्वीकार करता है। यह `service_charge + materials_amount = quoted_amount` को paise में reconcile करता है; commission केवल labour पर और materials pass-through रखता है।
+- उसी migration का customer receipt RPC नई category bookings के लिए `srk_booking_labour_bills` और settled cancellation-fee ledger पढ़ता है; paid total immutable labour + settled fee से match होना आवश्यक है। Materials शून्य दिखते हैं।
+- Legacy receipt path पुराने labour/material split को `service_charge + materials_amount` से reconcile करता है और historical `quoted_amount` को उसी total के बराबर जाँचता है।
+- `20261115150000_admin_readonly_booking_accounting_reconciliation.sql` नई booking में immutable labour bill पढ़ता है; legacy booking के लिए historical service/material split fallback रखता है। Commission labour-only है।
+- `20261115230000_admin_booking_direct_write_closure.sql` approved quote बदलने से रोकता है और direct Admin table-update ACL बंद करता है।
+
+### Decision / compatibility interpretation
+
+यह source इस बात का प्रमाण है कि **नई category bookings का settlement और receipt immutable labour bill contract पर है**, जबकि पुरानी quote-based bookings के लिए सीमित historical manual-payment और receipt path बचा है। पुराने legacy rows के लिए immutable labour bill स्वतः उपलब्ध होने का प्रमाण नहीं मिला। इसलिए legacy RPC से approved-quote dependency हटाकर उसे बिना backfill/provenance योजना के immutable bill से बदलना पुराने unpaid/completed records की वैध receipt/payment प्रक्रिया तोड़ सकता है।
+
+अतः इस pass में migration बदलना उचित नहीं माना गया। “सभी legacy manual payments को immutable labour bill पर ले जाएँ” को फिलहाल **owner/DBA decision required** माना जाए: पहले तय हो कि पुराने legacy bookings के लिए immutable bill backfill अनुमत है या historical approved-quote contract स्थायी compatibility रहेगा। नई category settlement को legacy quote path से जोड़ना निषिद्ध ही रहे।
+
+### Verification boundary
+
+- SQL migration / accounting reconciliation: **SOURCE READ CONFIRMED**.
+- Existing source-contract tests: `legacy_manual_payment_and_itemized_receipt.test.sql` और `admin_labour_bill_payment_accounting_bridge.test.sql` में source/metadata assertions मौजूद हैं; इस review में उन्हें execute नहीं किया गया।
+- PostgreSQL/pgTAP behavioural runtime, synthetic booking settlement, duplicate/concurrent payment, payout trigger side effects और rollback: **NOT RUN**.
+- No SQL, migration, Production DB, hosted schema, payment provider, workflow or deployment changed/invoked.

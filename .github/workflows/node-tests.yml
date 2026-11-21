@@ -1,0 +1,37 @@
+name: Feature Branch Node tests
+
+on:
+  push:
+    branches:
+      - feat/customer-login-first-dashboard-20261114
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srk-node-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node-tests:
+    name: Node test suite (no secrets, no deployment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install declared dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run repository Node tests
+        run: npm test

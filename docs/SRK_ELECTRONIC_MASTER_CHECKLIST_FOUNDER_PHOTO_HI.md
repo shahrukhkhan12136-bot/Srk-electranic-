@@ -1,6 +1,6 @@
 # SRK ELECTRONIC — मुख्य मास्टर चेकलिस्ट (एकीकृत स्थिति)
 
-**अंतिम मिलान:** 15 नवम्बर 2026  
+**अंतिम मिलान:** 17 नवम्बर 2026  
 **काम की branch:** `feat/customer-login-first-dashboard-20261114`  
 **Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
 **स्थिति का नियम:** [x] = Feature Branch source में implement/verified; इसका अर्थ Production पर लागू होना नहीं है। Runtime/Production/owner approval को अलग स्पष्ट रखा गया है। पुरानी विस्तृत कार्य-इतिहास `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` में है। इस checklist में duplicate पुराने pending items को बार-बार नहीं दोहराया जाएगा।
@@ -13,7 +13,7 @@
 - **35% बाकी:** 30 / 86 मुख्य चेकलिस्ट आइटम।
 - यह प्रतिशत ऊपर के वर्तमान 9 मुख्य sections के checkbox count पर आधारित है; यह Production readiness, समय, लागत या code completion का प्रतिशत नहीं है।
 - बाकी मदों में isolated runtime/database tests, Main Production schema parity, browser/mobile visual QA और release/owner approval शामिल हैं।
-- **GPT-1 का अलग कार्यक्षेत्र:** Customer (10), Electrician (10), Welcome Screen/Founder Photo (6) — कुल 28 मदों में 21 पूर्ण, 7 शेष: **75% पूरा / 25% बाकी**। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
+- **GPT-1 का अलग कार्यक्षेत्र:** Customer (10), Electrician (10), Welcome Screen/Founder Photo (8) — कुल 28 मदों में 22 पूर्ण, 6 शेष: **79% पूरा / 21% बाकी**। यह वर्तमान sections 1, 2 और 6 के checkbox पुनर्गणना पर आधारित है। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
 - Admin Panel के शीर्ष पर पूरे प्रोजेक्ट का कार्ड और GPT-2 का अलग कार्ड पहले से दर्ज हैं; GPT-1 का प्रतिशत इस checklist/progress log में अलग दिखाया जाएगा।
 - **GPT नंबर 2 का अलग कार्यक्षेत्र:** Admin/Support Staff (13), Payment/Accounting (10), Main Database audit/parity (16) — कुल 39 मदों में 27 पूर्ण, 12 शेष: **69% पूरा / 31% बाकी**। GPT-1 के Customer/Electrician कार्य इसमें शामिल नहीं हैं।
 - Admin Panel में पूरे प्रोजेक्ट के कार्ड के नीचे GPT-2 का अलग प्रगति कार्ड भी दिखाया गया है।
@@ -30,7 +30,7 @@
 - [x] Cancellation-fee debt और booking fee-item history RPC; authenticated-only execution ACL source में जोड़ी।
 - [x] Customer cancellation request/fee carry-forward और refund reversal workflow source मौजूद।
 - [x] Customer और electrician phone numbers acceptance से पहले छिपे; acceptance/assignment के बाद full number visible; Support Staff को unrestricted phone projection नहीं। `tests/customer-electrician-phone-visibility.test.js` में दोनों दिशाओं के authenticated/assignment-scoped source regression tests PASS (latest Node CI run)।
-- [x] पुराने quotation-based customer receipt path को नए immutable labour bill और अलग materials receipt से reconcile किया; legacy receipt labour + materials और नई category receipt labour + settled cancellation-fee ledger को अलग लौटाती है। Migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`, source regression tests तथा Node CI 179/179 PASS। PostgreSQL/pgTAP runtime अभी अलग pending है।
+- [x] Customer payment receipt contract अलग-अलग flows के अनुसार reconcile है: Legacy paid booking की उसी receipt में approved labour और materials अलग line items हैं; नई Category Booking में immutable labour bill और settled cancellation-fee ledger दिखते हैं तथा materials `0` हैं (अलग materials-receipt RPC नहीं है)। Legacy manual-payment RPC केवल पुराने completed/assigned/customer-approved quote पर चलती है; नई Category Booking इससे स्पष्ट रूप से बाहर है। Migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`; Node/pgTAP source tests मौजूद, PostgreSQL/pgTAP runtime अलग pending है।
 - [ ] Customer payment/refund/cancellation के सभी owner/non-owner/anon और duplicate/concurrency व्यवहार isolated database में runtime verify करें।
 
 ## 2. इलेक्ट्रिशियन (Electrician) — Feature Branch implementation
@@ -89,14 +89,14 @@
 
 ## 6. Welcome Screen और Founder Photo
 
-**Owner-approved asset (नवीनतम स्पष्ट निर्देश):** असली Founder Photo वही है जिसमें Founder के पीछे हरा-भरा बगीचा है। उसी फोटो को crop करके लगाना है; चेहरा/पहचान या फोटो का रूप बदलना नहीं है। पहले दर्ज blue-background portrait वाला निर्देश अब इस स्पष्ट garden-photo निर्देश से supersede होता है। Welcome Screen का crop/layout मौजूदा Founder model/reference जैसा रहेगा।
+**Owner-approved asset (नवीनतम निर्देश, 16 नवम्बर 2026):** आधिकारिक Founder Photo वही मूल portrait है जिसमें Founder काली shirt में बाँहें मोड़े हुए हैं और पीछे गहरा नीला studio background है। यही Library asset `SRK ELECTRONIC/Official Founder Photo.png` उपयोग करना है। पहले दर्ज garden-background portrait/`Urban Garden Portrait.png` निर्देश अब superseded हैं; उसे उपयोग नहीं करना है। चेहरा, कपड़े और नीला background ज्यों का त्यों रखें—कोई AI substitute या appearance edit नहीं। केवल आवश्यक responsive display sizing/cropping करें। Welcome Screen और Customer Login दोनों में यही फोटो लगनी है।
 
 - [x] `index.html` स्वागत पेज पर redirect करता है और Welcome Screen का responsive layout मौजूद है।
 - [x] Welcome Screen का source implementation और responsive layout मौजूद है।
-- [x] Owner ने हरे-भरे बगीचे वाली original Founder Photo की पहचान और उसी फोटो को मौजूदा Founder model/card में crop करने का निर्देश confirm किया।
-- [ ] Library में standalone original garden-background portrait `Urban Garden Portrait.png` मिला और visual inspection किया; इसे source asset के रूप में सुरक्षित रखा है। अभी original binary को Feature Branch के `assets/` में जोड़ना, Founder card अनुपात में crop करना और Welcome Screen + Customer Login दोनों में wire करना बाकी है; collage/AI-generated substitute इस्तेमाल नहीं होगा।
-- [ ] Vercel Preview में asset/page load और desktop/mobile rendering verify करें।
-- [ ] Automated build/check और Vercel Preview में asset/page load verify करें।
+- [x] Owner ने black shirt और deep-blue studio background वाली original Founder Photo को आधिकारिक asset के रूप में confirm किया; garden portrait superseded है।
+- [x] Official blue-background Founder Photo की owner-verified मूल फ़ाइल `assets/IMG-20261116-WA0000.jpg` है; Welcome Screen और Customer Login दोनों इसी asset को सीधे load करते हैं। इस current source में `assets/founder-photo.svg` उपयोग नहीं हो रहा।
+- [ ] Netlify Deploy Preview में asset/page load और desktop/mobile rendering verify करें; manual mobile QA अंतिम consolidated pass तक रोका गया है।
+- [ ] Automated build/check और Netlify Deploy Preview में asset/page load verify करें।
 - [ ] Owner visual acceptance लें।
 - [ ] Desktop और responsive/mobile presentation final consolidated QA में verify करें।
 
@@ -161,12 +161,10 @@
 
 ## अभी का साफ निष्कर्ष
 
-**Feature implementation:** कई मुख्य Customer, Electrician, Admin/Staff, payment/refund, KYC, timer, dispatch और Push workflows Feature Branch में implement हैं; legacy manual-payment source gap भी अभी जोड़ा गया है।  
-**Founder/Welcome source status (2026-11-15 correction):** Welcome Screen और Customer Login में अभी `founder-photo-pending` placeholder है; `assets/srk-founder.jpg` collage है और approved original नहीं, इसलिए उसे display नहीं किया गया। Library की `Urban Garden Portrait.png` मूल garden portrait को branch में lossless तरीके से transfer करके दोनों screens में integrate करना बाकी है। उसके बाद exact visual match, Preview और owner acceptance होंगे।  
-**अभी का मुख्य verification blocker:** non-Push database/RPC/browser end-to-end runtime; Push के local PostgreSQL tests सफल हैं, लेकिन managed Supabase parity और Edge↔Netlify/provider integration बाकी है।  
+**Feature implementation:** कई मुख्य Customer, Electrician, Admin/Staff, payment/refund, KYC, timer, dispatch और Push workflows Feature Branch में implement हैं; legacy manual-payment source gap भी जोड़ा गया है।
+**Founder/Welcome source status (16 Nov 2026 recheck):** Welcome Screen (`welcome.html`) और Customer Login (`customer-login.html`) दोनों में `/assets/IMG-20261116-WA0000.jpg` का वास्तविक `<img>` source मौजूद है। पुराना `founder-photo-pending`, `assets/srk-founder.jpg` और Garden Portrait वाला 15 Nov निष्कर्ष superseded है। Vercel Preview/page load, desktop/mobile rendering और owner visual acceptance अभी अलग QA gates हैं।
+**अभी का मुख्य verification blocker:** non-Push database/RPC/browser end-to-end runtime; Push के local PostgreSQL tests सफल हैं, लेकिन managed Supabase parity और Edge↔Netlify/provider integration बाकी है।
 **Production:** कोई migration apply, merge, deployment या live payment action नहीं किया गया है।
-
-
 
 ## 2026-11-15 — पुराने quotation workflow को हटाना
 - [x] Customer App से legacy quotation fields, approval/rejection buttons, RPC response handler और quote status labels हटाए।
@@ -204,7 +202,7 @@
 - [x] Offer-details RPC contract में electrician portal के आवश्यक `offer_expires_at` और `estimated_labour_paise` fields सुरक्षित रखे; पुराने quote-only fields हटाए। Assigned-only phone/address visibility और timer fields कायम रखे।
 - [x] Electrician App से आखिरी `quoted_amount` fallback हटाया; अब केवल server estimate दिखेगा, अन्यथा “श्रम अनुमान उपलब्ध नहीं”।
 - [x] Regression test `tests/electrician-legacy-quotation-retirement.test.js` जोड़ा।
-- [ ] GPT-2 Admin scope में `admin.html` का legacy quote editing/status control हटाना बाकी है।
+- [x] GPT-2 Admin scope में `admin.html` का legacy quote editing/status control retirement पूरा: पुराने quote fields केवल historical read-only display हैं; status confirmation control अब केवल unassigned legacy `new → confirmed` booking पर दिखता है और dedicated Main-Admin RPC से ही बदलता है। नई category booking और अन्य statuses में status केवल read-only दिखता है। `tests/admin-legacy-quote-retirement.test.js` जोड़ा; remote source inspection में 8 focused predicates PASS। GitHub Actions run अभी उपलब्ध नहीं, इसलिए CI PASS नहीं कहा जा रहा।
 - [ ] GPT-2 Payment/Accounting scope में `20261115210000_legacy_manual_payment_and_itemized_receipt.sql` और reconciliation का approved-quote dependency हटाकर नए immutable server-timed labour bill + अलग materials receipt contract से जोड़ना बाकी है। Historical paid/settled rows को audit evidence के रूप में preserve करना है।
 - [ ] Legacy status CHECK constraints और quote audit columns को अभी preserve किया है; ऐतिहासिक records के लिए हैं। New quote RPCs बंद हैं। Status constraints/columns तभी हटें जब GPT-2 accounting/receipt/archive dependency audit प्रमाणित हो।
 - [x] Commit `1468dfe` पर Node CI run `43705891497` सफल: **98/98 PASS, 0 FAIL** (job log TAP summary से सत्यापित)।
@@ -414,9 +412,287 @@
 - [ ] Isolated PostgreSQL role/JWT/concurrency tests, browser integration and final consolidated mobile QA remain pending. No Production access/migration, deployment, merge or staging branch was performed.
 
 
-### 2026-11-16 — Customer booking status clarity and timeline error regression
-- [x] Fixed Customer booking timeline partial-RPC error aggregation: inspect all `timelineResults` instead of an undefined singular variable, so one timeline failure does not replace an otherwise loaded booking list with a generic failure state.
-- [x] Added the missing Customer-visible label for `awaiting_work_start_approval`: “काम शुरू करने के लिए आपकी मंजूरी प्रतीक्षित”.
-- [x] Added source-contract regression coverage for both behaviors in `tests/customer-electrician-booking-status-sync-contract.test.js`.
-- [x] CI runs #1268 and #1269 passed at commit `c7f23c3fe2808765c8318f2f01b725b5f59638b7`: 231/231 tests, 0 failures, 0 skipped. The new status-label change and regression assertion are on a later commit and require their own CI result; do not treat the earlier 231-test run as validation of these latest changes.
-- [ ] Cross-app automatic realtime status refresh remains unverified and out of scope unless the approved checklist explicitly requires it. Customer manual/action refresh and Electrician job-offer/profile subscriptions are not evidence of service-booking realtime synchronization.
+### 2026-11-16 — Customer payment-history session failure handling
+- [x] Found that `loadCustomerPaymentHistory()` called `auth.getSession()` before entering its `try/catch`; a rejected auth/session transport call could escape without the normal visible retry message.
+- [x] Moved session lookup into the existing guarded block; session errors now use the same safe retry state and the `finally` block always clears the busy indicator.
+- [x] Added source-contract regression coverage in `tests/customer-electrician-payment-history-contract.test.js`.
+- [ ] Validate this change in the next exact-head Node CI run. No browser, live auth, database, or mobile runtime claim is made.
+- [ ] Similar session-lookup placement in cancellation-fee and refund-history loaders remains to be inspected separately.
+
+
+### 2026-11-16 — Customer cancellation/refund history session failure handling
+- [x] Moved `auth.getSession()` inside guarded `try/catch` for `loadCustomerCancellationFeeDebts()` and `loadCustomerRefundHistory()`.
+- [x] Auth/session transport errors now use the existing safe retry message and `finally` clears the busy indicator.
+- [x] Added source-contract regression coverage for both loaders in `tests/customer-electrician-payment-history-contract.test.js`.
+- [ ] Validate these latest edits on the exact PR head with CI. No live authentication, database, browser, provider or mobile testing is claimed.
+
+
+### 2026-11-16 — Customer booking-list session failure handling
+- [x] Found `loadCustomerBookings()` read `auth.getSession()` before its guarded `try/catch`; a rejected session transport call could bypass the normal retry message and busy-state cleanup.
+- [x] Moved session retrieval into the existing guarded block after setting the loading state. Existing catch/finally now handles rejected session calls and clears `aria-busy`.
+- [x] Added source-contract regression coverage in `tests/customer-electrician-booking-status-sync-contract.test.js`.
+- [ ] Validate this edit on the exact latest PR head with CI. No live auth, database, browser or mobile runtime result is claimed.
+
+
+### 2026-11-16 — Electrician offer refresh isolation
+- `electrician.html`: profile के वैकल्पिक panels (phone-change history, area requests, KYC, earnings, wallet, push state, support tickets) में किसी transport rejection के कारण अब मुख्य Electrician offer list की loading रुकती नहीं; हर panel क्रम से अलग try/catch में चलता है।
+- Regression coverage: `tests/customer-electrician-booking-status-sync-contract.test.js` में test जोड़ा गया है कि optional panel failure के बाद भी `srk_get_my_offer_details` तक execution पहुँचता है।
+- यह source-level hardening है; वास्तविक browser/network failure simulation, Supabase runtime और mobile QA अभी बाकी हैं।
+
+
+
+
+
+
+### 2026-11-16 — Electrician offer refresh latency isolation
+
+
+### 2026-11-16 — Customer live-location transport isolation
+- Booking cards render होने के बाद Customer loader `refreshCustomerLiveLocations()` को await करता था। किसी live-location RPC का network promise reject होने पर `Promise.all` reject होकर outer booking loader catch चला जाता और पहले से render हुई booking history generic error से replace हो सकती थी।
+- हर booking की live-location RPC अब अपने try/catch में है; transport failure पर केवल उसी location panel में retry संदेश आता है, booking history बनी रहती है।
+- Regression test जोड़ा: per-booking location transport catch, cards-before-location ordering और loader busy-state cleanup जाँचता है।
+- यह source-contract सुधार है; live GPS/provider, browser और network fault-injection परीक्षण अभी नहीं हुए।
+- निरीक्षण में पाया कि optional profile panels पर rejected request संभाली जा रही थी, लेकिन हर panel को `await` करने से धीमा/लंबे समय तक pending panel मुख्य job-offer RPC को देर करा सकता था।
+- `electrician.html` में optional panel loaders अब अलग-अलग promise chain में schedule होते हैं और अपने errors catch करते हैं; मुख्य offer loading इनके पूरा होने की प्रतीक्षा नहीं करती।
+- Regression assertion अपडेट किया ताकि optional loaders schedule होने के बाद offer RPC तक बिना await dependency पहुँचना जाँचा जाए।
+- यह source-level सुधार है; वास्तविक slow-network/browser और live Supabase परीक्षण बाकी हैं।
+
+### 2026-11-16 — Customer/Electrician lifecycle retry cleanup coverage
+- Customer work-start approval और completion response में per-booking busy guard का `finally` में release और retry guidance inspected.
+- Electrician work-start/completion requests में busy guard release और refresh/retry messaging inspected.
+- Customer refund/cancellation submit handlers में failure message तथा submit button का `finally` में re-enable होना inspected.
+- Electrician offer response में busy guard release और response buttons का पुनः enable होना inspected.
+- इन paths के source-contract regression assertions `tests/customer-electrician-booking-status-sync-contract.test.js` में जोड़े गए। यह source inspection/contract coverage है; वास्तविक network fault injection, live RPC/database और browser testing नहीं हुई।
+- Exact latest commit पर CI परिणाम उपलब्ध होने तक इन tests को passed नहीं माना जाएगा।
+
+### 2026-11-16 — Customer booking supplementary RPC resilience
+- `booking.html`: Customer booking list में call contacts, refund requests, cancellation requests और cancellation-fee items के supplementary RPC अब `safeCustomerRpc` से अलग-अलग transport rejection संभालते हैं। एक supplementary request reject होने पर मुख्य owner-scoped booking list को generic load failure से overwrite नहीं किया जाएगा।
+- Regression test `customer booking list survives rejected supplementary contact, refund, and cancellation RPCs` जोड़ा गया।
+
+- अतिरिक्त जाँच: completed booking के labour-bill RPC में rejected transport पहले पूरे booking loader को रोक सकता था। अब प्रत्येक bill request अलग try/catch में है; bill अस्थायी रूप से न आए तो booking history फिर भी दिखाई देती है। उसी test file में इस failure path का source-contract assertion जोड़ा गया।
+- Exact latest head पर CI अभी सत्यापित नहीं है; live browser/Supabase और mobile QA लंबित हैं।
+- यह source-contract test है; browser/network fault injection, live Supabase RPC/RLS और mobile QA अभी बाकी हैं।
+
+
+### 2026-11-16 — Customer payment-method change transport handling
+- Customer के “Cash से Online भुगतान चुनें” action में RPC reject होने पर कोई local try/catch नहीं था; network failure unhandled rejection बन सकती थी और ग्राहक को स्पष्ट retry संदेश नहीं मिलता था।
+- RPC call को try/catch में रखा, success response में `data.success` की पुष्टि जोड़ी, और transport/अनिश्चित response पर सुरक्षित retry संदेश दिया। सफल बदलाव के बाद booking history refresh होती है।
+- Regression test जोड़ा गया। यह source-contract जाँच है; वास्तविक payment-method RPC, browser/network fault injection और mobile QA अभी लंबित हैं।
+
+
+### Electrician Earnings और Wallet network-failure isolation
+- Earnings panel में earnings RPC और Admin payout-history query एक Promise.all में थीं; किसी एक transport rejection पर पूरा loader reject होकर panel “लोड हो रहा है” पर अटक सकता था। दोनों requests को स्वतंत्र rejection handling दी; earnings उपलब्ध रहे तो payout-history failure अलग संदेश दिखाएगा।
+- Wallet panel में summary RPC और bank-link / ledger queries के rejected promises panel को अधूरे loading state में छोड़ सकते थे। तीनों request paths को सुरक्षित rejection result में बदला; bank-link और ledger errors अलग-अलग दिखेंगे, उपलब्ध balance summary सुरक्षित रहेगी।
+- Regression source-contract test जोड़ा। यह वास्तविक Supabase/network fault injection नहीं है; DB/RLS, browser और अंतिम mobile QA अभी लंबित हैं।
+
+
+### Electrician profile/support panels — rejected transport handling
+- Area-change history और KYC document history RPC को rejected network promises से सुरक्षित किया; panel अब स्पष्ट उपलब्धता/Refresh संदेश दिखाएगा।
+- Support ticket list RPC rejection पर raw error text दिखाने के बजाय सुरक्षित Hindi retry संदेश देती है।
+- Phone-change request history Edge Function transport rejection को संभालती है; मौजूदा सुरक्षित status/error flow बना रहता है।
+- Regression source-contract test जोड़ा। वास्तविक Supabase/Edge Function/browser fault-injection और अंतिम mobile QA अभी लंबित हैं।
+
+
+### Electrician Support Ticket सूची/बातचीत — त्रुटि सुधार
+- Support ticket list loader में transport-safe result लाने के बाद पुराना undefined `error` variable reference बचा हुआ था; उसे हटाकर उसी result.error का उपयोग सुनिश्चित किया। यह वास्तविक source bug था जो सामान्य सफल response पर भी ReferenceError दे सकता था।
+- Support thread messages RPC को rejected network promise से सुरक्षित किया; failure पर बातचीत पैनल में Retry संदेश आता है।
+- Regression source-contract test जोड़ा। वास्तविक browser/network fault-injection और Supabase runtime जाँच अभी लंबित हैं।
+
+
+### Electrician App — प्रारंभिक Auth Session नेटवर्क विफलता
+- App initialization में `sb.auth.getSession()` के rejected promise / session error के लिए catch जोड़ा।
+- विफलता पर unhandled promise rejection के बजाय login screen और स्पष्ट OTP retry संदेश दिखेगा।
+- Regression source-contract test जोड़ा; वास्तविक browser/network fault injection और live Supabase auth परीक्षण अभी लंबित हैं।
+
+
+### Customer App — Profile और Saved Address Auth Session Handling
+- Customer Profile तथा Saved Address loaders में `auth.getSession()` अब try/catch के अंदर है और session error को स्पष्ट रूप से संभालता है।
+- नेटवर्क/Session lookup विफल होने पर unhandled rejection के बजाय सुरक्षित हिंदी स्थिति संदेश दिखेगा; Saved Address selector का disabled state finally में वापस सक्रिय होगा।
+- Regression source-contract test जोड़ा। वास्तविक browser/network fault-injection तथा Supabase Auth runtime परीक्षण अभी लंबित हैं।
+
+
+### Customer App — Saved Address Save Auth Error Handling
+- `saveCurrentBookingAddress()` में Auth Session lookup पहले try/catch से बाहर था; rejected promise पर unhandled rejection और button अटका रह सकता था।
+- Session lookup को try/catch के भीतर रखा, sessionError स्पष्ट जाँचा, और मौजूदा finally से बटन restore होना सुनिश्चित किया।
+- Regression source-contract test जोड़ा। वास्तविक browser/network fault-injection तथा Supabase Auth परीक्षण लंबित हैं।
+
+
+### Customer App — Profile/Support/Payment/Booking Auth Error Checks
+- Avatar upload, support message, Razorpay payment और booking submission में Auth Session lookup का returned `error` अब स्पष्ट जाँचा जाता है; केवल session data मौजूद होने पर आगे बढ़ेंगे।
+- Source-contract regression coverage जोड़ी। ये source-level checks हैं; browser/network fault-injection और live Supabase Auth/provider testing अभी लंबित हैं।
+
+
+### Electrician App — Push Notification बंद करने का सुरक्षित क्रम
+- पहले सर्वर की `srk_push_subscriptions` endpoint row हटती है; सफल होने पर ही ब्राउज़र subscription unsubscribe होती है।
+- इससे server-side delete विफल होने पर ब्राउज़र subscription को पहले बंद करके पुराना server record छोड़ने की स्थिति नहीं बनती।
+- Regression source-contract test जोड़ा। वास्तविक Push provider/ब्राउज़र परीक्षण अभी लंबित हैं।
+
+
+### Electrician App — Push Setup विफल होने पर नई Subscription Rollback
+- Push setup में ब्राउज़र द्वारा नई Subscription बनाए जाने के बाद Supabase upsert/Auth/config चरण विफल हो, तो केवल उसी नई Subscription को best-effort unsubscribe किया जाता है।
+- पहले से मौजूद Subscription को rollback में बंद नहीं किया जाता; सफल setup पर rollback reference साफ़ कर दिया जाता है।
+- Regression source-contract test जोड़ा। वास्तविक browser Push और Supabase provider परीक्षण लंबित हैं।
+
+
+### Customer App — Booking Submit Auth Regression Test सटीकता
+- Booking submit handler में customerSb.auth.getSession() के error: sessionError को जाँचने, session मौजूद होने, Bearer access token लगाने और session error पर /api/create-booking request रोकने की वास्तविक assertions जोड़ी गईं।
+- पुराना test global file में payment handler के sessionError match को booking submit के लिए पर्याप्त मान रहा था; अब test सीधे booking form के submit-handler block को जाँचता है।
+- यह test coverage correction है; application source में कोई बदलाव नहीं। Source-contract test को exact current commit पर CI से चलाना बाकी है।
+
+
+### Customer App — Support Thread Network Failure Isolation
+- Customer शिकायत सूची लोड होने के बाद चुनी हुई शिकायत की बातचीत RPC transport rejection को अब thread loader स्वयं सुरक्षित रूप से संभालता है; इससे बातचीत का नेटवर्क failure पूरी शिकायत सूची refresh को विफल नहीं दिखाएगा।
+- Attachment list की स्वतंत्र error handling और stale-thread request guard बरकरार हैं।
+- Regression source-contract test जोड़ा। वास्तविक browser/network और Supabase RLS परीक्षण अभी लंबित हैं।
+
+
+### Electrician App — Existing Push Subscription Re-sync
+- यदि ब्राउज़र में Push Subscription मौजूद हो लेकिन पिछली बार सर्वर पर endpoint upsert विफल हुआ हो, तो पहले UI में Enable बटन बंद हो जाता था और उसी मौजूदा subscription को दोबारा register करने का रास्ता नहीं रहता था।
+- अब मौजूदा browser subscription के साथ भी Enable उपलब्ध रहता है; enable handler उसी subscription को server table में फिर से upsert करता है। Disable क्रम और नई subscription rollback व्यवहार अपरिवर्तित हैं।
+- Regression source-contract test जोड़ा। वास्तविक browser Push, Supabase RLS और provider delivery परीक्षण अभी लंबित हैं।
+
+
+### 2026-11-16 — Electrician OTP, availability और सुरक्षित logout contract coverage
+- OTP login के phone validation, resend cooldown, signInWithOtp, busy-state cleanup और send-button restoration के source-contract assertions जोड़े।
+- OTP verification के SMS flow, token validation और busy-state cleanup के assertions जोड़े।
+- Availability change में approved-active profile gate, explicit confirmation, self-service RPC और failure पर buttons restore होने के assertions जोड़े।
+- Logout में active GPS watches clear करना, हर live-location server stop की पुष्टि, stop failure पर sign-out रोकना और Auth sign-out error handling के assertions जोड़े।
+- ये source-contract tests हैं; वास्तविक SMS/Auth, availability RPC, GPS/browser तथा live Supabase actor-isolation runtime अभी लंबित हैं। इस commit पर CI run उपलब्ध नहीं है।
+
+
+### 2026-11-16 — Electrician KYC duplicate-upload रोकथाम
+- KYC upload handler में global in-flight guard जोड़ा; एक दस्तावेज़ अपलोड रहते दूसरा KYC upload शुरू नहीं होगा।
+- अपलोड के दौरान KYC file inputs और upload/preview buttons अस्थायी रूप से disable होते हैं; completion/failure दोनों स्थितियों में उनकी पुरानी disabled state finally में restore होती है।
+- Regression source-contract test जोड़ा। यह browser/storage runtime test नहीं है; वास्तविक Storage RLS, duplicate-click fault-injection और mobile QA अभी लंबित हैं।
+
+
+### 2026-11-16 — Customer Profile avatar upload की uncertain-save cleanup
+- Avatar upload के बाद profile update RPC का transport response reject होने पर नया private Storage object orphan रह सकता था।
+- अब ऐसे uncertain result पर owner profile दोबारा पढ़ा जाता है; केवल तभी नया object हटता है जब authoritative profile में वही avatar path सेव न हो। Re-read विफल हो तो object delete नहीं किया जाता, ताकि सफल server-side save का avatar टूटे नहीं।
+- Source-contract regression test जोड़ा। वास्तविक Supabase Storage/RPC fault-injection और browser validation अभी लंबित हैं।
+
+
+### 2026-11-16 — Customer Support attachment uncertain-link cleanup
+- Support message में फ़ाइल upload होने के बाद attachment-link RPC का network response reject हो सकता था, जबकि Database में link सफलतापूर्वक commit हो चुका हो। पुराने catch में Storage object तुरंत delete हो जाता और committed attachment record टूटी हुई फ़ाइल की ओर संकेत कर सकता था।
+- अब cleanup से पहले complaint के authoritative attachment records दोबारा पढ़े जाते हैं। Object केवल सफल read में उसका link अनुपस्थित मिलने पर हटेगा; read विफल/अनिश्चित हो तो object सुरक्षित रखा जाएगा।
+- Source-contract regression test जोड़ा। वास्तविक Supabase RPC/Storage fault-injection, RLS और browser परीक्षण अभी लंबित हैं।
+
+
+### 2026-11-16 — Customer Saved Address default update refresh-result handling
+- `loadCustomerSavedAddresses()` अपनी त्रुटि स्वयं दिखाकर लौटता था, लेकिन `makeSelectedAddressDefault()` उसके बाद सफलता संदेश लिख देता था। इससे सूची रीफ़्रेश विफल होने पर भी उपयोगकर्ता को सफल refresh का गलत संकेत मिल सकता था।
+- Loader अब success/failure boolean लौटाता है। Default-address mutation के बाद refresh विफल हो तो UI स्पष्ट करता है कि update request सफल रही, लेकिन सूची रीफ़्रेश नहीं हुई; सफलता का गलत संदेश नहीं दिखता।
+- Source-contract regression test जोड़ा। वास्तविक Supabase RPC/browser fault-injection अभी लंबित है।
+
+
+### 2026-11-16 — Customer Saved Address delete uncertain-result reconciliation
+- Delete RPC का response network में खो जाने पर ऐप बिना जाँच के “पता नहीं हट सका” दिखा सकता था, जबकि server पर deletion commit हो चुका हो। सफल delete के बाद सूची refresh विफल होने पर भी पुराना code success message दिखा देता था।
+- अब successful RPC के बाद refresh result जाँचा जाता है। Rejected/uncertain RPC पर authoritative saved-address list दोबारा पढ़ी जाती है: पता अनुपस्थित हो तो deletion confirmed, मौजूद हो तो retry guidance, और read भी विफल हो तो स्थिति स्पष्ट न होने का सुरक्षित संदेश।
+- Source-contract regression test जोड़ा। वास्तविक Supabase RPC/network fault-injection और browser परीक्षण लंबित हैं।
+
+
+### 2026-11-16 — Customer Refund/Cancellation uncertain-response reconciliation
+- Refund request RPC या cancellation request RPC का network response reject होने पर पहले UI generic failure दिखा सकती थी, जबकि server transaction commit हो चुका हो सकता था। Blind retry से duplicate/गलत धारणा का जोखिम था।
+- अब catch path संबंधित owner-scoped list RPC पढ़ता है। Refund के लिए booking_id पर मौजूद request और उसका सुरक्षित status दिखता है; cancellation के लिए उसी booking का pending request खोजा जाता है। पुष्ट request मिलने पर refresh किया जाता है और कोई दूसरा write स्वतः नहीं भेजा जाता। List read भी विफल हो तो परिणाम स्पष्ट न होने का संदेश दिया जाता है।
+- दोनों flows के source-contract regression tests जोड़े। वास्तविक Supabase transport fault-injection, browser और RLS परीक्षण लंबित हैं।
+
+
+### 2026-11-16 — Customer Support complaint uncertain-response reconciliation
+- Complaint create RPC का response network में reject हो सकता है जबकि server पर complaint commit हो चुकी हो। पहले UI सीधे failure दिखाती और blind retry से duplicate complaint बन सकती थी।
+- अब catch path owner-scoped `srk_customer_list_booking_complaints` पढ़कर booking, category और exact description से matching complaint खोजता है। Match मिलने पर reference दिखता है, complaint list refresh होती है और कोई दूसरा create RPC नहीं भेजा जाता। List read भी विफल हो तो परिणाम अनिश्चित बताकर पहले सूची जाँचने को कहा जाता है। Daily limit error का अलग संदेश बरकरार है।
+- Source-contract regression test जोड़ा; वास्तविक Supabase/network fault-injection और browser परीक्षण लंबित हैं।
+
+
+### 2026-11-16 — Electrician Support ticket/message uncertain-response reconciliation
+- Support ticket create या reply RPC का response खो जाने पर UI सीधे failure दिखा सकती थी, जबकि server write commit हो चुका हो।
+- अब create से पहले owner-scoped ticket ID snapshot और reply से पहले thread message ID snapshot लिया जाता है। RPC response reject होने पर नई IDs, ticket metadata और exact electrician message body मिलाकर committed write खोजा जाता है। पुष्टि मिलने पर सफलता/refresh; नहीं मिलने या read विफल होने पर duplicate से बचने के लिए पहले Refresh करने की सलाह। Preflight list उपलब्ध न हो तो write भेजा ही नहीं जाता।
+- दो source-contract regression tests जोड़े; live Supabase transport fault-injection और browser tests लंबित हैं।
+
+
+### 2026-11-16 — Customer Saved Address save refresh-result handling
+- Saved-address RPC सफल होने के बाद सूची refresh असफल हो सकती थी; पुराने flow में refresh helper का false result अनदेखा करके UI पूर्ण सफलता दिखाती थी।
+- अब refresh परिणाम जाँचा जाता है। सूची refresh विफल हो तो UI स्पष्ट करता है कि सेव अनुरोध सफल था लेकिन सूची अपडेट नहीं दिखी; पूर्ण सफलता संदेश नहीं दिखता।
+- Source-contract regression test जोड़ा; live Supabase/browser testing लंबित।
+
+### 2026-11-16 — Electrician Profile नाम सेव के बाद Dashboard refresh partial-success handling
+- Profile नाम update RPC सफल होने के बाद Dashboard refresh विफल हो सकता था; पुराने catch में यह स्थिति गलत तरीके से “नाम अपडेट नहीं हो सका” दिखा सकती थी, जबकि नाम server पर सेव हो चुका होता।
+- अब नाम update सफल होने पर नाम UI में सेट और सफलता दर्ज होती है; refresh अलग से संभाला जाता है। Refresh विफल हो तो स्पष्ट partial-success संदेश दिखता है और उपयोगकर्ता को Dashboard Refresh करने को कहा जाता है। मूल save RPC विफल होने पर ही save-failure संदेश आता है।
+- Source-contract regression test जोड़ा; live Supabase/browser network fault-injection अभी लंबित है।
+
+### 2026-11-16 — Latest full Node CI green after customer/electrician lifecycle contract reconciliation
+- [x] Latest branch-head commit `3748004a72f0a929607c9d2e6343c0ea3d8a133b`, GitHub Actions run `43856680916`, job `133262646200`: **382/382 PASS, 0 FAIL, 0 cancelled**. Final TAP summary verified in job log.
+- [x] The previous 25 failures were investigated. The fixes align source-contract assertions with the implemented session-generation/request-key guards, guarded refresh outcomes, push-subscription rollback flow, and quoted live-location DOM selector. This is not a claim of live browser or Supabase runtime coverage.
+- [ ] Isolated PostgreSQL/Supabase + pgTAP execution, live browser/auth/Storage/Push fault-injection, Preview/mobile QA, and owner visual acceptance remain pending. PR #8 remains open, draft, and unmerged. Vercel Preview is still rate-limited; Netlify deploy-preview status is pending at this checkpoint.
+- **Progress remains 27/39 = 69%**; no additional Master Checklist completion item is counted from a source-contract CI pass alone.
+
+### 2026-11-16 — Exact current PR-head Node CI re-verification
+- [x] Current PR #8 head `8061c8c36ffa74347c90acaa8589fc27740c34d8`, GitHub Actions push run `43856889579`, job `133263338180`: **382/382 PASS, 0 FAIL**. Final TAP summary and all workflow steps (checkout, Node 22 setup, dependency install, `npm test`) were verified in the job log.
+- [x] This exact-head run supersedes the earlier CI checkpoint at `3748004a72f0a929607c9d2e6343c0ea3d8a133b` / run `43856680916`; the earlier 25-failure state is not the current Node CI result.
+- [ ] PostgreSQL/Supabase pgTAP runtime, hosted schema parity, provider integration, browser/mobile QA and owner acceptance remain separate pending gates. No production migration, deployment, PR merge, payment/refund or provider action was performed.
+- **GPT-2 progress remains 27/39 = 69%**; Node source-contract CI success alone does not complete any remaining runtime checklist item.
+
+### 2026-11-16 — Legacy quotation retirement boundary regression coverage
+- [x] Rechecked Admin/Accounting source: Admin displays old quote fields read-only for historical bookings; legacy manual-payment RPC still requires completed + assigned + customer-approved historical quote and reconciles labour/materials. New-category bookings use separate immutable labour-bill settlement.
+- [x] Added regression tests to ensure legacy quote retirement drops only the live quote/work RPCs, preserves historical booking columns/rows and legacy manual-payment RPC, and keeps old manual settlement quote-scoped while excluding new-category bookings.
+- [x] GitHub Actions run `43859093022`, job `133270886606`: **384/384 PASS, 0 FAIL** after the test additions.
+- [x] Dependency map updated with the safe retirement boundary and source/runtime verification limits.
+- [ ] Isolated PostgreSQL/Supabase pgTAP execution remains pending; existing SQL test files (18 legacy payment/receipt checks and 15 new-category accounting bridge checks) were not executed in this step.
+- **GPT-2 progress remains 27/39 = 69%**. Source-contract tests and documentation do not count the pending isolated runtime work as complete.
+
+
+### 2026-11-16 — Migration replay harness audit and exact-head CI
+- [x] Rechecked current branch's Supabase test setup: `supabase/config.toml` is absent; Node test script runs `tests/*.test.js` only; pgTAP plan-count test is a static count check, not SQL execution.
+- [x] Existing `.github/workflows/supabase-schema-ci.yml` is not suitable for GPT-2 isolated tests: it is manually dispatched, branch-guarded to another branch, requires a hosted DB schema-export secret, applies only five unrelated/older migrations, and has no `supabase test db` step. It was not dispatched or modified.
+- [x] Updated migration replay gate document with this exact harness finding; no schema or migration order was changed.
+- [x] Latest PR #8 head `0755c94a28239a7a20e11a2490d93b75540d57c1`, GitHub Actions run `43859720987`, job `133273045255`: **384/384 PASS, 0 FAIL, 0 cancelled**. Final TAP summary verified from the job log.
+- [ ] PostgreSQL/Supabase migration replay and pgTAP runtime remain NOT RUN. Authoritative baseline, early `is_srk_admin()`/ `amount_paid` dependency order, and duplicate `20261109` remote history remain unresolved.
+- **GPT-2 progress remains 27/39 = 69%**. This source-only CI pass does not close database/runtime checklist items. PR #8 remains open, draft, unmerged; no Production access, deployment, or merge.
+
+
+### 2026-11-16 — Consolidated database setup cross-check
+- [x] Checked `COMPLETE_DATABASE_SETUP.sql` as a second possible bootstrap source: it defines both distinct Admin helper names in separate sections, including `public.is_srk_admin()`, but has no `service_bookings.amount_paid` column in its base table definition.
+- [x] Confirmed the standalone `SUPABASE_SCHEMA.sql` starter definition also omits `amount_paid`; the late restore migration remains later than the earlier commission-reporting GRANT/consumers.
+- [ ] Helper provenance/order in the numbered migration lineage and authoritative canonical baseline remain unresolved. The source presence of a helper in a manual consolidated setup file is not proof that a clean migration replay creates it before the first dependent migration.
+- No SQL/setup file changed, no database was accessed, and no runtime test was run. **Progress remains 27/39 = 69%.**
+
+
+### 2026-11-16 — Concrete migration dependency map
+- [x] Mapped early `is_srk_admin()` consumers: booking-read policy migration `20261108234000` and GPS/admin RPC migration `20261109001000`; consolidated setup has the function, but no authoritative numbered-migration bootstrap placement is proven.
+- [x] Mapped `amount_paid` consumers: `20261109003000` commission report and the same-prefix quote migration trigger reference it before the late `20261116200000` add-column migration. This confirms the clean-replay ordering blocker from source inspection.
+- [x] Clarified `20261110140000` only adds `customer_suggested_amount` and `electrician_quote_kind`; it is not a repair for `amount_paid` or the legacy quote fields.
+- [ ] Obtain sanitized authoritative migration-ledger evidence for the two `20261109` files; then establish approved baseline, pin isolated PostgreSQL/Supabase CLI, replay in disposable DB and run 18 + 15 pgTAP assertions.
+- No SQL migration was changed or reordered; no remote database access or SQL execution. **Progress remains 27/39 = 69%.**
+
+
+### 2026-11-16 — Existing database CI harness safety gate
+- [x] Inspected `.github/workflows/supabase-schema-ci.yml`: wrong branch gate, remote `SUPABASE_DB_URL` schema export, old unrelated five-migration list, no current full-chain replay and no target pgTAP execution.
+- [x] Confirmed `package.json` currently runs Node tests only; repository has no checked-in `supabase/config.toml` or local pgTAP runner declaration.
+- [ ] Do not run/adapt remote-export workflow. First approve canonical baseline and duplicate timestamp history; then create a separate fully local-only pinned Supabase/pgTAP workflow using synthetic fixtures and both target suites.
+- No workflow was run or changed; no secret or database was accessed. **Progress remains 27/39 = 69%.**
+
+
+### 2026-11-16 — pgTAP suite coverage boundary review
+- [x] Read both target SQL suites directly: legacy payment/receipt has 18 assertions; new-category accounting bridge has 15 assertions. Both use a transaction and rollback and mainly inspect installed function definitions, existence, grants and metadata.
+- [x] Recorded that these 33 assertions are source-contract checks, not behavioural end-to-end payment tests. They do not seed synthetic booking/payment rows or invoke the RPCs to verify duplicate/concurrent settlement, trigger effects, injected-failure rollback, or persisted ledger reconciliation.
+- [x] Counted 32 SQL test files under `supabase/tests/database`; documented the extra fixture/runtime prerequisites and missing behavioural test cases in the migration replay gate document.
+- [ ] Still require approved canonical baseline, local Supabase/PostgreSQL + pgTAP runner, complete ordered replay, and separate synthetic behavioural tests. Neither target suite was executed in this source-only review.
+- No SQL, migration, workflow, or production database changed/accessed. **Progress remains 27/39 = 69%.**
+
+
+### 2026-11-16 — Customer booking status clarity and timeline error regression (main-branch reconciliation)
+- [x] Customer booking timeline partial-RPC error aggregation ठीक किया: सभी `timelineResults` की जाँच होती है, ताकि किसी एक timeline RPC की विफलता से पहले से लोड booking list सामान्य error state में न बदल जाए।
+- [x] `awaiting_work_start_approval` के लिए Customer-visible label जोड़ा: “काम शुरू करने के लिए आपकी मंजूरी प्रतीक्षित”.
+- [x] `tests/customer-electrician-booking-status-sync-contract.test.js` में दोनों व्यवहारों के regression source-contract checks मौजूद हैं।
+- [ ] इस feature-branch के exact merged head पर Node CI और browser/mobile runtime verification अभी अलग से आवश्यक है; main के पुराने 231/231 test run को इस head की validation नहीं माना जाएगा।
+- [ ] Cross-app automatic realtime service-booking status refresh अभी unverified है; manual/action refresh और Electrician job-offer/profile subscriptions इसका प्रमाण नहीं हैं।
+
+
+### 2026-11-17 — GPT-1 resume audit: refund RPC correction and exact-head CI
+
+- पुनःजाँचा गया exact PR #8 head: `5bb05585406b726c11d8d24c1aea736a95d66635`। Current source blobs: `booking.html` = `d4acf0d51f693ec0d2ff5827e0411e3ca30149a2`; `electrician.html` = `0588cfe716e1e5c47690e826bbe2bb09a0c57bed`।
+- Customer portal में 25 distinct Supabase RPC calls और 3 API routes (`/api/create-booking`, `/api/create-order`, `/api/verify-payment`) हैं; Electrician portal में 23 distinct RPC calls और Push Edge Function caller है। `srk_create_sos_alert` दोनों में shared है; इसलिए कुल 47 distinct RPC names हैं।
+- **पहले दर्ज Customer refund CREATE RPC gap का correction:** इस exact branch पर `20261115100000_customer_refund_request_contract.sql` में `srk_customer_create_booking_refund_request(uuid,text)` की authoritative definition मौजूद है। UI के `p_booking_id` और `p_reason` arguments SQL signature से match करते हैं। `tests/customer-refund-ui-lifecycle.test.js` source contract और `customer_refund_request_contract.test.sql` में 17 structural pgTAP assertions भी मौजूद हैं। इसलिए 17 Nov की पहले वाली “definition नहीं मिली” टिप्पणी superseded है। pgTAP अभी इस note में executed नहीं माना गया है। GPT-2-owned SQL में कोई बदलाव नहीं किया।
+- इस pass में Customer profile/address, payment/refund, complaint/support, work-timer/cancellation, और Electrician dispatch/availability/location/KYC/profile/support/phone-change migrations की function declarations सीधे fetch करके जाँचीं। Previously mapped caller contracts मौजूद हैं; इससे live PostgreSQL execution, actor isolation या full clean migration replay सिद्ध नहीं होता।
+- Exact HEAD Node CI: run `44047022462`, job `133915140187`, **417/417 PASS, 0 FAIL, 0 skipped**। Combined status में Vercel और Netlify deploy-preview दोनों success हैं। यह branch preview/Node evidence है; Production deployment नहीं।
+- Direct client access inventory: Customer `service_bookings` read + private `srk-customer-avatars` / `srk-customer-support` Storage; Electrician `electrician_profiles`, `srk_electrician_payouts`, `srk_push_subscriptions`, `srk_wallet_bank_links`, `srk_wallet_ledger` reads/writes। इनकी RLS/Storage actor-isolation runtime पुष्टि GPT-2 baseline/DB gates के बाद होगी; विशेषकर electrician own-profile read policy की authoritative migration-baseline पुष्टि GPT-2 handoff है।
+- कोई Customer/Electrician source defect इस pass में प्रमाणित नहीं हुआ; कोई नया feature नहीं जोड़ा। GPT-1 progress checkbox count नहीं बढ़ाया गया। अगला सुरक्षित कार्य: direct-table/Storage policy-test mapping को GPT-2 handoff के साथ अंतिम करना, फिर DB replay/actor tests उपलब्ध होने पर browser acceptance; mobile QA अभी deferred।
+- कोई SQL/RLS, Production, payment/provider, Auth/Storage setting, deployment, merge या PR state नहीं बदली।
