@@ -541,3 +541,14 @@
 - [ ] Run Dart format/analyzer and Android build in CI/device; not yet performed.
 
 **Safety note:** This is an isolated prototype, not a live booking flow. Existing booking form, payment method and booking lifecycle remain unchanged.
+
+
+## 2I. Customer Dashboard picker placement (2026-11-21)
+
+- [x] Imported the isolated picker into Customer Dashboard and placed it below the founder banner, above the existing booking list.
+- [x] Selected category/task is displayed as a preview and confirmation snackbar; callback IDs are not sent to the backend.
+- [x] Existing floating “नई बुकिंग” action still opens the original `CustomerBookingFormPage`.
+- [x] Existing booking form, old service dropdown, `/api/create-booking` payload, payment dropdown and booking history are preserved unchanged.
+- [x] Re-fetched source confirms the picker is present and the existing booking form + submit endpoint remain present.
+- [ ] Flutter format/analyze and Android build still pending; no successful build is claimed.
+- [ ] Do not connect category selection to the live submit action until canonical backend category IDs, authoritative rates and verified-skill dispatch are delivered.
