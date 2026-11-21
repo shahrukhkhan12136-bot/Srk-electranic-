@@ -14,13 +14,13 @@ REVOKE ALL ON public.srk_master_payout_request_credits FROM PUBLIC,anon,authenti
 GRANT ALL ON public.srk_master_payout_request_credits TO service_role;
 
 -- Preserve the existing wallet projection and extend it with separately classified refund credits.
-DO $
+DO $$
 BEGIN
   IF to_regprocedure('public.srk_master_wallet_summary_before_cash_refund_credits()') IS NULL THEN
     ALTER FUNCTION public.srk_master_wallet_summary() RENAME TO srk_master_wallet_summary_before_cash_refund_credits;
   END IF;
 END;
-$;
+$$;
 CREATE OR REPLACE FUNCTION public.srk_master_wallet_summary()
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public,auth,pg_temp AS $$
