@@ -291,7 +291,30 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
             else Text((p['district'] ?? '').toString() + ', ' + (p['state'] ?? '').toString() + ' • PIN ' + (p['pincode'] ?? '').toString()),
             if (p != null) Padding(padding: const EdgeInsets.only(top: 8), child: Chip(avatar: Icon(active ? Icons.verified : Icons.info_outline), label: Text(active ? 'Approved और Active' : 'Inactive / Approval बाकी'))),
           ]))),
-          if (p != null) ...[
+          if (p == null || !active)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p == null ? 'इलेक्ट्रिशियन आवेदन' : 'प्रोफाइल सत्यापन / एक्टिवेशन बाकी',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      p == null
+                        ? 'आपका डैशबोर्ड खुल गया है। सेवाएँ और काम देखने की सुविधा उपलब्ध रहेगी। आवेदन, अनिवार्य आधार सत्यापन और स्किल जाँच पूरी होने तथा Admin की मंजूरी के बाद ही काम के ऑफर चालू होंगे।'
+                        : 'आपका डैशबोर्ड और प्रोफाइल उपलब्ध हैं। Admin की मंजूरी और Active स्थिति होने तक बुकिंग ऑफर स्वीकार करना, काम शुरू करना और काम पूरा करना बंद रहेगा।',
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('अभी काम के ऑफर, कोटेशन और काम की स्थिति वाले एक्शन उपलब्ध नहीं हैं।'),
+                  ],
+                ),
+              ),
+            ),
+          if (p != null && active) [
             Text('बुकिंग ऑफर', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Row(children: [
