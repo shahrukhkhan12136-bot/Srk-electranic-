@@ -534,3 +534,25 @@ Project checked: `Srk electranic` (ACTIVE_HEALTHY primary Supabase project). Onl
 - Example: ₹600 service + ₹400 materials → company commission ₹90; Technician payable ₹910 (₹510 labour share + ₹400 materials); customer total ₹1,000.
 - Legacy root `PORTAL_SCHEMA.sql` quoted_amount-based trigger is not the active production commission trigger found in catalog introspection.
 - No SQL writes, migration, payment, payout, deployment or schema change was performed.
+
+
+## 33. Commission trigger coverage — प्रस्तावित source fix (Production पर लागू नहीं)
+
+Production introspection में commission trigger `UPDATE OF status, payment_status, amount_paid, commission_rate` पर चलता मिला, जबकि उसका formula `service_charge` पढ़ता है। इसलिए paid+completed booking पर केवल service_charge update होने से `commission_amount` stale हो सकता है।
+
+### प्रस्तावित migration परिवर्तन
+- नई migration में `public.srk_calculate_booking_commission()` function को वही validation/formula रखते हुए replace करें।
+- Trigger को recreate करें ताकि UPDATE column list में `service_charge` भी शामिल हो:
+  `BEFORE INSERT OR UPDATE OF status, payment_status, amount_paid, commission_rate, service_charge ON public.service_bookings`.
+- Materials को trigger list में जोड़ने की जरूरत नहीं, क्योंकि commission formula materials पर निर्भर नहीं है।
+- Existing trigger का नाम/attachment पहले verify करें; migration idempotency और duplicate-trigger risk संभालें।
+- Regression tests: service_charge बदलने पर commission recalculate; materials_amount-only edit पर commission unchanged; payment/status/rate changes पर existing behavior preserved; unpaid/not-completed पर commission null; new booking पर rate 15.00.
+- Verify with read-only post-migration catalog inspection and controlled test fixture in non-production environment.
+
+### Safety gate
+- [x] Fix diagnosed and documented.
+- [ ] Proper new migration file create via Supabase CLI `supabase migration new` on approved source branch.
+- [ ] Run migration/test on TEST project first; inspect payout ledger side effects.
+- [ ] Review migration and test evidence.
+- [ ] Production application requires separate explicit approval.
+- No source SQL migration was created here because Supabase CLI migration generator was not available in this workflow. No production changes made.
