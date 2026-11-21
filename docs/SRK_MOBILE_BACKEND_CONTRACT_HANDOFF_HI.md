@@ -163,3 +163,30 @@ Please return, in writing:
 - Customer suggested-amount entry/display has been removed from the current UI.
 - Widget tests for six-category order, AC/Fridge task isolation and Cooler selection are committed but not yet executed.
 - No Dart analyzer, Flutter test run, Android build, CI run or physical-device test has yet been verified.
+
+## 10. Technician app — verified-skill offer and booking contract
+
+### Current frontend evidence (read-only audit, 21 Nov 2026)
+- Technician dashboard profile query currently reads only `id, display_name, state, district, pincode, active, verification_status`; it does not read a normalized approved-skill list.
+- Offer list/details are loaded from `job_offers`, `srk_get_my_offer_details` and legacy price-detail RPCs. The UI displays `service_type` and work details but does not independently verify category/subcategory/task eligibility.
+- The app must not treat the legacy free-text `electrician_profiles.skills` field as proof of Admin-approved category skill.
+- Therefore the current frontend cannot establish that an offer is category-safe. Eligibility must be enforced by backend dispatch and every offer/assignment RPC.
+
+### Required backend response contract (no schema or RPC change in this frontend task)
+1. Technician profile response should include a server-authoritative `verified_service_skills` collection. Each entry should carry stable `category_id`, `subcategory_id`, optional `task_id` and `skill_tier_id`, plus `verification_status`, `active`, `verified_at`, optional `valid_until`, and a display/catalogue version reference.
+2. Only skills with approved verification, active profile and active skill record may qualify. Pending, rejected, expired, paused or text-only skills must never qualify.
+3. Offer response should include the booking's canonical `category_id`, `subcategory_id`, optional `task_id` and required `skill_tier_id`, catalogue version, and a backend eligibility/authorization result. The backend must have already matched the exact required skill to the logged-in Technician.
+4. Offer inbox RPC must return only offers owned by the logged-in Technician and eligible under current verified skills. Do not rely on Flutter-side filtering as a security or dispatch control.
+5. Accept RPC must re-check current profile activation, skill approval/expiry, booking state, offer expiry and single-winner race atomically. A stale or revoked skill must cause a clear rejection, not assignment.
+6. Assigned-booking detail, work-start/status, material approval, completion and payment RPCs must re-check booking ownership and the required skill/authorization server-side. Hiding an ineligible card is not sufficient authorization.
+7. AC and Fridge must remain separate skill IDs. AC refrigerant/gas charging and sealed-system fridge repair require the relevant specialist task skill; a general AC/Fridge category flag is insufficient.
+8. Technician UI may show a read-only “आपकी सत्यापित सेवाएँ” list sourced from this response. It must not offer self-approval, skill editing, rate override or eligibility override. Skill application/review belongs to its separately authorized onboarding/Admin process.
+9. No matching verified skill must produce an explicit “इस काम के लिए आपकी सत्यापित skill उपलब्ध नहीं है” / no-eligible-technician outcome from backend. Never silently fall back to another trade/category.
+10. Keep the existing offer accept/decline, map, authorized customer contact, work-status, cash confirmation and earnings flows unless their replacement contract is implemented and tested. Quote-dependent lifecycle remains separately blocked as already recorded above.
+
+### Frontend implementation gate
+- Do not add a client-side category filter against free-text skills or guessed profile columns.
+- Do not add a new Supabase select field or RPC name until backend publishes the exact deployed schema and response shape.
+- Once the contract is available, add typed parsing, empty/loading/error states, verified-skill display, offer-to-skill match presentation and widget tests. Treat missing/unknown IDs as non-eligible and fail closed.
+- Before enabling live offers, test approved, pending, rejected, expired and revoked skills; AC-vs-Fridge separation; specialist gas/sealed-system tasks; duplicate accept race; and reassignment after skill revocation.
+- No backend, SQL, database, production or payment code was changed by this audit.
