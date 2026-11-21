@@ -509,3 +509,28 @@ Privacy policy URL and in-app access; terms; support contact; data safety declar
 - For service ₹600 + materials ₹400: company commission ₹90; Technician labour share ₹510; materials remain separately accounted at ₹400 and attract 0% company fee.
 - Test paise rounding, zero/invalid labour, cash and Razorpay, refunds/chargebacks, duplicate/retried webhooks, historical bookings, and reconciliation of Admin commission report, Technician earnings and payout ledger.
 - Do not edit or apply production SQL until separately authorized. No payment/runtime code changed in this audit.
+
+
+## 32. Production commission/payout — read-only database evidence (21-11-2026)
+
+Project checked: `Srk electranic` (ACTIVE_HEALTHY primary Supabase project). Only catalog introspection and SELECT aggregates were executed.
+
+### Active definitions
+- BEFORE INSERT `guard_new_booking()` sets `commission_rate=15.00`, `commission_amount=NULL`; new bookings cannot choose their own rate through this insert path.
+- `srk_calculate_booking_commission()` is attached BEFORE INSERT OR UPDATE OF status, payment_status, amount_paid, commission_rate. On completed + paid with service_charge it calculates `round(service_charge * commission_rate / 100, 2)`; materials are excluded.
+- `srk_create_electrician_payable()` is attached AFTER INSERT OR UPDATE OF payment_status, status, quote_status, service_charge, materials_amount, assigned_electrician_id, payment_verified_at, razorpay_payment_id, amount_paid. It calculates commission on service only and Technician payable as service + materials − commission. Materials therefore receive 0% company commission and are passed through in full to Technician payable.
+
+### Live aggregate check (no identifiers/customer data returned)
+- `service_bookings`: 1 total row; 1 row with commission_rate 15.00; 1 completed+paid.
+- `srk_electrician_payouts`: 1 row; 1 payout marked paid.
+- Commission amount mismatch against service_charge × persisted rate: 0.
+- Missing service_charge/rate among paid+completed: 0.
+- Payout platform_commission mismatch: 0.
+- Payout electrician_payable mismatch against service + materials − commission: 0.
+
+### Interpretation / limitations
+- This verifies active production definitions and the single currently present booking/payout row only. It is not statistical proof across future traffic or a large historical dataset.
+- Trigger coverage issue to review: commission trigger's UPDATE OF column list does not include `service_charge`, while payout trigger does. A later service_charge-only edit on a paid/completed booking could leave booking.commission_amount stale while payout recomputes. Review whether service_charge must be added to the commission trigger or edits must be prohibited after payment; do not alter production without explicit approval.
+- Example: ₹600 service + ₹400 materials → company commission ₹90; Technician payable ₹910 (₹510 labour share + ₹400 materials); customer total ₹1,000.
+- Legacy root `PORTAL_SCHEMA.sql` quoted_amount-based trigger is not the active production commission trigger found in catalog introspection.
+- No SQL writes, migration, payment, payout, deployment or schema change was performed.
