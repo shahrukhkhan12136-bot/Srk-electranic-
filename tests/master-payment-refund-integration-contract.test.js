@@ -71,7 +71,7 @@ test('Master customer receipt reads only the immutable final bill and verified p
  assert.match(receipt,/srk_booking_final_bills/);
  assert.match(receipt,/material_items/);
  assert.match(receipt,/MASTER_FINAL_BILL_PAYMENT_RECONCILIATION_FAILED/);
- assert.match(receipt,/Preserve the historical single-Electrician and quote-era receipt contracts/);
+ assert.match(receipt,/Preserve the historical single-Electrician receipt contract from its immutable bill/);
 });
 
 test('modified payment serverless endpoints have valid JavaScript syntax',()=>{
