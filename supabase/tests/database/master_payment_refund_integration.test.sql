@@ -1,10 +1,11 @@
 BEGIN;
-SELECT plan(12);
+SELECT plan(13);
 SELECT has_table('public','srk_master_booking_payments','Master collection has its own immutable final-bill-linked payment record');
 SELECT has_table('public','srk_master_technician_payables','each Technician receives a separate payable record');
 SELECT has_table('public','srk_master_payment_events','Master payment and refund actions are auditable events');
 SELECT has_function('public','srk_service_role_record_master_online_payment',ARRAY['uuid','text','text','bigint']::text[]);
 SELECT has_function('public','srk_admin_record_master_manual_payment',ARRAY['uuid','text','text','text']::text[]);
+SELECT has_function('public','srk_customer_get_payment_receipt',ARRAY['uuid']::text[]);
 SELECT has_trigger('public','srk_master_payment_events','srk_master_payment_events_append_only');
 SELECT has_trigger('public','service_bookings','srk_master_refund_payable_state_sync');
 SELECT has_trigger('public','srk_razorpay_refunds','srk_master_refund_failure_release');
