@@ -14,6 +14,7 @@ test('Technician application read includes skill IDs and Customer workday read i
 test('Master Technician presence is owner-scoped and Admin dispatch controls are guarded',()=>{
  assert.match(migration,/srk_technician_get_my_presence/);
  assert.match(migration,/srk_customer_get_master_final_bill/);
+ assert.match(migration,/technician_name/);
  assert.match(migration,/srk_customer_list_master_booking_team/);
  assert.match(migration,/last_location_at/);
  assert.match(migration,/total_due_paise/);
