@@ -1538,3 +1538,14 @@ Founder ने बाजार-दर तुलना के बाद नीच
 - [ ] Azamgarh और आसपास के स्थानीय कारीगरों से वास्तविक quotation लेकर दरों की अगली समीक्षा करना बाकी।
 - [ ] Customer और Technician ऐप में नई दरें दिखाना तथा booking/timer/final bill के साथ सही rate mapping और tests करना बाकी। Catalogue update अपने-आप live booking या payment behavior नहीं बदलता।
 
+## 2BP. Customer picker — catalogue skill-level और task preview (21-11-2026)
+
+- [x] Customer picker अब shared catalogue की प्रत्येक category की अपनी `skillLevels` सूची पढ़ता है; एक जैसी संख्या या नाम hardcode नहीं किए गए।
+- [x] चुनी category के skill levels और चुने हुए level की catalogue task list preview में दिखती है।
+- [x] Category बदलने पर पिछला skill-level और task चयन साफ होता है।
+- [x] Widget test जोड़ा: Electrician के चार मौजूदा levels/tasks दिखना और category बदलने पर पुराना task हटना।
+- [x] बदलाव केवल Customer picker preview में है; पुराना booking form, API payload, payment, dispatch और backend contract नहीं बदले।
+- [ ] Skill-level ID को shared Customer → booking → Technician selection contract में जोड़ना और backend owner से canonical IDs/version की पुष्टि लेना बाकी है। इसलिए skill-level चुनने पर अभी booking selection callback जानबूझकर `null` रहता है; इसे live booking या dispatch न मानें।
+- [ ] Electrician के `Expert Electrician` parent के अंदर `Normal Wiring` और `Project Wiring` nested विकल्प तथा उनकी अलग-अलग rates picker में दिखाना अभी बाकी है।
+- [ ] Flutter format, analyzer, widget test execution और Android build अभी नहीं चले; source commit/test addition को passing test/build न बताएं।
+- Commit: `b746ccf897af2f54c610f3bbc0785b84c2b6f151` (picker), `209fc0abd154383527c730a3729e5df8120d47b5` (test), `6d829bd3156fe7a7ecccd5fc2b8a67c1f8dca45c` (test type correction).
