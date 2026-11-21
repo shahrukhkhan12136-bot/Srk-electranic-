@@ -8,13 +8,14 @@ test('Master wallet and payout migration exposes canonical technician RPCs',()=>
 });
 test('Payout request snapshots every payable and is idempotent',()=>{
  assert.match(sql,/UNIQUE\(technician_id,idempotency_key\)/);
- assert.match(sql,/UNIQUE\(payable_id\)/);
+ assert.match(sql,/PRIMARY KEY\(payout_request_id,payable_id\)/);
  assert.match(sql,/payout_status='requested'/);
  assert.match(sql,/PAYOUT_REQUEST_ALREADY_OPEN/);
 });
 test('Online payout is blocked until company settlement evidence exists',()=>{
  assert.match(sql,/COMPANY_RAZORPAY_SETTLEMENT_NOT_CONFIRMED/);
  assert.match(sql,/PAYOUT_REQUEST_NOT_PENDING_REVIEW/);
+ assert.match(sql,/PAYOUT_REQUEST_MUST_BE_APPROVED_FIRST/);
  assert.match(sql,/m\.payment_method='razorpay'/);
  assert.match(sql,/srk_master_company_settlements/);
 });
