@@ -10,6 +10,11 @@ Feature branch: `feature/master-technician-payment-cycle-20261121`
 
 These are source-only changes. They have not been applied to any database. No live Razorpay order/payment/refund/payout was created.
 
+## Automatic final-bill issuance
+
+- Customer-confirmed Master completion, final Technician daily ledger insertion, and customer material approval/rejection each retry final-bill creation.
+- Expected not-ready states (missing last ledger row, an unstopped workday, or pending material decision) defer issuance without blocking the booking/customer action. The final bill is issued automatically once all prerequisites are satisfied.
+
 ## Online payment
 
 - `create-order.js` identifies canonical Master bookings using `srk_service_category_code`.
