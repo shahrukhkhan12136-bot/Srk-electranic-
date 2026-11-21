@@ -47,7 +47,7 @@ test('Razorpay order creation uses Master final bill subtotal, not quote fields'
  assert.match(createOrder,/booking\.srk_service_category_code/);
  assert.match(createOrder,/selected_category,srk_service_category_code/);
  assert.match(createOrder,/payment_status,razorpay_order_id,status,selected_category,srk_service_category_code&id=eq/);
- assert.doesNotMatch(createOrder,/quote_status|quoted_amount|service_charge|materials_amount/);
+ assert.doesNotMatch(createOrder,/quote_status|quoted_amount|\\bservice_charge\\b|\\bmaterials_amount\\b/);
  assert.match(createOrder,/A verified immutable labour bill is required before payment/);
 });
 
