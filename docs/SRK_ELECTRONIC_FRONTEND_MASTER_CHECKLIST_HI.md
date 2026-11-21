@@ -1368,3 +1368,26 @@
 - [ ] Preserve existing OTP, offer response, assigned booking, work status, earnings and wallet summary behavior while implementing the approved onboarding flow.
 
 **Implementation decision:** The current Flutter app is not yet compliant with the newly clarified electrician onboarding flow. A frontend-only form cannot safely complete the requirement because the existing application contract lacks mandatory Aadhaar verification and structured skill/task approval, and the wallet has no verified technician top-up flow. Do not fake submission, KYC, approval, Technician ID, wallet credit, or task eligibility. First prepare the UI against a versioned approved contract; backend/database/payment changes remain outside this frontend branch scope unless separately authorized.
+
+
+## 2BF. Electrician level catalogue reconciliation — prevent incorrect skill/rate mapping (21-11-2026)
+
+### Owner-approved UI level names
+- Electrician skill selection must present exactly these three top-level levels: **Basic, Commercial, Master**.
+- Each level must expand to its own complete task checklist. Electrician selects every task they can perform; selected tasks remain self-declared until Electric Admin verifies them and approves them individually (or approves an explicitly defined verified group).
+- Customer-facing Electrician selection must use only admin-approved level + task combinations. The customer's selected task must match an active electrician's approved skill/task mapping.
+
+### Existing catalogue mismatch found during source audit
+- Current `packages/srk_mobile_core/lib/srk_service_catalog.dart` lists Electrician rate levels as **Basic, Expert Residential, Factory / Large Project, Master** (four entries), which does not match the owner's latest three-level naming.
+- Do not silently rename, merge, discard, or reassign the existing Expert Residential / Factory-Large Project rates to Commercial. Their intended mapping and the Commercial 8-hour base rate must be confirmed against the approved rate schedule before displaying or calculating a Commercial rate.
+- Do not invent missing task lists for Basic / Commercial / Master. First map every existing Electrician task to the intended level(s) and retain all existing task capabilities; if a task is approved for more than one level, represent that explicitly.
+- Electrician's technician-facing rate list must show the approved 85% payable amount for each applicable category on an 8-hour basis and 1.5x overtime after 8 hours, only where the underlying approved rate and overtime basis are known. Never expose the company's 15% in the pre-completion rate-list view.
+
+### Safe implementation sequence
+- [ ] Reconcile the three owner-approved level names with the four legacy catalogue rate entries without losing any approved rate or capability.
+- [ ] Build a complete level → task checklist from approved task data; no guessed or blank placeholder tasks presented as real skills.
+- [ ] Store selected skills as structured IDs only after an approved backend contract exists; preserve per-task admin verification and activation gates.
+- [ ] Display the electrician's 85% 8-hour and overtime rates only from a versioned approved rate snapshot; show full gross/85%/15% accounting only in the authorized completion-time view.
+- [ ] Add regression tests for legacy profiles, all three levels, multi-level tasks, admin approval, inactive gating, and rate visibility permissions.
+
+**Scope and safety:** This finding is documentation/audit only. No rate values, task mappings, backend schema, dispatch eligibility, wallet balance, KYC status, or payment behavior were changed. Do not claim the application form or skill workflow is implemented until the secure server contract and UI are both complete.
