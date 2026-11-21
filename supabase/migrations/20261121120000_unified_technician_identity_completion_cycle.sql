@@ -81,6 +81,52 @@ JOIN public.srk_technician_profile_links l
 WHERE b.assigned_electrician_id IS NOT NULL
 ON CONFLICT (booking_id, technician_id) DO NOTHING;
 
+-- Keep the legacy electrician offer/assignment path compatible while new
+-- category-neutral assignment RPCs are introduced. Every legacy assignment
+-- is represented by the same canonical Technician ID used by the new ledger.
+CREATE OR REPLACE FUNCTION public.srk_sync_legacy_electrician_assignment()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  v_technician_id uuid;
+BEGIN
+  IF NEW.assigned_electrician_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT l.technician_id INTO v_technician_id
+  FROM public.srk_technician_profile_links l
+  WHERE l.electrician_profile_id=NEW.assigned_electrician_id;
+
+  IF v_technician_id IS NULL THEN
+    RAISE EXCEPTION 'LEGACY_ELECTRICIAN_PROFILE_HAS_NO_CANONICAL_TECHNICIAN_LINK'
+      USING ERRCODE='23503';
+  END IF;
+
+  INSERT INTO public.srk_booking_technician_assignments
+    (booking_id, technician_id, service_category_snapshot, assignment_status, assigned_at)
+  VALUES (
+    NEW.id, v_technician_id,
+    COALESCE(NULLIF(NEW.selected_category,''), NULLIF(NEW.service_type,''), 'legacy_electrician'),
+    CASE WHEN NEW.status='completed' THEN 'completed' ELSE 'assigned' END,
+    clock_timestamp()
+  )
+  ON CONFLICT (booking_id, technician_id) DO NOTHING;
+
+  RETURN NEW;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.srk_sync_legacy_electrician_assignment() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS srk_sync_legacy_electrician_assignment ON public.service_bookings;
+CREATE TRIGGER srk_sync_legacy_electrician_assignment
+AFTER INSERT OR UPDATE OF assigned_electrician_id ON public.service_bookings
+FOR EACH ROW
+EXECUTE FUNCTION public.srk_sync_legacy_electrician_assignment();
+
 CREATE TABLE IF NOT EXISTS public.srk_technician_booking_counters (
   technician_id uuid PRIMARY KEY REFERENCES public.srk_technicians(id) ON DELETE RESTRICT,
   completed_booking_count bigint NOT NULL DEFAULT 0 CHECK (completed_booking_count >= 0),
