@@ -397,7 +397,7 @@ BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'TECHNICIAN_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
   IF p_application_id IS NULL OR p_document_type IS NULL OR p_document_type NOT IN ('identity_proof','address_proof','skill_certificate')
      OR p_storage_path IS NULL OR length(p_storage_path)>255
-     OR p_storage_path NOT LIKE v_uid::text||'/'||p_document_type||'/%'
+     OR left(p_storage_path,length(v_uid::text||'/'||p_document_type||'/'))<>v_uid::text||'/'||p_document_type||'/'
      OR position('..' in p_storage_path)>0 OR position(E'\\' in p_storage_path)>0
      OR p_storage_path ~ '[[:cntrl:]]'
      OR p_file_name IS NULL OR length(btrim(p_file_name)) NOT BETWEEN 1 AND 180
@@ -476,6 +476,10 @@ BEGIN
      OR length(v_note)>1000 THEN RAISE EXCEPTION 'INVALID_TECHNICIAN_KYC_REVIEW' USING ERRCODE='22023'; END IF;
   SELECT * INTO v_doc FROM public.srk_technician_kyc_documents WHERE id=p_document_id FOR UPDATE;
   IF NOT FOUND OR v_doc.review_status<>'pending' THEN RAISE EXCEPTION 'PENDING_TECHNICIAN_KYC_REVIEW_REQUIRED' USING ERRCODE='55000'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.srk_technician_applications a
+    WHERE a.id=v_doc.application_id AND a.status IN ('pending','under_review')) THEN
+    RAISE EXCEPTION 'OPEN_TECHNICIAN_APPLICATION_REQUIRED_FOR_KYC_REVIEW' USING ERRCODE='55000';
+  END IF;
   UPDATE public.srk_technician_kyc_documents SET review_status=p_review_status,
     admin_note=v_note,reviewed_at=clock_timestamp(),reviewed_by=auth.uid()
   WHERE id=v_doc.id;
@@ -757,6 +761,10 @@ BEGIN
   SELECT * INTO v_skill FROM public.srk_technician_application_skills
     WHERE id=p_application_skill_id FOR UPDATE;
   IF NOT FOUND OR v_skill.review_status='approved' THEN RAISE EXCEPTION 'UNAPPROVED_TECHNICIAN_SKILL_REVIEW_REQUIRED' USING ERRCODE='55000'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.srk_technician_applications a
+    WHERE a.id=v_skill.application_id AND a.status IN ('pending','under_review')) THEN
+    RAISE EXCEPTION 'OPEN_TECHNICIAN_APPLICATION_REQUIRED_FOR_SKILL_REVIEW' USING ERRCODE='55000';
+  END IF;
   UPDATE public.srk_technician_application_skills SET review_status=p_review_status,
     admin_note=v_note,reviewed_at=clock_timestamp(),reviewed_by=auth.uid()
   WHERE id=v_skill.id;
