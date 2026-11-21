@@ -35,6 +35,73 @@ void main() {
       expect(parsed.displayName, 'AC • AC Repair');
     });
 
+    test('accepts only IDs and labels from the matching shared draft catalogue', () {
+      final parsed = SrkVerifiedServiceSkill.fromDraftCatalogueServerJson({
+        'category_id': 'ac_fridge',
+        'subcategory_id': 'ac',
+        'task_id': 'ac_repair',
+        'category_label': 'गलत पुराना नाम',
+        'subcategory_label': 'गलत पुराना काम',
+        'task_label': 'गलत task label',
+        'catalogue_version': 'draft-2026-11-21.1',
+        'verification_status': 'approved',
+        'active': true,
+      }, now: now);
+
+      expect(parsed, isNotNull);
+      expect(parsed!.categoryLabel, 'AC + फ्रिज');
+      expect(parsed.subcategoryLabel, 'AC');
+      expect(parsed.taskLabel, 'AC रिपेयर');
+    });
+
+    test('rejects unknown category, subcategory, task and catalogue version', () {
+      Map<String, dynamic> canonical({
+        String categoryId = 'ac_fridge',
+        String subcategoryId = 'ac',
+        String taskId = 'ac_repair',
+        String version = 'draft-2026-11-21.1',
+      }) => {
+        'category_id': categoryId,
+        'subcategory_id': subcategoryId,
+        'task_id': taskId,
+        'category_label': 'AC + फ्रिज',
+        'subcategory_label': 'AC',
+        'task_label': 'AC रिपेयर',
+        'catalogue_version': version,
+        'verification_status': 'approved',
+        'active': true,
+      };
+
+      expect(
+        SrkVerifiedServiceSkill.fromDraftCatalogueServerJson(
+          canonical(categoryId: 'ac'),
+          now: now,
+        ),
+        isNull,
+      );
+      expect(
+        SrkVerifiedServiceSkill.fromDraftCatalogueServerJson(
+          canonical(subcategoryId: 'fridge'),
+          now: now,
+        ),
+        isNull,
+      );
+      expect(
+        SrkVerifiedServiceSkill.fromDraftCatalogueServerJson(
+          canonical(taskId: 'fridge_compressor'),
+          now: now,
+        ),
+        isNull,
+      );
+      expect(
+        SrkVerifiedServiceSkill.fromDraftCatalogueServerJson(
+          canonical(version: 'old-version'),
+          now: now,
+        ),
+        isNull,
+      );
+    });
+
     test('rejects pending, rejected and inactive skills', () {
       expect(
         SrkVerifiedServiceSkill.fromServerJson(
