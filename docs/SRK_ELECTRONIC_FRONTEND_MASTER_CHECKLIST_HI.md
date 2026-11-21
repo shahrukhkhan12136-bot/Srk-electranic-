@@ -552,3 +552,11 @@
 - [x] Re-fetched source confirms the picker is present and the existing booking form + submit endpoint remain present.
 - [ ] Flutter format/analyze and Android build still pending; no successful build is claimed.
 - [ ] Do not connect category selection to the live submit action until canonical backend category IDs, authoritative rates and verified-skill dispatch are delivered.
+
+
+## 2J. Customer category picker widget tests (2026-11-21)
+
+- [x] Added Flutter widget tests for the six-category order, AC-vs-Fridge task isolation, and Cooler Repair selection.
+- [x] Test source re-fetched from the approved feature branch.
+- [ ] Tests have NOT yet been executed; GitHub Actions workflow is manual-dispatch only and no workflow-dispatch action is available in this connection.
+- [ ] Dart analyzer, formatter, Android debug APK builds, and device testing remain outstanding.
