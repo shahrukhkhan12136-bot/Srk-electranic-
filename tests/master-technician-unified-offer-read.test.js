@@ -3,7 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const migration=fs.readFileSync('supabase/migrations/20261121310000_master_technician_unified_offer_read.sql','utf8');
+const migration=fs.readFileSync('supabase/migrations/20261122000000_master_technician_unified_offer_read.sql','utf8');
 const technician=fs.readFileSync('electrician.html','utf8');
 test('Unified offer read RPC preserves legacy offers and adds Master dispatch offers',()=>{
  assert.match(migration,/DROP FUNCTION IF EXISTS public\.srk_get_my_offer_details/);
