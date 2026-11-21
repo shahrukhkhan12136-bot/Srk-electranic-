@@ -75,6 +75,13 @@ Response में `fixed_labour_paise` और `unit_label` आएँगे। F
 8. Founder photo, OTP login, saved address, GPS/manual address, payment, idempotency, existing booking history और बाकी उपयोगी UI features सुरक्षित रखें।
 9. UI में customer phone field केवल verified Auth phone का readonly display रहे; API payload में phone भेजना आवश्यक नहीं।
 
+## Dispatch से Assigned Status
+- नई canonical category booking पहले उसी existing `service_bookings` row में `new` रहती है।
+- `srk_technician_dispatch_requests` पर requested और accepted Technician counts मिलते हैं।
+- सभी requested Technicians के accepted होने पर Feature Branch migration `20261121160000_master_booking_dispatch_assignment_status.sql` उसी booking row को guarded तरीके से `assigned` करती है।
+- केवल dispatch request का `assigned` status पर्याप्त नहीं; ग्राहक App और Technician App को booking status `service_bookings.status` से पढ़ना चाहिए।
+- Master service/rate snapshot fields booking creation के बाद immutable हैं।
+
 ## Booking snapshots
 नई Master booking में backend:
 - canonical category/skill/service
