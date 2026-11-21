@@ -1455,6 +1455,22 @@ Founder ने चारों स्तरों के नमूना का�
 - [ ] यह catalogue presentation data है; booking payload, dispatch eligibility, rates, backend schema या production behavior इस commit से नहीं बदले।
 - [ ] Factory/industrial/high-load कार्यों के लिए उपयुक्त योग्यता, प्रशिक्षण और सुरक्षित कार्य-प्रक्रिया आवश्यक है।
 
+## 2BL. Timer — मिनट के हिसाब से बिल और Lunch Auto-Resume (21-11-2026)
+
+Founder के नवीनतम निर्देश; पुराने Pause/Resume या timer व्यवहार के उल्लेख से टकराव होने पर यही नियम लागू होंगे:
+
+- [ ] Customer booking के समय चुने गए कारीगर/skill level का केवल प्रति घंटे का रेट दिखे — छोटा/Basic कारीगर हो या बड़ा/Expert/Master कारीगर; 8 घंटे का package amount इस hourly-rate display की जगह न दिखे।
+- [ ] Timer वास्तविक काम के मिनट गिने; सेवा शुल्क वास्तविक active minutes के आधार पर निकले, केवल पूरे घंटे के आधार पर नहीं। गणना का आधार: लागू hourly rate ÷ 60 × billable working minutes।
+- [ ] सामान्य Pause और Resume बटन/विकल्प नहीं होंगे।
+- [ ] Technician के पास **Lunch** बटन होगा। Lunch दबाने पर काम का timer अपने आप ठीक 1 घंटे के लिए रुकेगा।
+- [ ] Lunch शुरू होने के 1 घंटे बाद timer अपने आप फिर चालू होगा; Technician को Resume दबाने की जरूरत नहीं होगी।
+- [ ] Lunch के दौरान का 1 घंटा billable working minutes में शामिल न हो।
+- [ ] Customer और Technician दोनों को timer/status सही दिखे; Lunch शुरू होने और auto-resume होने का समय रिकॉर्ड हो।
+- [ ] Lunch auto-resume, app बंद/नेटवर्क बंद होने या device time बदलने पर भी server-authoritative समय से सुरक्षित तरीके से चले; client clock को billing authority न मानें।
+- [ ] प्रति-मिनट रकम की rounding/paise policy backend contract से तय और test हो; frontend अनुमान से rounding rule न बनाए।
+- [ ] पुराने checklist में मौजूद सामान्य Pause/Resume UI requirements इस नवीनतम Lunch-only नियम से superseded हैं; उन्हें लागू न करें।
+- [ ] वास्तविक Customer/Technician Timer UI, server-side minute calculation, Lunch auto-resume और boundary tests अभी implementation/test के लिए बाकी हैं।
+
 ## 2BK. Work Timer — केवल प्रति घंटे का रेट दिखाना (21-11-2026)
 
 Founder के निर्देश के अनुसार काम के live Timer के पास किसी भी wiring विकल्प में 8 घंटे का package amount नहीं दिखेगा। Timer पर केवल प्रति घंटे का लागू रेट दिखे:
