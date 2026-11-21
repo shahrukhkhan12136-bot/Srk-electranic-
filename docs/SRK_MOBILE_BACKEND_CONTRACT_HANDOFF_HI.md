@@ -237,3 +237,16 @@ Please return, in writing:
 7. Preserve or explicitly replace existing cancellation, complaints, privacy-guarded contacts, payment verification, earnings and wallet behaviors in the transition matrix.
 
 **Frontend gate:** Do not add Customer confirmation buttons or alter Technician status buttons against current RPCs. The exact replacement RPCs, payloads, states and error contracts must first be deployed/tested by backend owner. This audit changes no app runtime, backend, database, payment or production behavior.
+
+## 15. Proposed work-confirmation DTO and server-timer preview (21 Nov 2026)
+
+Frontend has added an isolated read-only DTO/test prototype only. The proposed names below are illustrative and are NOT a deployed API contract:
+
+- Proposed fields: `booking_id`, `request_id`, `requester_role`, `requested_action`, `state`, `server_requested_at`, `server_confirmed_at`, `server_started_at`, `server_completed_at`, `version`, `idempotency_key`.
+- Proposed preview states: `start_requested`, `start_confirmation_pending`, `start_confirmed`, `completion_requested`, `completion_confirmation_pending`, `completion_confirmed`, `disputed`. Unknown values fail closed.
+- Frontend may present a timer as active only if server confirmation and server start timestamps both exist and server completion timestamp is absent. It does not calculate elapsed time from the device clock.
+- Duplicate request recognition uses a non-empty booking ID + request ID pair only; backend must enforce idempotency transactionally.
+
+**Backend must publish before live integration:** exact RPC names and request/response/error JSON; authoritative state enum and transition matrix; customer-owner and assigned-technician authorization; skill revalidation; server timestamp source/meaning; optimistic version conflict rules; idempotency storage/retention and retry semantics; material approval separation; completion confirmation/dispute/timeout/Admin override; and historical quote-booking compatibility.
+
+Do not connect this prototype to Customer/Technician screens, buttons, Supabase queries or existing work-status RPCs yet. It does not authorize a transition or create a timer. Existing live booking, quote, payment, cash, map/contact, earnings and wallet paths remain untouched.
