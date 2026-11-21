@@ -408,3 +408,56 @@
 - [ ] Six-category catalog को मौजूदा form में जोड़ने से पहले backend category-specific dispatch/payload support verify/contract करना बाकी है। छह categories और AC/helper flow की approved details §2E-1 में दर्ज हैं; अधूरे rates/subcategories अनुमान से नहीं भरेंगे।
 
 **इस चरण में:** केवल Customer/Technician Flutter source और इसी feature branch की checklist बदली गई। Existing booking flow rebuild नहीं हुआ; backend, database, migrations, production settings, Admin web panel और main branch untouched हैं।
+
+
+### 2E-2. पूर्व बातचीत से पुनः सत्यापित पूर्ण catalog, subcategories और दरें
+
+यह अनुभाग §2E-1 की अधूरी/गलत दर-टिप्पणियों को **सुधारता और supersede करता है**। रकम केवल वहीं final लिखी गई है जहाँ user-approved context उपलब्ध है।
+
+**A. छह मुख्य categories और Customer booking navigation**
+1. **Electrician** — अंदर Basic, Expert Residential, Factory/Large Project और Master skill/rate level चुनें; helper उपलब्धता/rate level के अनुसार दिखे।
+2. **Plumber** — अंदर Basic, Expert और Master/Industrial level; helper optional।
+3. **Painter** — अंदर Basic, Expert और Master/Commercial level; helper Basic में नहीं, Expert/Master में optional।
+4. **AC + Fridge Technician** — पहले AC या Fridge चुनें।
+   - AC: AC Repair, Installation, Uninstallation, Servicing, Gas Charging, Leakage Check, Compressor, PCB।
+   - Fridge: Refrigerator Repair, Cooling Problem, Compressor, Gas/Leakage, PCB और Other Repair।
+   - AC और Fridge की skill verification अलग-अलग रहे; गैस/refrigerant और sealed-system work केवल verified trained specialist को assign हो।
+5. **Motor & Pump** — Domestic Tullu Pump, Pump Repair, Submersible Pump, Winding, Capacitor, Starter, Installation/Removal।
+6. **Cooler** — Cooler Repair। Motor winding का काम Cooler की ₹500 fixed labour में शामिल नहीं; वह Motor & Pump HP rate पर अलग booking/line item होगा।
+
+**B. User-approved labour rates**
+- **Electrician**
+  - Basic: ₹100/hour; Basic helper rate अभी final नहीं।
+  - Expert Residential: ₹1,000/8 hours; helper सहित ₹1,500/8 hours (helper add-on ₹62.50/hour)।
+  - Factory/Large Project: ₹400/hour; helper सहित ₹550/hour (helper add-on ₹150/hour)।
+  - Master: ₹700/hour; helper सहित ₹950/hour (helper add-on ₹250/hour)।
+- **Plumber** (materials, pipe और fittings अलग)
+  - Basic ₹100/hour; optional helper ₹50/hour; combined ₹150/hour।
+  - Expert ₹150/hour; optional helper ₹75/hour; combined ₹225/hour।
+  - Master/Industrial ₹225/hour; optional helper ₹100/hour; combined ₹325/hour।
+- **Painter**
+  - Basic ₹700/8 hours (₹87.50/hour); Basic helper नहीं।
+  - Expert ₹900/8 hours (₹112.50/hour); helper ₹75/hour।
+  - Master/Commercial ₹1,200/8 hours (₹150/hour); helper ₹100/hour।
+- **AC Technician:** ₹437/hour approved. AC helper rate अलग से final/confirmed नहीं; ₹150/hour का पूर्व उल्लेख assistant summary में था, इसलिए इसे लागू न करें जब तक owner approval स्पष्ट न हो।
+- **Fridge:** ₹150/hour और helper ₹75/hour का पूर्व उल्लेख मिला, लेकिन यह वर्तमान retrieved evidence में user-approved rate के रूप में पुष्ट नहीं; इसे final price के रूप में न दिखाएँ।
+- **Motor & Pump winding:** fixed labour by HP; hourly/overtime नहीं:
+  - 0.5 HP ₹500; 1 HP ₹600; 1.5 HP ₹700; 2 HP ₹800; 3 HP ₹900;
+  - 5 HP ₹1,000; 7.5 HP ₹1,100; 10 HP ₹1,200; 15 HP ₹1,300; 20 HP ₹1,400.
+  - Above 20 HP rate unconfirmed; अनुमान से price न दिखाएँ।
+- **Cooler Repair:** ₹500 fixed labour per cooler; parts/materials separate with customer approval. Cooler motor winding अलग Motor & Pump HP rate से।
+- **Materials/parts:** labour rates में शामिल नहीं; अलग itemization और customer approval के बाद ही जोड़ें।
+
+**C. Duration and booking option placement**
+- Hourly/day-based work में चुने गए skill tier और helper के आधार पर duration/total दिखे; approved rules में booking duration 1 hour से 50 days तक दर्ज है। HP winding और fixed ₹500 Cooler Repair पर hourly multiplication/overtime लागू न करें।
+- Helper अलग top-level service नहीं है; वह relevant service booking के अंदर optional team add-on है। जिस level/category में helper rate confirm नहीं, वहाँ helper price/total अनुमान से न दिखाएँ।
+- Technician app में वही service skills/categories दिखें जिनकी उस Technician की profile/KYC/skill verification हुई है; Customer की पूरी service catalog list हर Technician को उपलब्ध न कराएँ। AC और Fridge skill eligibility अलग जाँची जाए।
+- Customer booking form में customer-suggested price नहीं होना चाहिए; rate system निर्धारित करेगा। Quote/counter-offer/approval/quote waiting screens/actions नए Customer और Technician apps में नहीं होने चाहिए। Material/parts का अलग customer approval quote नहीं है—यह अलग line-item approval है।
+- Customer से cash/online चुनवाने के बजाय payment policy server-side तय होनी चाहिए; मौजूदा create-booking API अभी customer-supplied payment_method स्वीकार करता है और default cash रखता है। Backend owner से payment-method assignment contract मिलने तक इस dropdown/payload को बिना coordinated backend change के न हटाएँ/न बदलें।
+
+**D. अभी बाकी contract/validation**
+- [ ] Customer app का current single Electrical-only dropdown ऊपर के छह category navigation में बदलना है, पर मौजूदा form/booking submit flow rebuild नहीं करना।
+- [ ] Technician onboarding/profile में category + subcategory skill verification और approved rate/helper capability का source-of-truth backend से चाहिए; वर्तमान Android profile केवल display_name, state, district, PIN, active और verification_status पढ़ता है।
+- [ ] Existing `create-booking.js` अभी `service_type` string को स्वीकार करता है; category/subcategory/helper/duration/HP structured fields और dispatch eligibility का contract backend owner से चाहिए।
+- [ ] Payment rotation rule का backend contract, booking-count scope और API-generated payment_method अभी verified नहीं; current Customer dropdown को तब तक न हटाएँ जब तक backend default/response व्यवहार तय न हो।
+- [ ] Quote-free lifecycle, material approval, payment order/verification/webhook और cash confirmation के नए RPC/API contracts backend owner से चाहिए; उसके बाद ही quote screens/actions पूर्ण रूप से हटाएँ।
