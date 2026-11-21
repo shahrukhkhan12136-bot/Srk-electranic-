@@ -44,7 +44,7 @@ test('Master refund uses final bill rather than legacy quote and blocks Technici
 test('Razorpay order creation uses Master final bill subtotal, not quote fields',()=>{
  assert.match(createOrder,/srk_booking_final_bills\?select=subtotal_paise,labour_amount_paise,materials_amount_paise/);
  assert.match(createOrder,/booking\.srk_service_category_code/);
- assert.match(createOrder,/srk_service_category_code,srk_service_category_code/);
+ assert.match(createOrder,/selected_category,srk_service_category_code/);
 });
 
 test('Customer payment verification records captured Master payment through service-only RPC',()=>{
