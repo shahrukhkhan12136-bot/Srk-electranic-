@@ -65,6 +65,9 @@ class SrkServiceCategory {
   });
 }
 
+/// Draft catalogue version. IDs are local proposal keys, not deployed backend IDs.
+const String srkServiceCatalogDraftVersion = 'draft-2026-11-21.1';
+
 /// Six approved top-level categories, in the owner's requested order.
 ///
 /// Rates intentionally omit unconfirmed prices. Materials/parts are separate
@@ -156,17 +159,17 @@ const List<SrkServiceCategory> srkServiceCatalog = [
         SrkServiceTask(id: 'servicing', name: 'सर्विसिंग'),
         SrkServiceTask(id: 'gas_charging', name: 'गैस चार्जिंग'),
         SrkServiceTask(id: 'leakage_check', name: 'लीकेज जाँच'),
-        SrkServiceTask(id: 'compressor', name: 'कंप्रेसर'),
-        SrkServiceTask(id: 'pcb', name: 'PCB'),
+        SrkServiceTask(id: 'ac_compressor', name: 'कंप्रेसर'),
+        SrkServiceTask(id: 'ac_pcb', name: 'PCB'),
       ], rates: [
         SrkServiceRate(label: 'AC Technician', amount: '₹437', unit: 'प्रति घंटा'),
       ], note: 'Installation, Uninstallation, Repair, Servicing, Gas Charging, Leakage Check, Compressor और PCB'),
       SrkServiceOption(id: 'fridge', name: 'Fridge', displayName: 'फ्रिज', tasks: [
         SrkServiceTask(id: 'fridge_repair', name: 'फ्रिज रिपेयर'),
         SrkServiceTask(id: 'cooling_problem', name: 'कूलिंग समस्या'),
-        SrkServiceTask(id: 'compressor', name: 'कंप्रेसर'),
-        SrkServiceTask(id: 'gas_leakage', name: 'गैस / लीकेज'),
-        SrkServiceTask(id: 'pcb_other_repair', name: 'PCB और अन्य मरम्मत'),
+        SrkServiceTask(id: 'fridge_compressor', name: 'कंप्रेसर'),
+        SrkServiceTask(id: 'fridge_gas_leakage', name: 'गैस / लीकेज'),
+        SrkServiceTask(id: 'fridge_pcb_other_repair', name: 'PCB और अन्य मरम्मत'),
       ], note: 'Refrigerator Repair, Cooling Problem, Compressor, Gas / Leakage, PCB और Other Repair. अंतिम दर की पुष्टि बाकी है।'),
     ],
   ),
