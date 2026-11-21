@@ -763,3 +763,11 @@
 - [ ] Flutter format, analyzer, shared-core tests, Android build and device tests have not been run/verified.
 
 **सीमा:** यह साझा डेटा-मॉडल है, live integration नहीं। सर्वर ही booking status, customer ownership, technician assignment, skills, timer, bill total और payment eligibility का अंतिम प्राधिकरण रहेगा।
+
+
+## 2Z. Existing API inventory and cross-app map (2026-11-21)
+
+- [x] Added `docs/SRK_MOBILE_API_INVENTORY_AND_CROSS_APP_MAP_HI.md` with source-audited Customer/Technician RPC and HTTP inventory, legacy quote/payment dependencies, proposed quote-free API surface, shared DTO mapping and backend rollout gates.
+- [x] Clearly separates source-observed current calls from proposed, not-deployed API names.
+- [ ] Backend owner must confirm actual deployed routes/schema, permissions, response/error contracts and staging evidence before frontend integration.
+- [ ] No live API call, UI, booking, payment, database or production behavior changed; Flutter/Android verification remains pending.
