@@ -145,3 +145,23 @@ Backend owner से हर endpoint/RPC के लिए यह package चा�
 - Customer and Technician existing API calls remain unchanged.
 - No backend/database/payment/production changes were made.
 - Flutter tests, analyzer, formatter, APK build and device tests have not yet been executed/verified.
+
+## 9. Shared Customer → Booking → Technician service identity
+
+A shared frontend DTO now exists at `packages/srk_mobile_core/lib/srk_service_selection_contract.dart`:
+
+```json
+{
+  "catalogue_version": "draft-2026-11-21.1",
+  "category_id": "ac_fridge",
+  "subcategory_id": "ac",
+  "task_id": "gas_charging"
+}
+```
+
+- Customer Dashboard picker emits this DTO for preview; its IDs come from the shared service catalogue.
+- Technician offer-skill preview compares the same versioned IDs with a same-version parsed verified skill.
+- Category/subcategory/task hierarchy is validated; labels are display-only.
+- The draft version and IDs are not production/backend-approved identifiers.
+- Existing `POST /api/create-booking` does not receive these fields yet. Live booking form, create-booking payload, offer query and dispatch remain unchanged.
+- Backend contract required: approve a canonical catalogue version; validate and snapshot selection at booking creation; return normalized identity; copy exact identity to offers; publish verified skills with same IDs/version; enforce skill/assignment/ownership checks server-side on every protected transition.
