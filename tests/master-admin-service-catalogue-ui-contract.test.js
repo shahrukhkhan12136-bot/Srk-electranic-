@@ -42,3 +42,5 @@ test('Admin and Customer inline scripts parse',()=>{
   scripts.forEach((script,index)=>assert.doesNotThrow(()=>new vm.Script(script,{filename:name+'#'+index})));
  }
 });
+
+test('Customer cannot select a Helper when the active rate has no approved Helper price',()=>{assert.match(booking,/helperAvailable=!!hourly&&Number\(rate\?\.helper_hourly_paise\|\|0\)>0/);assert.match(booking,/helper\.disabled=!helperAvailable/);});
