@@ -97,13 +97,28 @@ void main() {
       expect(find.text('AC रिपेयर'), findsOneWidget);
       expect(find.text('फ्रिज रिपेयर'), findsNothing);
 
+      await tester.tap(find.text('AC रिपेयर'));
+      await tester.pump();
+      expect(
+        tester.widget<FilterChip>(find.byType(FilterChip).first).selected,
+        isTrue,
+      );
+
       await tester.tap(find.text('फ्रिज').first);
       await tester.pumpAndSettle();
       expect(find.text('फ्रिज रिपेयर'), findsOneWidget);
       expect(find.text('AC रिपेयर'), findsNothing);
+      expect(
+        tester.widget<FilterChip>(find.byType(FilterChip).first).selected,
+        isFalse,
+      );
 
       await tester.tap(find.text('फ्रिज रिपेयर'));
       await tester.pump();
+      expect(
+        tester.widget<FilterChip>(find.byType(FilterChip).first).selected,
+        isTrue,
+      );
       expect(selected, {
         'category': 'ac_fridge',
         'subcategory': 'fridge',
