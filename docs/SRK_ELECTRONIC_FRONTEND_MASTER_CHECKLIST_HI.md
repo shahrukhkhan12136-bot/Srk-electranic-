@@ -814,3 +814,18 @@
 - [ ] Flutter tests/analyzer/formatter/Android build अभी execute नहीं किए गए।
 
 **सीमा:** केवल preview helper और test जोड़े। Existing offer list, accept/reject, booking lifecycle, Supabase queries/RPC, payments, database और production unchanged।
+
+## 2AD. Customer चयन से Technician offer तक साझा Service Selection Contract (2026-11-21)
+
+- [x] Shared Core में `SrkServiceSelection` DTO जोड़ा और `srk_mobile_core.dart` से export किया।
+- [x] DTO में एक ही catalogue version, category_id, optional subcategory_id और optional task_id हैं; Hindi labels केवल display के लिए हैं।
+- [x] `toJson()` backend contract के लिए versioned ID payload देता है; labels को authoritative ID की तरह नहीं भेजता।
+- [x] DTO factory category → subcategory → task hierarchy को shared catalogue से validate करती है; गलत/अनजान IDs पर null।
+- [x] Customer Dashboard picker अब वही DTO emit करता है; AC/Fridge tasks के IDs अलग-अलग हैं।
+- [x] Technician offer preview उसी `toJson()` payload को समान-version verified skill से match करने का cross-app test रखता है।
+- [ ] यह अभी preview है। Existing `/api/create-booking` payload में जोड़ना, live booking form बदलना या offer query/filter बदलना नहीं किया।
+- [ ] Backend को catalogue version/IDs approve करके booking create response और offer/verified-skill payload में समान canonical fields देना होगा।
+- [ ] Backend rollout, legacy booking compatibility, idempotency और server-side skill/ownership checks के बाद ही live integration।
+- [ ] Flutter tests/analyzer/formatter/Android build अभी execute नहीं किए गए।
+
+**सीमा:** Existing booking form, booking submit payload, dispatch, quote/payment lifecycle, Supabase/RPC, database और production unchanged।
