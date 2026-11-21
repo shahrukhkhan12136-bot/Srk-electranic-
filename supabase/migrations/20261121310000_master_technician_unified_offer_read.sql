@@ -13,7 +13,7 @@ RETURNS TABLE(
  srk_rate_level_code text,srk_rate_version_snapshot text,srk_billing_model_snapshot text,
  srk_duration_minutes integer,srk_service_quantity integer,srk_required_technician_count smallint,
  srk_helper_included_snapshot boolean,srk_estimated_labour_paise bigint,
- workday_id uuid,workday_status text,workday_elapsed_seconds numeric,workday_lunch_ends_at timestamptz,
+ workday_id uuid,workday_date date,workday_status text,workday_elapsed_seconds numeric,workday_lunch_ends_at timestamptz,
  workday_normal_seconds numeric,workday_overtime_seconds numeric
 )
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $function$
@@ -47,7 +47,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $function$
   CASE WHEN b.assigned_electrician_id=p.id AND b.status IN
    ('assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected',
     'awaiting_work_start_approval','in_progress','completed','cancelled') THEN b.quote_note ELSE NULL END,
-  'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+  'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
  FROM public.job_offers o
  JOIN public.electrician_profiles p ON p.id=o.electrician_id
  JOIN public.service_bookings b ON b.id=o.booking_id
@@ -71,7 +71,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $function$
   b.srk_service_code,b.srk_rate_level_code,b.srk_rate_version_snapshot,b.srk_billing_model_snapshot,
   b.srk_duration_minutes,b.srk_service_quantity,b.srk_required_technician_count,
   b.srk_helper_included_snapshot,b.srk_estimated_labour_paise,
-  w.id,w.status,
+  w.id,w.work_date,w.status,
   CASE WHEN w.status='running' THEN w.accumulated_work_seconds+
     greatest(extract(epoch FROM (clock_timestamp()-w.running_started_at)),0)
    WHEN w.status='lunch_paused' THEN 14400 ELSE w.accumulated_work_seconds END,
