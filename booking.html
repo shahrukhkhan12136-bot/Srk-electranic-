@@ -1420,9 +1420,19 @@ function renderCustomerMasterFinalBillMarkup(row,bill){
  const money=customerMasterMoneyPaise;
  const items=Array.isArray(bill.material_items)?bill.material_items:[];
  const itemsHtml=items.length?'<p><b>Customer-approved Materials:</b></p>'+items.map(i=>'<p class="small">'+customerEsc(i.name)+' · '+customerEsc(i.quantity)+' × '+money(i.unit_price_paise)+' = '+money(i.line_total_paise)+'</p>').join(''):'';
- const paid=String(row.payment_status||'').toLowerCase()==='paid';
- const payment=paid?'<p><b>Payment:</b> Verified &amp; Paid</p>':String(row.payment_method||'').toLowerCase().includes('razorpay')?'<button type="button" onclick="customerPayMasterBooking(\''+customerEsc(row.id)+'\')">🔒 Final Bill Razorpay से भुगतान करें</button>':String(row.payment_method||'').toLowerCase().includes('cash')?'<p class="small">यह Cash Booking है। Final Due राशि Technician को नकद दें; Admin verification के बाद Paid स्थिति अपडेट होगी।</p>':'';
+ const paymentStatus=String(row.payment_status||'').toLowerCase(),paid=paymentStatus==='paid',refunded=paymentStatus==='refunded';
+ const payment=paid?'<p><b>Payment:</b> Verified &amp; Paid</p>':refunded?'<p><b>Payment:</b> Refund Processed — Admin ने Refund दर्ज कर दिया है।</p>':String(row.payment_method||'').toLowerCase().includes('razorpay')?'<button type="button" onclick="customerPayMasterBooking(\''+customerEsc(row.id)+'\')">🔒 Final Bill Razorpay से भुगतान करें</button>':String(row.payment_method||'').toLowerCase().includes('cash')?'<p class="small">यह Cash Booking है। Final Due राशि Technician को नकद दें; Admin verification के बाद Paid स्थिति अपडेट होगी।</p>':'';
+ const invoiceButton=bill.tax_treatment!=='unregistered'&&(paid||refunded)?'<button type="button" onclick="customerLoadMasterTaxInvoice(\''+customerEsc(row.id)+'\')">GST Invoice / Credit Note देखें</button><div id="masterTaxInvoice_'+customerEsc(row.id)+'"></div>':'';
  return '<div class="job"><b>Master Final Bill</b><p>Labour: <b>'+money(bill.labour_amount_paise)+'</b></p><p>Materials: <b>'+money(bill.materials_amount_paise)+'</b></p>'+itemsHtml+'<p>Taxable Value: '+money(bill.taxable_value_paise)+'</p><p>CGST: '+money(bill.cgst_paise)+' · SGST: '+money(bill.sgst_paise)+' · IGST: '+money(bill.igst_paise)+'</p><p>Total GST: '+money(bill.total_tax_paise)+'</p><p><b>Total Due: '+money(bill.total_due_paise)+'</b></p><p class="small">Rate Version: '+customerEsc(bill.rate_version||'—')+' · GST Treatment: '+customerEsc(bill.tax_treatment||'unregistered')+'</p>'+payment+'</div>';
+}
+async function customerLoadMasterTaxInvoice(bookingId){
+ if(!customerSb||!bookingId)return;
+ const box=document.getElementById('masterTaxInvoice_'+bookingId);if(box)box.textContent='GST Invoice / Credit Note लोड हो रहा है…';
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_get_master_tax_invoice',{p_booking_id:bookingId});if(error)throw error;
+  const inv=data?.invoice||{},credit=data?.credit_note||null;
+  if(box)box.innerHTML='<div class="job"><b>GST Tax Invoice:</b> '+customerEsc(data.invoice_number||inv.invoice_number||'—')+'<br><b>Issued:</b> '+customerEsc(data.issued_at||'—')+'<br><b>Supplier:</b> '+customerEsc(inv.legal_name||'—')+' · GSTIN: '+customerEsc(inv.gstin||'—')+'<br><b>Place of Supply:</b> '+customerEsc(inv.place_of_supply_state_code||'—')+' · '+customerEsc(inv.tax_treatment||'—')+'<br><b>Taxable Value:</b> '+customerMasterMoneyPaise(inv.taxable_value_paise)+'<br>CGST: '+customerMasterMoneyPaise(inv.cgst_paise)+' · SGST: '+customerMasterMoneyPaise(inv.sgst_paise)+' · IGST: '+customerMasterMoneyPaise(inv.igst_paise)+'<br><b>Total GST:</b> '+customerMasterMoneyPaise(inv.total_tax_paise)+'<br><b>Invoice Total:</b> '+customerMasterMoneyPaise(inv.total_due_paise)+(credit?'<hr><b>Credit Note:</b> '+customerEsc(credit.credit_note_number)+'<br>'+customerEsc(credit.reason)+'<br><b>Credit Amount:</b> '+customerMasterMoneyPaise(credit.amount_paise):'')+'</div>';
+ }catch(e){if(box)box.textContent='GST Invoice / Credit Note अभी उपलब्ध नहीं है। Registered GST और Payment स्थिति जाँचें।';}
 }
 async function customerPayMasterBooking(bookingId){
  if(!bookingId||paymentBusy)return;
