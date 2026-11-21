@@ -221,7 +221,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <label for="masterTechnicianCount">कितने Technician चाहिए? (1–10)</label>
     <input id="masterTechnicianCount" type="number" min="1" max="10" step="1" value="1">
     <label style="display:flex;align-items:center;gap:8px"><input id="masterHelperIncluded" type="checkbox" style="width:18px;height:18px"> हर Technician के साथ एक अलग Helper भी चाहिए</label>
-    <small class="small">उदाहरण: 2 Technician + Helper चुनने पर 2 अलग Helper (कुल 4 कर्मचारी) की व्यवस्था होगी।</small>
+    <small class="small">उदाहरण: 2 Technician + Helper चुनने पर 2 अलग Helper (कुल 4 कर्मचारी) की व्यवस्था होगी।</small><small id="masterHelperAvailabilityNote" class="small"></small>
    </div>
    <div id="masterQuantityControls" hidden>
     <label for="masterServiceQuantity">कितनी Unit / Item?</label>
@@ -852,10 +852,10 @@ function renderCustomerMasterRateList(){
   const hourly=r.billing_model==='hourly';
   return '<tr><td><b>'+customerEsc(customerMasterCategoryLabels[r.category_code]||r.category_code)+'</b><br>'+customerEsc(r.service_name)+'<br><small>'+customerEsc(r.level_label)+'</small></td>'+
    '<td>'+(hourly?customerMasterMoney(r.technician_hourly_paise):'—')+'</td>'+
-   '<td>'+(hourly?customerMasterMoney(r.helper_hourly_paise):'—')+'</td>'+
+   '<td>'+(hourly?(Number(r.helper_hourly_paise)>0?customerMasterMoney(r.helper_hourly_paise):'—'):'—')+'</td>'+
    '<td>'+(hourly?customerMasterMoney(Number(r.technician_hourly_paise)+Number(r.helper_hourly_paise)):'—')+'</td>'+
    '<td>'+(hourly?customerMasterMoney(Number(r.technician_hourly_paise)*8):'—')+'</td>'+
-   '<td>'+(hourly?customerMasterMoney(Number(r.helper_hourly_paise)*8):'—')+'</td>'+
+   '<td>'+(hourly?(Number(r.helper_hourly_paise)>0?customerMasterMoney(Number(r.helper_hourly_paise)*8):'—'):'—')+'</td>'+
    '<td>'+(hourly?customerMasterMoney((Number(r.technician_hourly_paise)+Number(r.helper_hourly_paise))*8):customerMasterMoney(r.fixed_labour_paise)+' / '+customerEsc(r.unit_label))+'</td></tr>';
  }).join('')+'</tbody></table></div>';
 }
@@ -867,7 +867,10 @@ function updateMasterBookingControls(){
  if(quantity)quantity.hidden=!!hourly||!rate;
  const qty=document.getElementById('masterServiceQuantity');if(qty)qty.required=!!rate&&!hourly;
  const hours=document.getElementById('durationHours');if(hours)hours.required=!!hourly;
- const helper=document.getElementById('masterHelperIncluded');if(helper&&!hourly)helper.checked=false;
+ const helper=document.getElementById('masterHelperIncluded'),helperNote=document.getElementById('masterHelperAvailabilityNote');
+ const helperAvailable=!!hourly&&Number(rate?.helper_hourly_paise||0)>0;
+ if(helper){helper.disabled=!helperAvailable;if(!helperAvailable)helper.checked=false;}
+ if(helperNote)helperNote.textContent=hourly&&!helperAvailable?'इस Rate Level पर Helper Rate निर्धारित नहीं है; अभी केवल Technician बुक किया जा सकता है।':helperAvailable?'इस Rate Level पर हर Technician के साथ एक अलग Helper चुना जा सकता है।':'';
  updateLabourEstimate();
 }
 async function loadCustomerMasterRates(){
