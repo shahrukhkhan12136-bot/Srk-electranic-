@@ -578,3 +578,16 @@ Production introspection में commission trigger `UPDATE OF status, payment
 - Public routines में केवल push/offer test संबंधित 5 functions मिलीं; commission, wallet या payout संबंधित public routine नहीं मिली।
 - निष्कर्ष: TEST project अभी commission regression के लिए तैयार नहीं है। पहले approved branch की पूरी migration chain और सुरक्षित baseline को TEST में स्थापित/सत्यापित करना होगा। इसे remote reset करके ठीक करने का प्रयास नहीं करना है; `db reset --linked` destructive है।
 - जब तक baseline पूरा नहीं, commission migration apply न करें और test pass का दावा न करें। Production untouched है; Production पर कोई SQL query या बदलाव इस निरीक्षण में नहीं किया गया।
+
+
+## 36. Production commission/payout trigger — पुनः read-only सत्यापन (21-11-2026)
+
+- Production project पर केवल catalog और aggregate read-only SQL चलाया गया; कोई booking/customer identifier या व्यक्तिगत रिकॉर्ड output नहीं लिया गया।
+- Active commission trigger definition: `BEFORE INSERT OR UPDATE OF status, payment_status, amount_paid, commission_rate`। Function का commission formula `round(service_charge * commission_rate / 100, 2)` है; materials formula में शामिल नहीं हैं।
+- कमीशन trigger की UPDATE OF सूची में `service_charge` शामिल नहीं है। इसलिए बाद में केवल service_charge बदलने पर booking का commission_amount refresh नहीं होगा।
+- Active payout trigger `service_charge` और `materials_amount` दोनों पर fire होता है। उसका function केवल `payout_status='pending'` होने पर existing payout row update करता है; paid payout row को upsert filter से overwrite नहीं करता। फिर भी paid booking पर amount changes की स्पष्ट reconciliation/guard policy अभी database में सिद्ध नहीं हुई।
+- Payout formula source: commission = service labour × persisted commission_rate; electrician_payable = service labour + materials − commission. Materials पर platform commission नहीं।
+- Aggregate snapshot: 1 completed+paid booking, persisted rate 15%; 1 payout row with paid status. उस एक payout row में 15% service-only formula match हुआ और booking commission बनाम payout commission mismatch 0 था।
+- यह केवल 1 row का snapshot है; historical/future bookings की population-wide correctness का प्रमाण नहीं है।
+- Required safe fix: `service_charge` को commission calculation trigger dependency में शामिल करें, लेकिन paid/settled financial snapshot को स्वतः rewrite न करें। Paid row में service/material amount edit को block या Admin-audited reconciliation queue में डालने का contract तय हो; pending/unpaid state के लिए ही safe recalculation की अनुमति हो। `materials_amount` अकेले commission trigger को fire न करे।
+- TEST project अभी baseline-incomplete है (देखें §35); इसलिए इस Production source finding पर अभी migration apply नहीं हुई। No Production DDL/DML or payment/payout mutation.
