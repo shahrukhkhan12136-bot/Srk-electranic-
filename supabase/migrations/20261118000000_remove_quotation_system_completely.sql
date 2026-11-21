@@ -516,6 +516,15 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_admin_finance_dashboard(text,date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_finance_dashboard(text,date) TO authenticated;
 
+-- Rebind the payable trigger without references to retired booking columns.
+DROP TRIGGER IF EXISTS trg_srk_create_electrician_payable ON public.service_bookings;
+CREATE TRIGGER trg_srk_create_electrician_payable
+AFTER INSERT OR UPDATE OF
+  payment_status,status,assigned_electrician_id,payment_verified_at,
+  razorpay_payment_id,amount_paid
+ON public.service_bookings
+FOR EACH ROW EXECUTE FUNCTION public.srk_create_electrician_payable();
+
 -- The archive is the only surviving home for legacy price/quotation fields.
 -- Remove those fields from the active booking table after all dependent RPCs
 -- have been switched to immutable bills or the read-only archive.
