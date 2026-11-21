@@ -87,7 +87,7 @@ Master hourly bookings के लिए पुराना Electrician-only time
 - Daily Technician labour ledger में Technician और चुने गए Helper की normal/overtime रकम अलग-अलग snapshot होती है; ledger append-only/immutable है। Replaced Technician जिसने billable work किया है, booking completion पर उसका completion counter भी गिना जाता है।
 - ये RPCs और schema अभी Feature Branch source हैं; DB पर लागू नहीं किए गए हैं।
 
-**अभी integration बाकी:** Helper count/charges का booking-level स्पष्ट snapshot, सभी daily Technician labour entries का consolidated Final Bill, customer-approved materials, Cash/Razorpay collection, refund और accounting reconciliation. इन चरणों के बिना Master Booking flag चालू नहीं होगा।
+**अभी integration बाकी:** सभी daily Technician + selected Helper labour entries का consolidated Final Bill, customer-approved materials, Cash/Razorpay collection, refund और accounting reconciliation. इन चरणों के बिना Master Booking flag चालू नहीं होगा।
 
 ## Dispatch से Assigned Status
 - नई canonical category booking पहले उसी existing `service_bookings` row में `new` रहती है।
