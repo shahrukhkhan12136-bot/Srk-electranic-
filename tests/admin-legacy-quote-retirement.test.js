@@ -1,97 +1,40 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const admin=fs.readFileSync(path.join(root,'admin.html'),'utf8');
+const bookingApi=fs.readFileSync(path.join(root,'create-booking.js'),'utf8');
+const orderApi=fs.readFileSync(path.join(root,'create-order.js'),'utf8');
+const verifyApi=fs.readFileSync(path.join(root,'verify-payment.js'),'utf8');
+const webhook=fs.readFileSync(path.join(root,'razorpay-webhook.js'),'utf8');
+const archiveMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261115210000_legacy_manual_payment_and_itemized_receipt.sql'),'utf8');
+const adminMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261115230000_admin_booking_direct_write_closure.sql'),'utf8');
+const quoteRetirement=fs.readFileSync(path.join(root,'supabase/migrations/20261115220000_retire_live_legacy_quotation_rpcs.sql'),'utf8');
 
-const admin = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8');
-
-test('Admin booking table exposes status confirmation only for unassigned legacy new bookings', () => {
-  assert.match(admin, /!x\.selected_category&&x\.status==='new'&&!x\.assigned_electrician_id/);
-  assert.match(admin, /केवल पुरानी नई बुकिंग को Confirm करें/);
-  assert.match(admin, /स्थिति: '\+esc\(x\.status\)/);
-  assert.doesNotMatch(admin, /\['new','confirmed','assigned','in_progress','completed'\]\.map\(s=>/);
+test('Customer booking API accepts no quote amount and does not write quote fields',()=>{
+ assert.doesNotMatch(bookingApi,/quoted_amount|quote_status|service_charge|materials_amount/);
 });
 
-test('Admin keeps historical quote fields display-only and does not expose quote editing controls', () => {
-  const quoteCellStart = admin.indexOf('<strong>पुराना Quote:</strong>');
-  const quoteCellEnd = admin.indexOf('</td>', quoteCellStart);
-  assert.notEqual(quoteCellStart, -1, 'historical quote cell must exist');
-  assert.notEqual(quoteCellEnd, -1, 'historical quote cell must be bounded');
-  const quoteCell = admin.slice(quoteCellStart, quoteCellEnd);
-  assert.match(quoteCell, /ऐतिहासिक रिकॉर्ड केवल पढ़ने के लिए/);
-  assert.doesNotMatch(quoteCell, /<(?:input|select|button)\b|onclick=/i);
+test('Payment order, verification and webhook use immutable bills and reject quote-era bookings',()=>{
+ for(const source of [orderApi,verifyApi,webhook])assert.doesNotMatch(source,/quote_status|quoted_amount|service_charge|materials_amount|approved quote|कोटेशन/);
+ assert.match(orderApi,/verified immutable labour bill/i);
+ assert.match(verifyApi,/पुरानी बुकिंग नए भुगतान सत्यापन के लिए पात्र नहीं है/);
+ assert.match(webhook,/Historical bookings without an immutable bill/);
 });
 
-test('Admin status confirmation remains guarded by the dedicated Main-Admin RPC', () => {
-  assert.match(admin, /booking\.status==='new'&&status==='confirmed'/);
-  assert.match(admin, /srk_admin_confirm_legacy_booking/);
-  assert.doesNotMatch(admin, /\.from\(['"]service_bookings['"]\)\.update\(/);
+test('Admin no longer displays or records legacy quotes or manual customer payments',()=>{
+ assert.doesNotMatch(admin,/quoted_amount|quote_status|service_charge|materials_amount|पुराना Quote|srk_admin_record_manual_payment|srk_admin_record_new_booking_cash_payment/);
+ assert.match(admin,/सत्यापित भुगतान/);
 });
 
-
-
-test('Read-only status display preserves the current value for the shared Save handler', () => {
-  assert.ok(
-    admin.includes(`<input type="hidden" id="st-'+x.id+'" value="'+esc(x.status)+'"><span class="tag">स्थिति: '+esc(x.status)`),
-    'non-editable status cell must retain its current status for Save'
-  );
-  const start = admin.indexOf('async function saveBookingInternal(id){');
-  const end = admin.indexOf('\n}', start);
-  assert.notEqual(start, -1, 'saveBookingInternal must exist');
-  const handler = admin.slice(start, end === -1 ? undefined : end);
-  assert.match(handler, /if\(status!==booking\.status&&!\( !booking\.selected_category&&booking\.status==='new'&&status==='confirmed'\)\)/);
-  assert.match(handler, /srk_admin_confirm_legacy_booking/);
-});
-
-test('Manual payment UI remains available without exposing arbitrary status transitions', () => {
-  assert.ok(admin.includes('id="pay-${x.id}"'));
-  assert.ok(admin.includes('id="manual-method-${x.id}"'));
-  assert.ok(admin.includes('id="ref-${x.id}"'));
-  assert.match(admin, /payment_status!==\(booking\.payment_status\|\|'unpaid'\)/);
-  assert.match(admin, /srk_admin_record_manual_payment/);
-  assert.match(admin, /srk_admin_record_new_booking_cash_payment/);
-  assert.doesNotMatch(admin, /\.from\(['"]service_bookings['"]\)\s*\.update\s*\(/);
-});
-
-
-test('Admin manual payment handler enforces booking, receipt, and Razorpay guards', () => {
-  const start = admin.indexOf('async function saveBookingInternal(id){');
-  const end = admin.indexOf('\n}', start);
-  assert.notEqual(start, -1, 'saveBookingInternal must exist');
-  const handler = admin.slice(start, end === -1 ? undefined : end);
-  assert.match(handler, /booking\.payment_status==='paid'&&payment_status!=='paid'/);
-  assert.match(handler, /payment_reference\.length<4\|\|payment_reference\.length>120/);
-  assert.match(handler, /booking\.status!=='completed'\|\|status!=='completed'/);
-  assert.match(handler, /razorpay_payment_id\|\|booking\.razorpay_order_id/);
-  assert.match(handler, /manual_method!=='cash'/);
-  assert.match(handler, /srk_admin_record_new_booking_cash_payment/);
-  assert.match(handler, /srk_admin_record_manual_payment/);
-  assert.doesNotMatch(handler, /\.from\(['"]service_bookings['"]\)\s*\.update\s*\(/);
-});
-
-const quoteRetirementMigration = fs.readFileSync(
-  path.join(__dirname, '..', 'supabase', 'migrations', '20261115220000_retire_live_legacy_quotation_rpcs.sql'),
-  'utf8'
-);
-const legacyManualPaymentMigration = fs.readFileSync(
-  path.join(__dirname, '..', 'supabase', 'migrations', '20261115210000_legacy_manual_payment_and_itemized_receipt.sql'),
-  'utf8'
-);
-
-test('Quote retirement removes live quote RPCs but preserves historical booking columns and manual-payment RPC', () => {
-  assert.match(quoteRetirementMigration, /DROP FUNCTION IF EXISTS public\.srk_submit_booking_quote/);
-  assert.match(quoteRetirementMigration, /DROP FUNCTION IF EXISTS public\.srk_customer_respond_booking_quote/);
-  assert.match(quoteRetirementMigration, /DROP FUNCTION IF EXISTS public\.srk_update_booking_work_status/);
-  assert.doesNotMatch(quoteRetirementMigration, /ALTER\s+TABLE\s+public\.service_bookings\s+DROP\s+COLUMN/i);
-  assert.doesNotMatch(quoteRetirementMigration, /DROP\s+TABLE\s+public\.service_bookings/i);
-  assert.doesNotMatch(quoteRetirementMigration, /DROP FUNCTION IF EXISTS public\.srk_admin_record_manual_payment/i);
-});
-
-test('Historical legacy payment remains limited to completed bookings with approved quote; new-category bookings use separate settlement', () => {
-  assert.match(legacyManualPaymentMigration, /selected_category is not null/);
-  assert.match(legacyManualPaymentMigration, /quote_status is distinct from 'approved'/);
-  assert.match(legacyManualPaymentMigration, /v_booking\.service_charge/);
-  assert.match(legacyManualPaymentMigration, /v_booking\.materials_amount/);
-  assert.match(legacyManualPaymentMigration, /v_booking\.quoted_amount/);
-  assert.match(legacyManualPaymentMigration, /NEW_CATEGORY_BOOKING_USES_DEDICATED_SETTLEMENT/);
+test('Historical amounts are archived privately and quote/manual-payment write RPCs are retired',()=>{
+ assert.match(archiveMigration,/CREATE TABLE IF NOT EXISTS srk_private\.legacy_booking_financial_evidence/);
+ assert.match(archiveMigration,/ON CONFLICT \(booking_id\) DO NOTHING/);
+ assert.match(archiveMigration,/DROP FUNCTION IF EXISTS public\.srk_admin_record_manual_payment/);
+ assert.match(archiveMigration,/legacy_booking_financial_evidence/);
+ assert.match(adminMigration,/DROP FUNCTION IF EXISTS public\.srk_admin_update_legacy_booking_quote/);
+ for(const rpc of ['srk_submit_booking_quote','srk_customer_respond_booking_quote','srk_update_booking_work_status']){
+  assert.match(quoteRetirement,new RegExp('DROP FUNCTION IF EXISTS public\\.'+rpc));
+ }
 });
