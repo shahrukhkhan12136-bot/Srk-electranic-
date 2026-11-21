@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS public.srk_booking_technician_workdays (
   lunch_ends_at timestamptz,
   lunch_break_taken boolean NOT NULL DEFAULT false,
   technician_hourly_paise_snapshot bigint NOT NULL CHECK (technician_hourly_paise_snapshot>0),
+  helper_hourly_paise_snapshot bigint NOT NULL DEFAULT 0 CHECK (helper_hourly_paise_snapshot>=0),
+  helper_included_snapshot boolean NOT NULL DEFAULT false,
   rate_version_snapshot text NOT NULL,
   stopped_at timestamptz,
   normal_work_seconds numeric(20,3),
@@ -61,11 +63,17 @@ CREATE TABLE IF NOT EXISTS public.srk_booking_technician_labour_ledger (
   technician_id uuid NOT NULL REFERENCES public.srk_technicians(id) ON DELETE RESTRICT,
   work_date date NOT NULL,
   technician_hourly_paise_snapshot bigint NOT NULL CHECK (technician_hourly_paise_snapshot>0),
+  helper_hourly_paise_snapshot bigint NOT NULL DEFAULT 0 CHECK (helper_hourly_paise_snapshot>=0),
+  helper_included_snapshot boolean NOT NULL DEFAULT false,
   normal_work_seconds numeric(20,3) NOT NULL CHECK (normal_work_seconds>=0),
   overtime_work_seconds numeric(20,3) NOT NULL CHECK (overtime_work_seconds>=0),
-  normal_amount_paise bigint NOT NULL CHECK (normal_amount_paise>=0),
-  overtime_amount_paise bigint NOT NULL CHECK (overtime_amount_paise>=0),
-  total_labour_paise bigint NOT NULL CHECK (total_labour_paise=normal_amount_paise+overtime_amount_paise),
+  technician_normal_amount_paise bigint NOT NULL CHECK (technician_normal_amount_paise>=0),
+  technician_overtime_amount_paise bigint NOT NULL CHECK (technician_overtime_amount_paise>=0),
+  helper_normal_amount_paise bigint NOT NULL CHECK (helper_normal_amount_paise>=0),
+  helper_overtime_amount_paise bigint NOT NULL CHECK (helper_overtime_amount_paise>=0),
+  technician_total_paise bigint NOT NULL CHECK (technician_total_paise=technician_normal_amount_paise+technician_overtime_amount_paise),
+  helper_total_paise bigint NOT NULL CHECK (helper_total_paise=helper_normal_amount_paise+helper_overtime_amount_paise),
+  total_labour_paise bigint NOT NULL CHECK (total_labour_paise=technician_total_paise+helper_total_paise),
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   UNIQUE(booking_id,technician_id,work_date)
 );
@@ -204,7 +212,8 @@ BEGIN
   END IF;
   INSERT INTO public.srk_booking_technician_workdays(
     booking_id,technician_id,work_date,technician_hourly_paise_snapshot,rate_version_snapshot
-  ) VALUES(p_booking_id,v_technician,v_date,b.srk_technician_hourly_paise_snapshot,b.srk_rate_version_snapshot)
+  ) VALUES(p_booking_id,v_technician,v_date,b.srk_technician_hourly_paise_snapshot,
+    COALESCE(b.srk_helper_hourly_paise_snapshot,0),COALESCE(b.srk_helper_included_snapshot,false),b.srk_rate_version_snapshot)
   RETURNING id INTO v_workday;
   INSERT INTO public.srk_booking_technician_work_events(workday_id,booking_id,technician_id,actor_user_id,event_type)
   VALUES(v_workday,p_booking_id,v_technician,v_uid,'start_requested');
@@ -402,7 +411,9 @@ CREATE OR REPLACE FUNCTION public.srk_customer_decide_workday(
 )
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_uid uuid:=auth.uid(); b public.service_bookings%rowtype; v_w record;
-  v_normal_amount bigint; v_overtime_amount bigint; v_total bigint; v_dispatch jsonb;
+  v_tech_normal_amount bigint; v_tech_overtime_amount bigint;
+  v_helper_normal_amount bigint; v_helper_overtime_amount bigint;
+  v_tech_total bigint; v_helper_total bigint; v_total bigint; v_dispatch jsonb;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'CUSTOMER_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
   IF p_decision NOT IN ('tomorrow','completed','replace_technician')
