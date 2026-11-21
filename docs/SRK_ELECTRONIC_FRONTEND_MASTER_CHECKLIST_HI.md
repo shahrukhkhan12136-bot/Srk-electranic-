@@ -39,6 +39,23 @@
 - [ ] Backend/DB में पुराने quote data/API/RPC/migrations को इस frontend बदलाव के कारण delete न करें।
 - [ ] पहले से बनी bookings/history को सुरक्षित रखें; पुराने records पर quote actions न दिखाएँ और कोई data/API/database delete न करें।
 
+## 2A. विस्तृत booking/quotation source audit — 2026-11-21
+
+- [x] Customer source में मौजूदा booking submit endpoint `/api/create-booking`, OTP session, customer booking list, cancel और complaint actions की पुष्टि।
+- [x] Customer booking form में नाम/फोन, पता, GPS, service, date/time, payment method और optional suggested amount मौजूद हैं; इसे आधार बनाकर रखना है।
+- [x] Customer booking card में quote status, labour/material total, approve/reject buttons और online payment को quote-approved status से बाँधने की पुष्टि।
+- [x] Technician source में existing offer inbox, accept/decline, assigned booking, map/contact, work status, cash confirmation, earnings और wallet की पुष्टि।
+- [x] Technician UI में quote details list, quote submission dialog/RPC, inspection-first action और quote-approved होने पर ही work-start action की पुष्टि।
+- [x] Current mobile branch के `create-booking.js` में `quoted_amount` optional input अभी भी मौजूद है।
+- [x] Current mobile branch migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` में quote columns/statuses, quote submission/customer response RPC और quote approval पर निर्भर work-start transition मौजूद हैं।
+- [ ] Backend owner/GPT-2 से quote-free booking lifecycle और material-approval API contract प्राप्त करें; frontend में केवल UI छिपाकर backend transition को अनुमान से न बदलें।
+- [ ] पुष्टि करें कि existing booking create endpoint और offer dispatch quote-free booking पर भी सुरक्षित रूप से काम करते हैं।
+- [ ] पुष्टि करें कि customer payment calculation/verification quote status पर निर्भरता के बिना approved booking total से कैसे चलेगी।
+- [ ] Legacy quote वाले पुराने bookings के read-only display और नए bookings के quote-free lifecycle को अलग रखें।
+- [ ] API contract मिलने के बाद ही UI source edit करें; backend migration/RPC/production में कोई बदलाव इस frontend कार्य में नहीं होगा।
+
+**महत्वपूर्ण dependency:** Quotation UI सिर्फ अलग स्क्रीन नहीं है। मौजूदा backend migration में booking status `assigned → inspection → awaiting_quote_approval → quote_approved → in_progress` और work-start अनुमति quote approval से जुड़ी है। इसलिए केवल buttons हटाकर status/RPC call बदलना सुरक्षित नहीं होगा। Backend contract/owner approval के बिना उस lifecycle को छेड़ना नहीं है।
+
 ## 3. Customer App — account और home
 - [ ] OTP login; भारतीय mobile number validation/normalization; resend cooldown; secure session handling।
 - [ ] पहली सफल login पर पूरा नाम लें; बाद की login पर सीधे Home।
@@ -206,3 +223,4 @@
 |---|---|---|---|---|
 | 2026-11-21 | प्रारंभिक source audit | कोई app source file नहीं बदली | GitHub source inspection; build अभी नहीं चलाया | In progress |\n| 2026-11-21 | CI scope correction | `.github/workflows/flutter-android-ci.yml` | Workflow re-fetched; Customer + Technician steps मौजूद, Admin references अनुपस्थित; CI run/build अभी नहीं किया | Complete (scope edit only) |
 | 2026-11-21 | Founder clarification: booking flow preservation | Checklist sections 1–4 | मौजूदा booking system को दोबारा नहीं बनाना; केवल quotation/अनावश्यक विकल्प हटाने और आवश्यक category/rate आदि सुधारने का निर्देश दर्ज | Complete (checklist correction only) |
+| 2026-11-21 | Detailed booking/quote dependency audit | Customer/Technician Flutter source, `create-booking.js`, quote migration | Existing booking, offer, cancellation, complaint, payment, map, work-status और quote dependencies दर्ज; backend contract के बिना lifecycle बदलाव रोकने का blocker दर्ज | Audit recorded; source changes pending |
