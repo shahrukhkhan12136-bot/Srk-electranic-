@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS public.srk_booking_tax_snapshots(
  company_profile_version integer NOT NULL,
  registration_status text NOT NULL CHECK(registration_status IN ('registered','unregistered')),
  supplier_gstin text,
+ supplier_legal_name text NOT NULL,
+ invoice_prefix text NOT NULL,
  supplier_state_code char(2),
  place_of_supply_state_code char(2) NOT NULL REFERENCES public.srk_gst_indian_state_codes(state_code),
  labour_amount_paise bigint NOT NULL CHECK(labour_amount_paise>0),
@@ -231,11 +233,11 @@ BEGIN
   ELSE 0 END;
  v_due:=NEW.subtotal_paise+v_cgst+v_sgst+v_igst;
  INSERT INTO public.srk_booking_tax_snapshots(
-  booking_id,final_bill_id,company_profile_version,registration_status,supplier_gstin,supplier_state_code,place_of_supply_state_code,
+  booking_id,final_bill_id,company_profile_version,registration_status,supplier_gstin,supplier_legal_name,invoice_prefix,supplier_state_code,place_of_supply_state_code,
   labour_amount_paise,materials_amount_paise,labour_taxable,labour_rate_basis_points,labour_taxable_value_paise,labour_cgst_paise,labour_sgst_paise,labour_igst_paise,
   materials_taxable,materials_rate_basis_points,materials_taxable_value_paise,materials_cgst_paise,materials_sgst_paise,materials_igst_paise,
   total_cgst_paise,total_sgst_paise,total_igst_paise,total_tax_paise,taxable_value_paise,gross_before_tax_paise,total_due_paise,tax_treatment
- ) VALUES(NEW.booking_id,NEW.id,c.version,c.registration_status,c.gstin,c.supplier_state_code,v_state,
+ ) VALUES(NEW.booking_id,NEW.id,c.version,c.registration_status,c.gstin,c.legal_name,c.invoice_prefix,c.supplier_state_code,v_state,
   NEW.labour_amount_paise,NEW.materials_amount_paise,coalesce(lr.taxable,false),coalesce(lr.gst_rate_basis_points,0),CASE WHEN coalesce(lr.taxable,false) THEN NEW.labour_amount_paise ELSE 0 END,v_lc,v_ls,v_li,
   coalesce(mr.taxable,false),coalesce(mr.gst_rate_basis_points,0),CASE WHEN coalesce(mr.taxable,false) THEN NEW.materials_amount_paise ELSE 0 END,v_mc,v_ms,v_mi,
   v_cgst,v_sgst,v_igst,v_cgst+v_sgst+v_igst,v_taxable,NEW.subtotal_paise,v_due,v_treatment);
@@ -255,9 +257,9 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'BOOKING_TAX_SNAPSHOT_REQUIRED'; END IF;
  SELECT * INTO c FROM public.srk_gst_company_profiles WHERE id=1;
  SELECT * INTO b FROM public.service_bookings WHERE id=NEW.booking_id;
- v_number:=c.invoice_prefix||'-'||to_char(clock_timestamp() AT TIME ZONE 'Asia/Kolkata','YYYY')||'-'||lpad(nextval('public.srk_master_tax_invoice_number_seq')::text,8,'0');
+ v_number:=t.invoice_prefix||'-'||to_char(clock_timestamp() AT TIME ZONE 'Asia/Kolkata','YYYY')||'-'||lpad(nextval('public.srk_master_tax_invoice_number_seq')::text,8,'0');
  v_snapshot:=jsonb_build_object('invoice_number',v_number,'booking_id',NEW.booking_id,'payment_id',NEW.id,
-  'legal_name',c.legal_name,'gstin',t.supplier_gstin,'registration_status',t.registration_status,
+  'legal_name',t.supplier_legal_name,'gstin',t.supplier_gstin,'supplier_state_code',t.supplier_state_code,'registration_status',t.registration_status,
   'place_of_supply_state_code',t.place_of_supply_state_code,'tax_treatment',t.tax_treatment,
   'labour_amount_paise',t.labour_amount_paise,'materials_amount_paise',t.materials_amount_paise,'labour_taxable_value_paise',t.labour_taxable_value_paise,
   'labour_rate_basis_points',t.labour_rate_basis_points,'labour_cgst_paise',t.labour_cgst_paise,'labour_sgst_paise',t.labour_sgst_paise,'labour_igst_paise',t.labour_igst_paise,
@@ -343,6 +345,27 @@ CREATE TRIGGER srk_master_tax_credit_note_immutable BEFORE UPDATE OR DELETE ON p
 FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_tax_documents_immutable();
 CREATE TRIGGER srk_master_gateway_fee_tax_immutable BEFORE UPDATE OR DELETE ON public.srk_master_gateway_fee_tax_entries
 FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_tax_documents_immutable();
+
+
+CREATE OR REPLACE FUNCTION public.srk_customer_get_master_tax_invoice(p_booking_id uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $
+DECLARE v_uid uuid:=auth.uid(); v_out jsonb;
+BEGIN
+ IF v_uid IS NULL THEN RAISE EXCEPTION 'CUSTOMER_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
+ SELECT jsonb_build_object('invoice',i.invoice_snapshot,'invoice_number',i.invoice_number,
+  'issued_at',i.issued_at,'credit_note',CASE WHEN n.id IS NULL THEN NULL ELSE jsonb_build_object(
+   'credit_note_number',n.credit_note_number,'reason',n.reason,'amount_paise',n.amount_paise,
+   'tax_breakdown',n.tax_breakdown,'issued_at',n.issued_at) END)
+ INTO v_out
+ FROM public.srk_master_tax_invoices i
+ JOIN public.service_bookings b ON b.id=i.booking_id AND b.customer_user_id=v_uid
+ LEFT JOIN public.srk_master_tax_credit_notes n ON n.invoice_id=i.id
+ WHERE i.booking_id=p_booking_id;
+ IF v_out IS NULL THEN RAISE EXCEPTION 'CUSTOMER_TAX_INVOICE_NOT_FOUND' USING ERRCODE='42501'; END IF;
+ RETURN v_out;
+END; $;
+REVOKE ALL ON FUNCTION public.srk_customer_get_master_tax_invoice(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_customer_get_master_tax_invoice(uuid) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.srk_admin_configure_gst_company(text,text,text,text,text,date) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_configure_gst_company(text,text,text,text,text,date) TO authenticated;
