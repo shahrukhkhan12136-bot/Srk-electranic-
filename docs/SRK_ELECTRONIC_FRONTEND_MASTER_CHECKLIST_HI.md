@@ -1057,3 +1057,18 @@
 - [ ] एक अलग source-only branch की 18-Nov financial-visibility migration earnings view में immutable labour bill से provisional 15%/85% निकालती है, लेकिन existing commission/payout triggers को rewrite नहीं करती। इसलिए उस source migration का होना actual paid commission trigger का प्रमाण नहीं है; current approved feature branch में file उपलब्ध भी नहीं थी।
 - [ ] Final acceptance test: service ₹600 + materials ₹400, rate 15% → company commission ₹90; technician labour share ₹510; materials ₹400 पर commission ₹0। साथ में 0/negative/legacy rate, cash, Razorpay, partial/full refund और duplicate webhook cases।
 - [ ] No production query, SQL execution, migration, payout or payment mutation performed. Runtime code unchanged.
+
+
+## 2AN. Production Supabase — commission और payout का read-only सत्यापन (21-11-2026)
+
+- [x] Supabase project `Srk electranic` (ACTIVE_HEALTHY, primary project) पर केवल SELECT/catalog introspection की गई; कोई SQL write, migration, payment या payout action नहीं किया।
+- [x] Active `guard_new_booking()` BEFORE INSERT trigger नई booking पर `commission_rate := 15.00` और `commission_amount := null` force करता है; client-supplied rate स्वीकार नहीं होता।
+- [x] Active `srk_calculate_booking_commission()` trigger paid + completed booking पर `round(service_charge * commission_rate / 100, 2)` लगाता है; materials formula में नहीं हैं।
+- [x] Active `srk_create_electrician_payable()` payout trigger `v_commission := round(service_charge * commission_rate / 100, 2)` और `electrician_payable := service_charge + materials_amount - commission` बनाता है। इसलिए materials पर 0% company commission और materials का पूरा amount Technician payable में शामिल है।
+- [x] Live aggregate snapshot: service_bookings = 1 row, commission_rate 15.00 = 1 row, paid+completed = 1; payout ledger = 1 row, paid payout = 1।
+- [x] उस snapshot में paid booking commission formula mismatch = 0, missing inputs = 0; payout commission mismatch = 0; payout payable formula mismatch = 0।
+- [ ] नमूना बहुत छोटा है (केवल 1 booking/1 payout); इससे सभी भविष्य की bookings या historical population का व्यापक प्रमाण नहीं मिलता।
+- [ ] Risk: commission trigger की UPDATE OF सूची में `service_charge` शामिल नहीं है (status, payment_status, amount_paid, commission_rate हैं)। यदि paid+completed booking का service_charge बाद में अलग update हुआ, commission_amount stale रह सकता है; payout trigger की सूची में service_charge/materials_amount शामिल हैं। इसे अलग backend fix के रूप में review करें, बिना अभी production बदलें।
+- [ ] Example acceptance: ₹600 service + ₹400 materials → company ₹90; Technician payable ₹510 + ₹400 = ₹910; customer total ₹1,000। No materials commission.
+- [x] Legacy `PORTAL_SCHEMA.sql` का quoted_amount formula active production trigger नहीं है; active trigger metadata से service_charge-only formula मिला।
+- [x] No production mutation. No migration/deployment. Source/docs only.
