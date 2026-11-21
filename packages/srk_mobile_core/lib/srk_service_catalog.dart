@@ -174,7 +174,14 @@ const List<SrkServiceCategory> srkServiceCatalog = [
         SrkServiceTask(id: 'fridge_compressor', name: 'कंप्रेसर'),
         SrkServiceTask(id: 'fridge_gas_leakage', name: 'गैस / लीकेज'),
         SrkServiceTask(id: 'fridge_pcb_other_repair', name: 'PCB और अन्य मरम्मत'),
-      ], note: 'Refrigerator Repair, Cooling Problem, Compressor, Gas / Leakage, PCB और Other Repair. अंतिम दर की पुष्टि बाकी है।'),
+      ], rates: [
+        SrkServiceRate(
+          label: 'फ्रिज टेक्नीशियन की मजदूरी',
+          amount: '₹200',
+          unit: 'प्रति घंटा',
+          helperAmount: 'Helper ₹100 प्रति घंटा अतिरिक्त',
+        ),
+      ], note: 'Refrigerator Repair, Cooling Problem, Compressor, Gas / Leakage, PCB और Other Repair. पार्ट्स अलग; ग्राहक की मंजूरी के बाद।'),
     ],
   ),
   SrkServiceCategory(
