@@ -27,6 +27,31 @@ DROP FUNCTION IF EXISTS public.srk_update_booking_work_status(uuid,text);
 DROP FUNCTION IF EXISTS public.srk_admin_update_legacy_booking_quote(uuid,numeric);
 DROP FUNCTION IF EXISTS public.srk_admin_record_manual_payment(uuid,text,text,text);
 
+-- Move old inspection/quotation lifecycle rows to a neutral archived state.
+-- Their exact previous status is preserved in legacy_booking_financial_evidence.
+UPDATE public.service_bookings
+   SET status='legacy_archived'
+ WHERE status IN ('inspection','awaiting_quote_approval','quote_approved','quote_rejected');
+
+-- The live state machine no longer accepts quotation-era statuses.
+ALTER TABLE public.service_bookings
+  DROP CONSTRAINT IF EXISTS service_bookings_status_check;
+ALTER TABLE public.service_bookings
+  ADD CONSTRAINT service_bookings_status_check CHECK (
+    status = ANY (ARRAY[
+      'new','confirmed','assigned','awaiting_work_start_approval',
+      'in_progress','completed','cancelled','legacy_archived'
+    ]::text[])
+  );
+
+ALTER TABLE public.service_bookings
+  DROP CONSTRAINT IF EXISTS service_bookings_assignment_status_requires_electrician;
+ALTER TABLE public.service_bookings
+  ADD CONSTRAINT service_bookings_assignment_status_requires_electrician CHECK (
+    (status <> ALL (ARRAY['assigned','in_progress','completed']::text[]))
+    OR assigned_electrician_id IS NOT NULL
+  );
+
 -- Keep only the active booking/timer/payment workflow on service_bookings.
 -- The old quote-era values remain in the private archive for old receipts,
 -- refunds, payout settlement and Admin reconciliation.
