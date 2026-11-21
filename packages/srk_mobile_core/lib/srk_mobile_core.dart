@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+export 'srk_work_confirmation_contract.dart';
+
 enum SrkAppRole { customer, electrician, admin }
 
 String roleTitle(SrkAppRole role) => switch (role) {
