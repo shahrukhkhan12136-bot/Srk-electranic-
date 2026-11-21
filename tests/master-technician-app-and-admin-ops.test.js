@@ -1,6 +1,7 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
+const vm=require('node:vm');
 const fs=require('node:fs');
 const migration=fs.readFileSync('supabase/migrations/20261121320000_master_technician_app_and_admin_ops.sql','utf8');
 const admin=fs.readFileSync('admin.html','utf8');
