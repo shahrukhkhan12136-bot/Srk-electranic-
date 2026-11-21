@@ -20,26 +20,45 @@ class SrkServiceRate {
   });
 }
 
+class SrkServiceTask {
+  final String id;
+  final String name;
+
+  const SrkServiceTask({required this.id, required this.name});
+}
+
 class SrkServiceOption {
   final String name;
+  final String? id;
+  final String? displayName;
+  final List<SrkServiceTask> tasks;
   final List<SrkServiceRate> rates;
   final String? note;
 
   const SrkServiceOption({
     required this.name,
+    this.id,
+    this.displayName,
+    this.tasks = const [],
     this.rates = const [],
     this.note,
   });
 }
 
 class SrkServiceCategory {
+  final String id;
   final String name;
+  final String displayName;
+  final String iconKey;
   final String description;
   final List<SrkServiceOption> options;
   final List<SrkServiceOption> skillLevels;
 
   const SrkServiceCategory({
+    required this.id,
     required this.name,
+    required this.displayName,
+    required this.iconKey,
     required this.description,
     required this.options,
     this.skillLevels = const [],
@@ -52,17 +71,20 @@ class SrkServiceCategory {
 /// from labour and may only be added after customer approval.
 const List<SrkServiceCategory> srkServiceCatalog = [
   SrkServiceCategory(
+    id: 'electrician',
     name: 'Electrician',
+    displayName: 'इलेक्ट्रीशियन',
+    iconKey: 'electrical_services',
     description: 'घर, दुकान और फैक्ट्री की इलेक्ट्रिकल सेवाएँ',
     options: [
-      SrkServiceOption(name: 'Electrical Wiring'),
-      SrkServiceOption(name: 'Fan Installation / Repair'),
-      SrkServiceOption(name: 'Switch & Socket Repair'),
-      SrkServiceOption(name: 'Light Installation'),
-      SrkServiceOption(name: 'MCB / Distribution Board'),
-      SrkServiceOption(name: 'Inverter / Battery'),
-      SrkServiceOption(name: 'Appliance Electrical Repair'),
-      SrkServiceOption(name: 'Other Electrical Work'),
+      SrkServiceOption(id: 'electrical_wiring', name: 'Electrical Wiring', displayName: 'इलेक्ट्रिकल वायरिंग'),
+      SrkServiceOption(id: 'fan_install_repair', name: 'Fan Installation / Repair', displayName: 'पंखा लगाना / मरम्मत'),
+      SrkServiceOption(id: 'switch_socket', name: 'Switch & Socket Repair', displayName: 'स्विच और सॉकेट मरम्मत'),
+      SrkServiceOption(id: 'light_install', name: 'Light Installation', displayName: 'लाइट लगाना'),
+      SrkServiceOption(id: 'mcb_distribution', name: 'MCB / Distribution Board', displayName: 'MCB / डिस्ट्रीब्यूशन बोर्ड'),
+      SrkServiceOption(id: 'inverter_battery', name: 'Inverter / Battery', displayName: 'इन्वर्टर / बैटरी'),
+      SrkServiceOption(id: 'appliance_electrical', name: 'Appliance Electrical Repair', displayName: 'इलेक्ट्रिकल उपकरण की मरम्मत'),
+      SrkServiceOption(id: 'other_electrical', name: 'Other Electrical Work', displayName: 'अन्य इलेक्ट्रिकल काम'),
     ],
     skillLevels: [
       SrkServiceOption(name: 'Basic', rates: [
@@ -83,7 +105,10 @@ const List<SrkServiceCategory> srkServiceCatalog = [
     ],
   ),
   SrkServiceCategory(
+    id: 'plumber',
     name: 'Plumber',
+    displayName: 'प्लंबर',
+    iconKey: 'plumbing',
     description: 'पाइप, नल, फिटिंग और प्लंबिंग कार्य',
     options: [],
     skillLevels: [
@@ -99,7 +124,10 @@ const List<SrkServiceCategory> srkServiceCatalog = [
     ],
   ),
   SrkServiceCategory(
+    id: 'painter',
     name: 'Painter',
+    displayName: 'पेंटर',
+    iconKey: 'format_paint',
     description: 'घर, दुकान और कमर्शियल पेंटिंग',
     options: [],
     skillLevels: [
@@ -115,23 +143,44 @@ const List<SrkServiceCategory> srkServiceCatalog = [
     ],
   ),
   SrkServiceCategory(
+    id: 'ac_fridge',
     name: 'AC + Fridge',
+    displayName: 'AC + फ्रिज',
+    iconKey: 'ac_unit',
     description: 'पहले AC या Fridge चुनें, फिर उसी की सर्विस',
     options: [
-      SrkServiceOption(name: 'AC', rates: [
+      SrkServiceOption(id: 'ac', name: 'AC', displayName: 'AC', tasks: [
+        SrkServiceTask(id: 'ac_repair', name: 'AC रिपेयर'),
+        SrkServiceTask(id: 'installation', name: 'इंस्टॉलेशन'),
+        SrkServiceTask(id: 'uninstallation', name: 'अनइंस्टॉलेशन'),
+        SrkServiceTask(id: 'servicing', name: 'सर्विसिंग'),
+        SrkServiceTask(id: 'gas_charging', name: 'गैस चार्जिंग'),
+        SrkServiceTask(id: 'leakage_check', name: 'लीकेज जाँच'),
+        SrkServiceTask(id: 'compressor', name: 'कंप्रेसर'),
+        SrkServiceTask(id: 'pcb', name: 'PCB'),
+      ], rates: [
         SrkServiceRate(label: 'AC Technician', amount: '₹437', unit: 'प्रति घंटा'),
       ], note: 'Installation, Uninstallation, Repair, Servicing, Gas Charging, Leakage Check, Compressor और PCB'),
-      SrkServiceOption(name: 'Fridge', note: 'Refrigerator Repair, Cooling Problem, Compressor, Gas / Leakage, PCB और Other Repair. अंतिम दर की पुष्टि बाकी है।'),
+      SrkServiceOption(id: 'fridge', name: 'Fridge', displayName: 'फ्रिज', tasks: [
+        SrkServiceTask(id: 'fridge_repair', name: 'फ्रिज रिपेयर'),
+        SrkServiceTask(id: 'cooling_problem', name: 'कूलिंग समस्या'),
+        SrkServiceTask(id: 'compressor', name: 'कंप्रेसर'),
+        SrkServiceTask(id: 'gas_leakage', name: 'गैस / लीकेज'),
+        SrkServiceTask(id: 'pcb_other_repair', name: 'PCB और अन्य मरम्मत'),
+      ], note: 'Refrigerator Repair, Cooling Problem, Compressor, Gas / Leakage, PCB और Other Repair. अंतिम दर की पुष्टि बाकी है।'),
     ],
   ),
   SrkServiceCategory(
+    id: 'motor_pump',
     name: 'Motor & Pump',
+    displayName: 'मोटर और पंप',
+    iconKey: 'water',
     description: 'मोटर, टुल्लू पंप और सबमर्सिबल सेवाएँ',
     options: [
-      SrkServiceOption(name: 'Domestic Tullu Pump'),
-      SrkServiceOption(name: 'Pump Repair'),
-      SrkServiceOption(name: 'Submersible Pump'),
-      SrkServiceOption(name: 'Winding', rates: [
+      SrkServiceOption(id: 'tullu_pump', name: 'Domestic Tullu Pump', displayName: 'घरेलू टुल्लू पंप'),
+      SrkServiceOption(id: 'pump_repair', name: 'Pump Repair', displayName: 'पंप रिपेयर'),
+      SrkServiceOption(id: 'submersible', name: 'Submersible Pump', displayName: 'सबमर्सिबल पंप'),
+      SrkServiceOption(id: 'winding', name: 'Winding', displayName: 'वाइंडिंग', rates: [
         SrkServiceRate(label: '0.5 HP', amount: '₹500', unit: 'फिक्स'),
         SrkServiceRate(label: '1 HP', amount: '₹600', unit: 'फिक्स'),
         SrkServiceRate(label: '1.5 HP', amount: '₹700', unit: 'फिक्स'),
@@ -143,16 +192,19 @@ const List<SrkServiceCategory> srkServiceCatalog = [
         SrkServiceRate(label: '15 HP', amount: '₹1,300', unit: 'फिक्स'),
         SrkServiceRate(label: '20 HP', amount: '₹1,400', unit: 'फिक्स'),
       ], note: '20 HP से अधिक की दर की पुष्टि बाकी है। Winding में hourly overtime लागू नहीं।'),
-      SrkServiceOption(name: 'Capacitor'),
-      SrkServiceOption(name: 'Starter'),
-      SrkServiceOption(name: 'Installation / Removal'),
+      SrkServiceOption(id: 'capacitor', name: 'Capacitor', displayName: 'कैपेसिटर'),
+      SrkServiceOption(id: 'starter', name: 'Starter', displayName: 'स्टार्टर'),
+      SrkServiceOption(id: 'installation_removal', name: 'Installation / Removal', displayName: 'इंस्टॉलेशन / हटाना'),
     ],
   ),
   SrkServiceCategory(
+    id: 'cooler',
     name: 'Cooler',
+    displayName: 'कूलर',
+    iconKey: 'mode_fan',
     description: 'कूलर रिपेयर',
     options: [
-      SrkServiceOption(name: 'Cooler Repair', rates: [
+      SrkServiceOption(id: 'cooler_repair', name: 'Cooler Repair', displayName: 'कूलर रिपेयर', rates: [
         SrkServiceRate(label: 'लेबर चार्ज', amount: '₹500', unit: 'प्रति कूलर फिक्स'),
       ], note: 'पार्ट्स अलग; ग्राहक की मंजूरी के बाद। Motor winding इस दर में शामिल नहीं।'),
     ],
