@@ -82,7 +82,7 @@ exports.handler=async event=>{
     if(booking.payment_status==="refunded")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही रिफंड हो चुका है। Admin से संपर्क करें।"});
       if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
       if(booking.status!=="completed")return json(409,{success:false,error:"भुगतान केवल काम पूरा होने के बाद किया जा सकता है।"});
-      if(!booking.selected_category&&booking.quote_status!=="approved")return json(409,{success:false,error:"पुरानी बुकिंग के लिए ग्राहक द्वारा मंजूर कोटेशन आवश्यक है।"});
+      if(!booking.selected_category&&!booking.srk_service_category_code&&booking.quote_status!=="approved")return json(409,{success:false,error:"पुरानी बुकिंग के लिए ग्राहक द्वारा मंजूर कोटेशन आवश्यक है।"});
       try{amount=await paymentAmountPaise(booking);}catch(_){return json(409,{success:false,error:"अंतिम Labour Bill / cancellation fee का हिसाब तैयार नहीं है। Admin से जाँच कराएँ।"});}
       if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
       order=await findReusableOrder(booking,amount);
