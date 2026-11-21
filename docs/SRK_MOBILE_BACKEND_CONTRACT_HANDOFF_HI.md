@@ -306,3 +306,18 @@ Frontend now maintains one shared draft catalogue in `packages/srk_mobile_core/l
 **Backend response required before integration:** approve a canonical catalogue version and immutable category/subcategory/task/skill-tier IDs; define localization/display labels separately from IDs; provide rate snapshot and helper/task structures with effective dates; define retired-ID compatibility for existing bookings; and return verified Technician skills using those exact IDs/version. Offer matching and every accept/work/payment transition must revalidate skills server-side.
 
 This source change only unifies presentation data and Customer picker rendering. Existing booking submission, Technician live skill/offer screens, booking lifecycle, APIs, Supabase, database, payment and production remain unchanged. Flutter formatting, analyzer, tests and Android builds have not been executed/verified.
+
+
+## 20. Technician verified-skill IDs का shared catalogue validation (21 Nov 2026)
+
+Technician app adds a separate preview parser, `SrkVerifiedServiceSkill.fromDraftCatalogueServerJson`, that accepts a skill only when:
+- `catalogue_version` exactly matches the current frontend draft version `draft-2026-11-21.1`;
+- category and subcategory IDs exist in the shared draft catalogue;
+- an optional task ID exists under that exact subcategory;
+- existing approved + active + non-expired checks pass.
+
+Display labels are resolved from the shared catalogue rather than trusting potentially stale server labels. Unknown IDs/version fail closed. A task key under Fridge cannot be accepted as an AC task (and vice versa). The verified-services barrel exports were also corrected to point at the actual source files.
+
+**Not authorization:** This parser is not connected to live profile data, offer filtering, offer acceptance, work status, material approval, cash/online payment or payouts. Existing generic skill parsing and offer-match helper remain preview-only. Client matching must never hide/authorize an offer; backend must independently verify active approved skills, booking ownership, assignment, expiry, canonical catalogue version and all state transitions.
+
+**Backend response required:** approve immutable canonical IDs/version and exact JSON contract; specify skill granularity for category/subcategory/task/tier, expiry/revocation semantics, and transactional revalidation on offer read/accept and each protected work/payment action. The current draft version is not a production identifier. No Supabase, backend, database, payment or production change was made. Flutter formatter/analyzer/tests/Android build have not been executed or verified.
