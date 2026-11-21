@@ -270,7 +270,7 @@ BEGIN
      OR p_pincode IS NULL OR p_pincode !~ '^[0-9]{6}$'
      OR p_experience_years IS NULL OR p_experience_years NOT BETWEEN 0 AND 60
      OR (p_about IS NOT NULL AND length(p_about)>2000)
-     OR p_category_codes IS NULL OR cardinality(p_category_codes) NOT BETWEEN 1 AND 6
+     OR p_category_codes IS NULL OR cardinality(p_category_codes) NOT BETWEEN 1 AND 20
      OR p_skill_codes IS NULL OR cardinality(p_skill_codes)<1 THEN
     RAISE EXCEPTION 'INVALID_TECHNICIAN_APPLICATION' USING ERRCODE='22023';
   END IF;
@@ -395,15 +395,15 @@ DECLARE
   v_uid uuid:=auth.uid(); v_technician_id uuid; v_document_id uuid;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'TECHNICIAN_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
-  IF p_document_type NOT IN ('identity_proof','address_proof','skill_certificate')
+  IF p_application_id IS NULL OR p_document_type IS NULL OR p_document_type NOT IN ('identity_proof','address_proof','skill_certificate')
      OR p_storage_path IS NULL OR length(p_storage_path)>255
      OR p_storage_path NOT LIKE v_uid::text||'/'||p_document_type||'/%'
      OR position('..' in p_storage_path)>0 OR position(E'\\' in p_storage_path)>0
      OR p_storage_path ~ '[[:cntrl:]]'
      OR p_file_name IS NULL OR length(btrim(p_file_name)) NOT BETWEEN 1 AND 180
      OR p_file_name ~ '[[:cntrl:]]'
-     OR p_mime_type NOT IN ('application/pdf','image/jpeg','image/png')
-     OR p_file_size_bytes NOT BETWEEN 1 AND 5242880 THEN
+     OR p_mime_type IS NULL OR p_mime_type NOT IN ('application/pdf','image/jpeg','image/png')
+     OR p_file_size_bytes IS NULL OR p_file_size_bytes NOT BETWEEN 1 AND 5242880 THEN
     RAISE EXCEPTION 'INVALID_TECHNICIAN_KYC_DOCUMENT' USING ERRCODE='22023';
   END IF;
   SELECT t.id INTO v_technician_id
@@ -444,7 +444,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_skill public.srk_technician_application_skills%rowtype; v_note text:=nullif(btrim(coalesce(p_admin_note,'')),'');
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
-  IF p_application_skill_id IS NULL OR p_review_status NOT IN ('approved','rejected','needs_resubmission')
+  IF p_application_skill_id IS NULL OR p_review_status IS NULL OR p_review_status NOT IN ('approved','rejected','needs_resubmission')
      OR (p_review_status<>'approved' AND length(v_note) NOT BETWEEN 5 AND 1000)
      OR length(v_note)>1000 THEN RAISE EXCEPTION 'INVALID_TECHNICIAN_SKILL_REVIEW' USING ERRCODE='22023'; END IF;
   SELECT * INTO v_skill FROM public.srk_technician_application_skills
@@ -471,7 +471,7 @@ RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_doc public.srk_technician_kyc_documents%rowtype; v_note text:=nullif(btrim(coalesce(p_admin_note,'')),'');
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
-  IF p_document_id IS NULL OR p_review_status NOT IN ('approved','rejected','needs_resubmission')
+  IF p_document_id IS NULL OR p_review_status IS NULL OR p_review_status NOT IN ('approved','rejected','needs_resubmission')
      OR (p_review_status<>'approved' AND length(v_note) NOT BETWEEN 5 AND 1000)
      OR length(v_note)>1000 THEN RAISE EXCEPTION 'INVALID_TECHNICIAN_KYC_REVIEW' USING ERRCODE='22023'; END IF;
   SELECT * INTO v_doc FROM public.srk_technician_kyc_documents WHERE id=p_document_id FOR UPDATE;
@@ -497,7 +497,7 @@ DECLARE
   v_approved_required_docs integer;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
-  IF p_application_id IS NULL OR p_decision NOT IN ('under_review','approved','rejected')
+  IF p_application_id IS NULL OR p_decision IS NULL OR p_decision NOT IN ('under_review','approved','rejected')
      OR (p_decision='rejected' AND length(v_reason) NOT BETWEEN 5 AND 1000)
      OR length(v_reason)>1000 THEN RAISE EXCEPTION 'INVALID_TECHNICIAN_APPLICATION_DECISION' USING ERRCODE='22023'; END IF;
   SELECT * INTO v_app FROM public.srk_technician_applications WHERE id=p_application_id FOR UPDATE;
