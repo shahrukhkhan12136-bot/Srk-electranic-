@@ -67,6 +67,45 @@ void main() {
       }
     });
 
+    testWidgets('shows catalogue skill levels and clears old skill tasks on category change', (tester) async {
+      SrkServiceSelection? selected;
+      tester.view.physicalSize = const Size(900, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(
+              onSelection: (selection) => selected = selection,
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('इलेक्ट्रीशियन'));
+      await tester.pumpAndSettle();
+      expect(find.text('कारीगर का स्तर चुनें'), findsOneWidget);
+      expect(find.text('Basic'), findsOneWidget);
+      expect(find.text('Expert Residential'), findsOneWidget);
+      expect(find.text('Factory / Large Project'), findsOneWidget);
+      expect(find.text('Master'), findsOneWidget);
+
+      await tester.tap(find.text('Expert Residential'));
+      await tester.pumpAndSettle();
+      expect(find.text('पूरे घर की नई वायरिंग'), findsOneWidget);
+      await tester.tap(find.text('पूरे घर की नई वायरिंग'));
+      await tester.pump();
+      expect(selected, isNull); // Current backend selection contract has no skill-level field.
+
+      await tester.tap(find.text('प्लंबर'));
+      await tester.pumpAndSettle();
+      expect(find.text('पूरे घर की नई वायरिंग'), findsNothing);
+      expect(find.text('कारीगर का स्तर चुनें'), findsOneWidget);
+      expect(selected, isNull);
+    });
+
     testWidgets('AC and Fridge show separate task lists', (tester) async {
       Map<String, String?>? selected;
       tester.view.physicalSize = const Size(900, 1200);
