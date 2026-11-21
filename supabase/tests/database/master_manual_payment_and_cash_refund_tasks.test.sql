@@ -17,7 +17,7 @@ SELECT ok(position('public.is_srk_admin()' in pg_get_functiondef('public.srk_adm
  'Admin payment and refund functions enforce Main Admin');
 SELECT ok(position('t.total_due_paise' in pg_get_functiondef('public.srk_admin_list_master_pending_manual_payments(integer)'::regprocedure))>0,
  'Admin manual payment list shows GST-inclusive total due');
-SELECT ok(position('NOT EXISTS' in pg_get_functiondef('public.srk_admin_list_master_pending_manual_payments(integer)'::regprocedure))>0,
+SELECT ok(position('NOT EXISTS' in pg_get_functiondef('public.srk_admin_list_master_pending_manual_payments(integer)'::regprocedure))>0 AND position('razorpay_payment_id IS NULL' in pg_get_functiondef('public.srk_admin_list_master_pending_manual_payments(integer)'::regprocedure))>0,
  'already-recorded payments are excluded from manual verification queue');
 SELECT ok(position('commission_recovered_paise' in pg_get_functiondef('public.srk_admin_finalize_master_cash_refund(uuid,text)'::regprocedure))>0,
  'cash refund reverses commission and credits only previously recovered dues');
