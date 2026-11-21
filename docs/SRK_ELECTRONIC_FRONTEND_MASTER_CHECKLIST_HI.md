@@ -336,7 +336,7 @@
 ### Commission और payout का महत्वपूर्ण अंतर
 - [x] `srk_calculate_booking_commission()` की मौजूदा गणना `service_charge * commission_rate / 100` पर है; `materials_amount` को commission base में शामिल नहीं करती। `srk_get_my_earnings()` electrician earning को `amount_paid - commission_amount` मानता है।
 - [x] Razorpay Route transfer ledger (`srk_route_transfers`) reconciliation record है; migration comment साफ कहता है कि database write अपने-आप money movement trigger नहीं करता।
-- [ ] इसलिए user-approved 85% technician / 15% company split **पूरे customer payment** पर लागू है या labour-only पर—इसे मौजूदा backend से compatible मानना गलत होगा। Backend owner से exact formula, material treatment, cash-vs-online ledger treatment और rounding rules लिखित रूप में चाहिए।
+ - [x] Owner clarified: 15% company commission applies only to service_charge/labour; Technician gets 85% of service_charge/labour; materials/parts are excluded (0% platform fee).
 - [ ] मौजूदा wallet summary को payout request, bank transfer, UTR या paid-out history का प्रमाण न मानें। ऐसे वास्तविक payout contracts/flows इस audit में नहीं मिले।
 
 ### Razorpay payment contract (root server functions)
@@ -600,7 +600,7 @@
 ## 2N. Owner reconfirmation — company platform fee and technician share (2026-11-21)
 
 - [x] Owner reconfirmed the existing split: Company platform fee **15%**, Technician share **85%**; this is not a new change.
-- [x] The agreed basis remains the full booking payment. Illustration: ₹1,000 customer booking payment → ₹150 company share + ₹850 technician share.
+- [x] Commission basis is service charge/labour only, not the full booking payment. Materials/parts are excluded.
 - [x] Updated `docs/SRK_MOBILE_BACKEND_CONTRACT_HANDOFF_HI.md` to remove the open question about the percentage/base and explicitly supersede the older labour-only wording in the Master Requirements for this later owner decision.
 - [ ] Backend must still reconcile ledger treatment for helper/material/tax/travel/refunds, rounding, cash and online settlements while preserving the confirmed 15%/85% split. No backend or payment code changed.
 
@@ -970,7 +970,7 @@
 ### Owner-confirmed financial rule
 - [x] Company commission = केवल service charge/labour का 15%।
 - [x] Technician service share = service charge/labour का 85%; materials पर commission/platform fee 0%।
-- [x] उदाहरण: ग्राहक ₹1,000 देता है → Company ₹150, Technician ₹850।
+- [x] Example: ₹600 service charge + ₹400 materials → Company ₹90 commission; Technician ₹510 service share; materials ₹400 separately, no company commission.
 - [x] Labour/service और approved materials सहित पूरी ग्राहक booking payment split का आधार है; केवल labour पर commission नहीं।
 - [x] यह नियम cash और online दोनों payment methods के लिए एक समान लागू होना चाहिए; वास्तविक collection और reconciliation method अलग हो सकता है।
 
@@ -984,7 +984,7 @@
 
 ### मौजूदा Backend mismatch
 - [ ] Migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` में `srk_calculate_booking_commission()` commission को `service_charge * commission_rate / 100` से निकालता है; materials/full customer payment base में शामिल नहीं।
-- [ ] `srk_get_my_earnings()` का मौजूदा reporting shape `amount_paid - commission_amount` से Technician earning निकालता है। सही 15/85 तभी होगा जब commission_amount पूरे customer payment पर सही तरीके से server-calculated हो।
+  - [ ] सही 15/85 तभी होगा जब commission_amount केवल service_charge पर server-calculated हो; materials_amount commission base से बाहर रहे।
 - [ ] Wallet foundation internal posted ledger balance दिखाता है; customer top-up और Technician bank payout disabled हैं। Wallet balance वास्तविक bank transfer नहीं है।
 - [ ] Current wallet foundation में automatic booking payment → commission → Technician wallet ledger posting का प्रमाण इस audit में नहीं मिला।
 - [ ] Razorpay Route transfer ledger/reconciliation record अपने-आप actual money transfer नहीं करता।
