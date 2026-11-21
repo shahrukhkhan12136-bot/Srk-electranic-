@@ -4198,3 +4198,13 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Browser E2E, OTP/SMS, KYC Storage, Push provider, backup/restore, Preview and consolidated desktop/mobile QA remain separate gates.
 - Main Branch, Production Database, live payments/refunds/payouts and deployment remain untouched. No Main PR opened or merged.
 
+
+## 21-11-2026 — Founder photo slot and current exact-head validation
+
+- Founder photo requirement superseded the previous portrait: old image is no longer displayed or cached. Placeholder slots now appear on Welcome, Customer OTP, Customer Booking App and shared Technician App; actual original photo is still awaited.
+- Welcome/Customer/Technician labels now identify all six service categories and the shared Technician App.
+- Admin project progress card reconciled to the live checklist: 62/94 (66%) overall and 30/43 (70%) GPT-2. This is checklist progress, not Production readiness.
+- Latest source CI at HEAD 1478a4ae221d969ae39ec2d707064f124876842b: run 44907394337 — 573 passed, 0 failed.
+- Explicit remaining requirements now include booking-scoped authorized household-member confirmation, road-distance travel fee (3 km free then ₹4/km one-way; routing and tax/commission treatment pending), actual founder photo, rate owner inputs, database baseline/pgTAP runtime, backup/restore integrity, and full actor/E2E/Preview QA.
+- Main/Production remain untouched; no Main PR, merge, migration, live payment, payout or deployment performed.
+
