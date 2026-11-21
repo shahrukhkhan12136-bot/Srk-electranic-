@@ -1,0 +1,16 @@
+BEGIN;
+SELECT plan(12);
+SELECT has_table('public','srk_master_cash_refund_evidence','Technician-to-Customer cash refund evidence table exists');
+SELECT has_table('public','srk_master_cash_refund_reviews','Admin refund evidence review audit exists');
+SELECT has_table('public','srk_master_technician_wallet_credits','recovered commission refunds create Technician wallet credits');
+SELECT has_column('public','srk_master_technician_commission_dues','commission_refunded_paise','recovered commission reversal is separately accounted');
+SELECT has_function('public','srk_technician_submit_master_cash_refund_evidence',ARRAY['uuid','bigint','text','text','text']);
+SELECT has_function('public','srk_admin_finalize_master_cash_refund',ARRAY['uuid','text']);
+SELECT has_function('public','srk_admin_list_master_cash_refunds',ARRAY[]::text[]);
+SELECT ok(position('MAIN_ADMIN_APPROVED_CUSTOMER_REFUND_REQUEST_REQUIRED' in pg_get_functiondef('public.srk_technician_submit_master_cash_refund_evidence(uuid,bigint,text,text,text)'::regprocedure))>0,'Technician evidence requires approved Customer request');
+SELECT ok(position('TECHNICIAN_REFUND_EVIDENCE_MUST_EQUAL_FULL_CUSTOMER_REFUND' in pg_get_functiondef('public.srk_admin_finalize_master_cash_refund(uuid,text)'::regprocedure))>0,'Admin finalization requires evidence equal to full refund');
+SELECT ok(position('cash_payment_refunded' in pg_get_functiondef('public.srk_admin_finalize_master_cash_refund(uuid,text)'::regprocedure))>0,'commission reversal is audited');
+SELECT ok(position('commission_recovered_paise' in pg_get_functiondef('public.srk_admin_finalize_master_cash_refund(uuid,text)'::regprocedure))>0,'previously recovered commission is credited back');
+SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_master_cash_refund_evidence'::regclass),'refund evidence has RLS enabled');
+SELECT * FROM finish();
+ROLLBACK;
