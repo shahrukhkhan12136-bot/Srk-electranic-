@@ -1090,3 +1090,15 @@
 - Migration file manually नहीं बनाई गई; TEST या Production database में कोई SQL/DDL execute नहीं किया गया।
 - अगला कदम: approved repository terminal में CLI से migration generate करें, source review करें, फिर केवल TEST project पर apply करके service_charge-only recalculation, materials-only no-change, payment/status/rate regression और payout side effects जाँचें।
 - Production बदलाव के लिए अलग explicit approval अनिवार्य है।
+
+
+## 2AP. TEST database schema audit — commission test blocked (21-11-2026)
+
+- [x] TEST project पर read-only catalog inspection किया गया।
+- [x] `public` schema में केवल `electrician_profiles`, `job_offers`, `srk_push_subscriptions` मिलीं।
+- [x] `service_bookings`, commission/service_charge/material columns और संबंधित booking/ledger/payout triggers नहीं मिले।
+- [x] Migration history में 7 versions मिले; वर्तमान booking backend की पूरी schema chain मौजूद होने की पुष्टि नहीं हुई।
+- [ ] Commission Migration से पहले TEST में approved branch की पूर्ण migration baseline सुरक्षित तरीके से स्थापित/सत्यापित करें।
+- [ ] Baseline के बाद ही trigger source audit और commission/payout regression tests करें।
+- [x] इस निरीक्षण में कोई DDL/DML, payment/payout परिवर्तन या Production SQL नहीं किया गया।
+- [ ] Remote TEST पर `db reset --linked` का उपयोग नहीं करना है; यह destructive है।
