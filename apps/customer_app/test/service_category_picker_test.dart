@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:srk_customer_app/service_category_picker.dart';
 import 'package:srk_mobile_core/srk_service_catalog.dart' as catalog;
-import 'package:srk_mobile_core/srk_service_selection_contract.dart';
 
 void main() {
   group('SRK service category picker', () {
