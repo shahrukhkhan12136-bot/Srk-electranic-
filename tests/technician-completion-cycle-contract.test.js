@@ -36,6 +36,6 @@ test('every third completed booking requires online payment and counter update i
 
 test('counter read RPC checks the signed-in Technician identity or Admin role', () => {
   assert.match(migration, /CREATE OR REPLACE FUNCTION public\.srk_technician_get_completed_booking_count/);
-  assert.match(migration, /t\.auth_user_id=auth\(\)uid\(\)/);
+  assert.match(migration, /t\.auth_user_id=auth\.uid\(\)/);
   assert.match(migration, /public\.is_srk_admin\(\)/);
 });
