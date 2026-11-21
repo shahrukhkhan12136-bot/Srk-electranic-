@@ -137,6 +137,23 @@ test('unsupported payment methods are rejected before booking lookup or insertio
   assert.equal(calls.some(call => call.target.includes('/rest/v1/service_bookings')), false);
 });
 
+test('booking phone is derived from OTP-verified Auth and ignores forged or missing client phone', async () => {
+  const calls = mockSupabase({ insertResponse: [{ id: BOOKING_ID }] });
+  const forged = await handler(event(bookingBody({ phone: '0000000000' })));
+  assert.equal(forged.statusCode, 200);
+  const inserted = calls.find(call => call.method === 'POST' && call.target.endsWith('/service_bookings'));
+  assert.ok(inserted);
+  assert.equal(JSON.parse(inserted.body)[0].phone, '9876543210');
+
+  const callsWithoutPhone = mockSupabase({ insertResponse: [{ id: BOOKING_ID }] });
+  const { phone, ...withoutPhone } = bookingBody();
+  const omitted = await handler(event(withoutPhone, '123e4567-e89b-42d3-a456-426614174004'));
+  assert.equal(omitted.statusCode, 200);
+  const insertedWithoutPhone = callsWithoutPhone.find(call => call.method === 'POST' && call.target.endsWith('/service_bookings'));
+  assert.ok(insertedWithoutPhone);
+  assert.equal(JSON.parse(insertedWithoutPhone.body)[0].phone, '9876543210');
+});
+
 test('concurrent duplicate insert resolves to the winning booking after unique-key conflict', async () => {
   const fingerprint = require('node:crypto').createHash('sha256').update(JSON.stringify({
     customer_user_id: USER_ID,
