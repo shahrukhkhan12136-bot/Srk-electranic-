@@ -1,6 +1,7 @@
 -- Complete shared Technician application read, customer workday decisions, and Admin dispatch visibility.
-CREATE OR REPLACE FUNCTION public.srk_technician_get_my_applications()
-RETURNS TABLE(application_id uuid,status text,rejection_reason text,submitted_at timestamptz,
+DROP FUNCTION IF EXISTS public.srk_technician_get_my_applications();
+CREATE FUNCTION public.srk_technician_get_my_applications()
+RETURNS TABLE(application_id uuid,technician_id uuid,status text,rejection_reason text,submitted_at timestamptz,
  categories jsonb,skills jsonb,kyc jsonb)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_uid uuid:=auth.uid();v_technician_id uuid;
@@ -9,7 +10,7 @@ BEGIN
  SELECT t.id INTO v_technician_id FROM public.srk_technicians t WHERE t.auth_user_id=v_uid;
  IF v_technician_id IS NULL THEN RETURN;END IF;
  RETURN QUERY
- SELECT a.id,a.status,a.rejection_reason,a.submitted_at,
+ SELECT a.id,a.technician_id,a.status,a.rejection_reason,a.submitted_at,
   COALESCE((SELECT jsonb_agg(jsonb_build_object('code',c.category_code,'name',c.display_name)
    ORDER BY c.sort_order,c.category_code)
    FROM public.srk_technician_application_categories ac
@@ -117,7 +118,10 @@ BEGIN
  IF d.assigned_technician_count>=d.required_technician_count THEN
   RETURN jsonb_build_object('success',true,'status','assigned','assigned_technician_count',d.assigned_technician_count);
  END IF;
- UPDATE public.srk_technician_dispatch_requests SET status='searching',current_offer_id=NULL,updated_at=clock_timestamp()
+ UPDATE public.srk_technician_dispatch_requests SET status='searching',
+  current_offer_id=CASE WHEN EXISTS(SELECT 1 FROM public.srk_technician_dispatch_offers o
+    WHERE o.dispatch_request_id=d.id AND o.status='offered' AND o.expires_at>clock_timestamp())
+    THEN d.current_offer_id ELSE NULL END,updated_at=clock_timestamp()
  WHERE id=d.id;
  v_result:=public.srk_dispatch_issue_next_offer(p_booking_id);
  RETURN jsonb_build_object('success',true,'dispatch',v_result);
