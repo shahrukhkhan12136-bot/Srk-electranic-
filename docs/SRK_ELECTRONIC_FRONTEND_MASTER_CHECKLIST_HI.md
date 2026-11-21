@@ -462,3 +462,48 @@
 - [ ] Existing `create-booking.js` अभी `service_type` string को स्वीकार करता है; category/subcategory/helper/duration/HP structured fields और dispatch eligibility का contract backend owner से चाहिए।
 - [ ] Payment rotation rule का backend contract, booking-count scope और API-generated payment_method अभी verified नहीं; current Customer dropdown को तब तक न हटाएँ जब तक backend default/response व्यवहार तय न हो।
 - [ ] Quote-free lifecycle, material approval, payment order/verification/webhook और cash confirmation के नए RPC/API contracts backend owner से चाहिए; उसके बाद ही quote screens/actions पूर्ण रूप से हटाएँ।
+
+
+## 2G. Category-wise dispatch / Technician skill contract audit (2026-11-21)
+
+### Customer booking form का वर्तमान वास्तविक रूप
+- [x] Customer app में अभी एक ही Electrical-only dropdown है: Electrical Wiring, Fan Installation / Repair, Switch & Socket Repair, Light Installation, MCB / Distribution Board, Inverter / Battery, Appliance Electrical Repair, Other Electrical Work।
+- [x] Booking payload केवल `service_type` string भेजता है। Category ID, subcategory ID, skill tier, helper flag/count, duration/hours/days, HP, fixed-vs-hourly pricing या rate snapshot के अलग structured fields अभी मौजूद नहीं।
+- [x] Existing form की location, date/time, work details और booking submit flow usable है; इसे replace/rebuild नहीं करना है।
+
+### Technician profile / onboarding का वर्तमान वास्तविक रूप
+- [x] Android Technician app अभी `electrician_profiles` से केवल `id, display_name, state, district, pincode, active, verification_status` पढ़ता है। `skills` field fetch/display/eligibility check नहीं करता।
+- [x] Android Technician app में अभी category/skill onboarding या KYC form नहीं है; logged-in linked profile का status/dashboard है।
+- [x] Backend `apply-electrician.js` आवेदन में `skills` को एक free-text string (max 300 chars) के रूप में लेता है; application को approved profile बनाते समय migration इसे comma-separated `text[]` में बदलती है। यह six-category IDs, verified subcategory IDs या skill-tier capability contract नहीं है।
+- [x] Base schema में `electrician_profiles.skills text[]` मौजूद है, लेकिन six-category taxonomy, per-skill verification status, helper capability, rate tier, experience proof, service radius/30km eligibility का normalized model इस inspected contract में नहीं मिला।
+- [x] Technician offer UI `service_type` को plain title के रूप में दिखाता है; offer filtering या eligibility check app-side नहीं है।
+
+### Booking-to-Technician matching audit
+- [x] `create-booking.js` `service_type` को required plain string के रूप में save करता है; function trigger-created offers को केवल read करता है, duplicate offers नहीं बनाता।
+- [x] Existing implementation notes `broadcast_new_booking` के लिए PIN-code match और fallback में same state/district का उल्लेख करते हैं।
+- [x] Approved mobile branch के पूरे `supabase/migrations` folder में 21 migration files हैं; इनमें `broadcast_new_booking` trigger/function की actual definition मौजूद नहीं मिली। इसलिए matching query में `skills`/service type filter है या नहीं, इसकी SQL-level पुष्टि इस branch से नहीं हो सकी।
+- [x] Current verified evidence के आधार पर यह कहना सुरक्षित नहीं कि six-category service booking केवल उसी category के verified Technician को dispatch होगी। वर्तमान app/booking contract में ऐसी guarantee नहीं दिखती।
+- [x] `create-booking.js` response केवल total offers और पहला `match_level` लौटाता है; category-eligible Technician count या no-qualified-technician state का अलग contract नहीं है।
+
+### UI placement decision — क्या कहाँ दिखना चाहिए
+- **Customer home:** छह top-level categories केवल एक बार दिखें; Electrician के पुराने आठ task-options को home पर अलग categories न बनाएं।
+- **Customer booking:** चुनी category के बाद उसी की subcategory/options दिखें। AC + Fridge पर पहले AC/Fridge selector; AC के अंदर AC tasks; Fridge के अंदर केवल fridge tasks। Helper relevant booking के अंदर optional add-on रहे, अलग home tile नहीं।
+- **Electrician skill tiers:** Basic / Expert Residential / Factory-Large Project / Master जैसे rate/skill level केवल Electrician booking के अंदर आएँ; top-level category cards नहीं। अन्य trades के Basic/Expert/Master tiers उनकी अपनी category के अंदर हों।
+- **Customer price input:** customer suggested amount नहीं; rate app/backend-calculated/approved rate card से आए।
+- **Materials/parts:** quote/counter-offer screen नहीं; work order में अलग itemized lines + customer approval।
+- **Payment method:** अभी Customer dropdown को हटाना सुरक्षित नहीं; API `payment_method` स्वीकार करती है और trigger/booking records में method इस्तेमाल होता है। Rotation/server assignment contract बनने के बाद ही UI से हटे।
+- **Technician app:** सभी छह categories को हर Technician को न दिखाएँ। केवल उस व्यक्ति की approved/active profile पर दर्ज और Admin-verified category/subcategory/skill-tier वाले काम की offer दिखे। Unverified skill पर offer, price edit, work-start enable न हो।
+- **Helper:** केवल उस booking/skill level में दिखे जहाँ helper allowed और rate confirmed है; helper खुद standalone Technician service/category नहीं।
+- **HP/fixed jobs:** Motor & Pump HP winding में HP selection और fixed labour price दिखे; hourly duration/overtime controls न दिखें। Cooler ₹500 fixed repair में HP field न दिखे; winding अलग Motor & Pump flow/line item रहे।
+
+### Backend owner से अनिवार्य API/RPC contract (frontend implementation से पहले)
+1. Canonical category/subcategory IDs और immutable catalog/rate version; localized display labels केवल presentation हों।
+2. Technician profile पर Admin-verified category/subcategory/skill tier, helper capability, KYC/approval status और active/availability flags।
+3. Booking payload में category_id, subcategory_id, skill_tier_id (जहाँ लागू), helper_count/flag, duration/unit, HP (जहाँ लागू), address/GPS, preferred schedule और selected catalog/rate version।
+4. Server-side dispatch केवल approved + active + available + matching skill वाले Technician को करे; पहले requested geo/PIN policy, फिर documented fallback; skill mismatch पर offer कभी न बने।
+5. No qualified Technician, no coverage, paused/offline, offer expiry, re-dispatch, accept race, duplicate offer और booking cancellation के explicit response/status contracts।
+6. Backend authoritative labour calculation और booking-time rate snapshot; materials/parts separate itemization + customer approval; client से भेजी amount पर भरोसा नहीं।
+7. Customer payment method selection/rotation rule का server-side contract, ताकि UI dropdown हटाने के बाद API सुरक्षित रूप से सही method assign करे।
+8. Quote-free lifecycle + material approval + cash confirmation + Razorpay order/verify/webhook replacement contracts, सभी एक साथ और duplicate-safe।
+
+**Decision / रोक:** अभी six-category UI को production-like booking submit से जोड़ना सुरक्षित नहीं, क्योंकि service-to-skill dispatch guarantee प्रमाणित नहीं। इस चरण में कोई backend/SQL/production बदलाव नहीं किया गया। अगला frontend कदम केवल non-submitting catalog prototype या isolated UI component हो सकता है; live booking payload/dispatch तभी बदले जब backend owner का versioned contract उपलब्ध हो। Existing booking system और वर्तमान booking submission तब तक intact रहेंगे।
