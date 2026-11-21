@@ -211,7 +211,8 @@ BEGIN
     RAISE EXCEPTION 'TECHNICIAN_WORKDAY_ALREADY_EXISTS_FOR_TODAY' USING ERRCODE='23505';
   END IF;
   INSERT INTO public.srk_booking_technician_workdays(
-    booking_id,technician_id,work_date,technician_hourly_paise_snapshot,rate_version_snapshot
+    booking_id,technician_id,work_date,technician_hourly_paise_snapshot,
+    helper_hourly_paise_snapshot,helper_included_snapshot,rate_version_snapshot
   ) VALUES(p_booking_id,v_technician,v_date,b.srk_technician_hourly_paise_snapshot,
     COALESCE(b.srk_helper_hourly_paise_snapshot,0),COALESCE(b.srk_helper_included_snapshot,false),b.srk_rate_version_snapshot)
   RETURNING id INTO v_workday;
