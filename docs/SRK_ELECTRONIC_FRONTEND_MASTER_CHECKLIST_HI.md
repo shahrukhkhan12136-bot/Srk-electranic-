@@ -1324,3 +1324,21 @@
 - [ ] Booking payload और dispatch eligibility इस क्रम के सभी selected IDs/verified skill relationships को backend contract से validate करें; contract upgrade के बिना live submit/dispatch behavior न बदलें।
 
 **यह 2BB की पहले लिखी category → task → technician-list वाली व्याख्या को supersede करता है।** 2BB की profile विशेषताएँ और verified skill संरक्षण की शर्तें लागू रहेंगी।
+
+
+## 2BD. Owner clarification — Electrician rate-list visibility and overtime (21-11-2026)
+
+**नवीनतम Founder निर्देश:**
+
+- [ ] Electrician की rate list में सभी छह service categories की लागू rates दिखाई जाएँ।
+- [ ] हर rate को 8 घंटे के काम के आधार पर दिखाएँ; electrician को केवल उसका payable **85% हिस्सा** दिखे।
+- [ ] Electrician की सामान्य rate list/profile में कंपनी का 15% हिस्सा या उसका अलग commission amount न दिखाएँ।
+- [ ] Rate list के ऊपर स्पष्ट सूचना रहे: **“ओवरटाइम: 8 घंटे के बाद प्रति अतिरिक्त घंटा सामान्य लागू दर का 1.5 गुना (डेढ़ गुना)”**।
+- [ ] Overtime rate भी electrician को मिलने वाले हिस्से के रूप में प्रदर्शित हो; rate calculation approved service rate और 85% technician share के अनुरूप हो। कोई नई/अनुमानित rate न बनाएँ।
+- [ ] काम पूरा होने पर final work/accounting detail में पूरा हिसाब दिखे: कुल काम के घंटे, पहले 8 घंटे का हिसाब, 8 घंटे के बाद के overtime घंटे और दर, electrician का 85% हिस्सा, कंपनी का 15% हिस्सा तथा लागू अन्य मदें अलग-अलग।
+- [ ] Fixed-price tasks पर overtime लागू न करें, जब तक उस task के लिए अलग approved rule न हो।
+- [ ] छहों categories की 8-hour payable rates और overtime payable rates को approved catalogue/backend rate snapshot से लें; जहाँ rate या overtime applicability स्पष्ट/स्वीकृत नहीं है वहाँ अनुमान न दिखाएँ।
+- [ ] Customer-facing gross price, technician-facing 85% payable rate और completion-time full accounting को अलग-अलग views/permissions में रखें। Technician को completion accounting से पहले company share expose न करें।
+- [ ] Rounding, helper inclusion, fixed-price exceptions और overtime base-rate calculation backend contract से verify करें; frontend में commission/payment calculation स्वयं authoritative न बनाएँ।
+
+**सीमा:** यह display/accounting requirement है। इसे checklist में दर्ज करने से live rate calculation, wallet credit, commission settlement, payment flow या backend contract नहीं बदलता। Implementation से पहले छह categories के 8-hour gross rates, 85% display values और overtime calculation basis का approved rate snapshot सत्यापित करना होगा।
