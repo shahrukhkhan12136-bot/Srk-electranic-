@@ -696,3 +696,29 @@
 - [ ] Flutter formatter, analyzer, unit/widget tests, Android build and device test remain unexecuted/unverified.
 
 **सीमा:** यह केवल read-only presentation prototype और source audit है। Live booking actions, RPCs, status transitions, customer contact, map, cash confirmation, earnings, wallet, backend, database, payment या production में कोई बदलाव नहीं किया गया।
+
+
+## 2V. Customer ↔ Technician work confirmation gap audit (2026-11-21)
+
+### Customer app में अभी जो उपलब्ध है
+- [x] Customer booking list सीधे `service_bookings` से current status/payment/quote fields पढ़ती है और assigned lifecycle states में authorized Technician contact दिखाती है।
+- [x] Customer अभी केवल legacy quote pending अवस्था में quote approve/reject कर सकता है।
+- [x] Customer cancellation केवल `new` / `confirmed` में उपलब्ध है; complaint/support और paid-state display सुरक्षित हैं।
+- [x] Online payment केवल completed + unpaid + quote-approved booking पर उपलब्ध है; payment success server verification के बाद refresh होता है।
+- [x] Customer app में अभी “काम शुरू होने की पुष्टि” या “काम पूरा होने की पुष्टि” के लिए अलग action/RPC नहीं है।
+
+### Technician app में अभी जो उपलब्ध है
+- [x] Technician assigned booking पर inspection शुरू कर सकता है; work-start केवल legacy `quote_approved` स्थिति से और completion केवल `in_progress` से भेजता है।
+- [x] Cash confirmation completed + cash + unpaid card पर उपलब्ध है; backend RPC अभी quote approval भी जाँचता है।
+- [x] Map, assigned customer phone, itemized service/material/total display, earnings और wallet को preserve करना आवश्यक है।
+
+### Quote-free lifecycle के लिए अगला contract
+- [ ] Backend पहले नई booking lifecycle/status enum और server-side transition table प्रकाशित करे; legacy quote bookings की read-only compatibility अलग हो।
+- [ ] Technician “काम शुरू करने का अनुरोध” भेजे; Customer app में उसी booking के authorized owner को स्पष्ट start confirmation दिखे। Timer केवल server पर customer confirmation के बाद शुरू हो।
+- [ ] Technician completion request भेजे; Customer app में final work summary और confirm/dispute path आए। Backend तय करे कि customer response timeout, dispute या Admin override कैसे संभलेगा।
+- [ ] Materials/parts approval अलग, itemized और customer-confirmed हो; इसे quote/counter-offer status में न बदला जाए।
+- [ ] हर action booking owner/assigned technician, current status, skill authorization, version/expected state और idempotency key से server पर validate हो। Duplicate taps/network retries duplicate timers, completion या charges न बनाएं।
+- [ ] Customer को final bill में labour, approved materials, applicable charges, total, payment method/eligibility और receipt अलग-अलग दिखें।
+- [ ] Existing cancel/complaint/contact/privacy/payment flows को transition matrix में explicitly preserve या replace किया जाए; कोई नया UI पुरानी API पर अनुमान से न बने।
+
+**स्थिति:** दोनों ऐप के मौजूदा स्रोतों का read-only audit और requirements documentation। कोई Customer/Technician screen, RPC, database, payment या live status action नहीं बदला।
