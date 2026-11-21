@@ -14,6 +14,8 @@ test('GST company profile is explicit and never assumes registration or rate',()
  assert.match(sql,/VALID_GSTIN_AND_MATCHING_STATE_REQUIRED/);
  assert.match(sql,/GST_LABOUR_RATE_RULE_NOT_CONFIGURED/);
  assert.match(sql,/GST_MATERIAL_RATE_RULE_NOT_CONFIGURED/);
+ assert.match(sql,/c\\.registration_status:='unregistered'/);
+ assert.match(sql,/c\\.version:=0/);
  assert.doesNotMatch(sql,/DEFAULT\s+18\s*\)/i);
 });
 test('Tax snapshots preserve taxable base and split CGST SGST IGST',()=>{
