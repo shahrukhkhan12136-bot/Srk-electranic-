@@ -1495,6 +1495,14 @@ async function loadCustomerBookings() {
     }));
     if(!isCurrent())return;
     workdayResults.forEach(({bookingId,result})=>{if(!result.error)workdayMap.set(bookingId,Array.isArray(result.data)?result.data:[]);});
+    const teamMap=new Map();
+    const teamResults=await Promise.all(data.filter(row=>row.srk_service_category_code&&['assigned','awaiting_work_start_approval','in_progress','completed'].includes(row.status)).map(async row=>{
+      try{return {bookingId:row.id,result:await customerSb.rpc('srk_customer_list_master_booking_team',{p_booking_id:row.id})};}
+      catch(error){return {bookingId:row.id,result:{error}};}
+    }));
+    if(!isCurrent())return;
+    teamResults.forEach(({bookingId,result})=>{if(!result.error)teamMap.set(bookingId,Array.isArray(result.data)?result.data:[]);});
+
 
     const refundMap=new Map();
     if(!refundResult.error){
@@ -1526,6 +1534,7 @@ async function loadCustomerBookings() {
       const contact = callMap.get(row.id);
       const isMasterBooking=Boolean(row.srk_service_category_code);
       const masterWorkdays=workdayMap.get(row.id)||[];
+      const masterTeam=teamMap.get(row.id)||[];
       const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
       const canCall = Boolean(contact) && /^[0-9]{10,15}$/.test(phone);
       const events=timelineMap.get(row.id)||[];
@@ -1535,6 +1544,9 @@ async function loadCustomerBookings() {
           ).join('')+'</ol>'
         : '<p class="small">इस बुकिंग का अलग स्थिति इतिहास अभी उपलब्ध नहीं है। ऊपर वर्तमान स्थिति देखें।</p>';
       const paymentLabel=String(row.payment_status||'pending').toLowerCase()==='paid'?'भुगतान प्राप्त':String(row.payment_status||'लंबित');
+      const masterSummaryMarkup=isMasterBooking?'<div class="job"><b>Master Booking Details</b><p>Category: '+customerEsc(customerMasterCategoryLabels[row.srk_service_category_code]||row.srk_service_category_code)+' · Skill: '+customerEsc(row.srk_service_skill_code||'—')+'</p><p>Service: '+customerEsc(row.srk_service_code||row.service_type)+' · Rate Level: '+customerEsc(row.srk_rate_level_code||'—')+'</p><p>Rate Version: '+customerEsc(row.srk_rate_version_snapshot||'—')+' · Billing: '+customerEsc(row.srk_billing_model_snapshot||'—')+'</p><p>Team: '+Number(row.srk_required_technician_count||1)+' Technician'+(row.srk_helper_included_snapshot?' + '+Number(row.srk_required_technician_count||1)+' Helper':'')+(row.srk_billing_model_snapshot==='hourly'?' · '+(Number(row.srk_duration_minutes||0)/60)+' estimated hours':' · '+Number(row.srk_service_quantity||1)+' Unit')+'</p><p>Estimated Labour: '+customerMasterMoneyPaise(row.srk_estimated_labour_paise)+'</p></div>':'';
+      const masterTeamMarkup=isMasterBooking?(masterTeam.length?'<div class="job"><b>Assigned Technician Team</b>'+masterTeam.map(t=>'<p><b>'+customerEsc(t.name||'Technician')+'</b> · '+customerEsc(t.assignment_status)+'<br><small>Technician ID: '+customerEsc(t.technician_id)+'</small>'+(t.phone?'<br>Phone: '+customerEsc(t.phone)+' · <a href="tel:'+customerEsc(t.phone)+'">Call Technician</a>':'')+(t.last_latitude!=null&&t.last_longitude!=null?'<br><a target="_blank" rel="noopener" href="'+customerEsc(googleMapsUrl(t.last_latitude,t.last_longitude,'Technician live location'))+'">📍 Technician की Live Location देखें</a>':'<br><small>अभी Live GPS उपलब्ध नहीं है। GPS अपडेट मिलने पर यहाँ दिखेगा।</small>')+'</p>').join('')+'</div>':'<div class="job"><b>Technician Assignment</b><p class="small">Dispatch पूरा होने और Technician स्वीकार करने के बाद Assigned Team यहाँ दिखेगी।</p></div>'):'';
+
       const cancellationRequest=cancellationMap.get(row.id);
       const cancellationInfo=cancellationRequest
         ? '<div class="job"><b>रद्द करने का अनुरोध: '+customerEsc(cancellationRequest.request_status==='pending'?'Admin के निर्णय की प्रतीक्षा':cancellationRequest.request_status==='approved'?'Admin ने रद्द किया':'Admin ने अनुरोध अस्वीकार किया')+'</b>'+
@@ -1576,7 +1588,7 @@ async function loadCustomerBookings() {
           ).join('')+'</div>'
         : '';
       const finalPayTotal= bill ? Number(bill.labour_amount_paise)/100 + reservedFeePaise/100 : 0;
-      const finalBillMarkup=isMasterBooking?renderCustomerMasterFinalBillMarkup(row,bill):bill
+      const finalBillMarkup=isMasterBooking?(bill?renderCustomerMasterFinalBillMarkup(row,bill):row.status==='completed'?'<div class="job"><b>Master Final Bill</b><p class="small">Final Bill और GST Snapshot तैयार हो रहे हैं। कृपया थोड़ी देर बाद Refresh करें।</p></div>':''):bill
         ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>नई सेवा का मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p>पुरानी Cancellation Fee: <b>'+customerEsc(formatCustomerMoney(reservedFeePaise/100))+'</b></p><p>कुल देय राशि: <b>'+customerEsc(formatCustomerMoney(finalPayTotal))+'</b></p><p class="small">मेहनताना और पुरानी cancellation fees अलग-अलग दर्ज हैं। सामान/पार्ट्स इस labour bill में शामिल नहीं हैं।</p>'+
           (String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'&&row.payment_status!=='paid'
             ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+finalPayTotal+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 कुल राशि Razorpay से भुगतान करें</button>'
@@ -1609,6 +1621,7 @@ async function loadCustomerBookings() {
       return '<article class="card customer-booking-card" style="margin:10px 0;padding:13px">' +
       '<div class="customer-booking-heading"><b>बुकिंग #' + customerEsc(row.id) + '</b><span class="customer-booking-state">'+customerEsc(customerBookingStatusText(row.status))+'</span></div>' +
       '<p>' + customerEsc(row.service_type) + '</p>' +
+      masterSummaryMarkup+masterTeamMarkup+
       '<p><b>वर्तमान स्थिति:</b> ' + customerEsc(customerBookingStatusText(row.status)) + ' • <b>भुगतान:</b> ' + customerEsc(paymentLabel) + '</p>' +
       (['new','confirmed'].includes(row.status)&&!row.assigned_electrician_id&&row.payment_status!=='paid'&&!String(row.payment_method||'').toLowerCase().includes('razorpay') ? '<div class="job"><b>भुगतान का चुना हुआ तरीका:</b> '+customerEsc(row.payment_method||'नकद (Cash)')+'<p class="small">यदि इस बुकिंग के लिए Online भुगतान जरूरी हो, तो आप यहाँ स्वयं Online चुन सकते हैं। आपकी अनुमति के बिना भुगतान तरीका नहीं बदलेगा।</p><button type="button" onclick="customerChangePaymentMethod(\''+row.id+'\')">Online भुगतान चुनें</button></div>' : '') +
       (row.payment_status === 'paid' && row.amount_paid != null && row.payment_verified_at ? '<p><b>सत्यापित भुगतान: ₹' + customerEsc(Number(row.amount_paid).toFixed(2)) + '</b></p><p class="small">बुकिंग संदर्भ: ' + customerEsc(row.id) + '</p>' : '') +
