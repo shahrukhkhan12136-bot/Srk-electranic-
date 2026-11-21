@@ -42,7 +42,7 @@ async function completeWebhookEvent(eventId, claimToken, outcome, error) {
 async function updateBooking(orderId, payment) {
   const url = new URL("/rest/v1/service_bookings", SUPABASE_URL);
   url.searchParams.set("razorpay_order_id", "eq." + orderId);
-  url.searchParams.set("select", "id,quoted_amount,service_charge,materials_amount,quote_status,status,payment_status,payment_method,razorpay_payment_id,selected_category,srk_service_category_code,completion_approval_status");
+  url.searchParams.set("select", "id,status,payment_status,payment_method,razorpay_payment_id,selected_category,srk_service_category_code,completion_approval_status");
 
   const response = await fetch(url, {
     method: "GET",
@@ -108,59 +108,8 @@ async function updateBooking(orderId, payment) {
     const settlement = await settlementResponse.json();
     return settlement?.success ? (settlement.already_processed ? "already_processed" : "updated") : "update_not_applied";
   }
-  if (booking.payment_status === "paid") return booking.razorpay_payment_id === payment.id ? "already_processed" : "payment_conflict";
-
-  // Reconcile only a completed job with an explicitly approved quote.
-  if (booking.status !== "completed" || booking.quote_status !== "approved") {
-    return "booking_not_payable";
-  }
-  const approvedTotal = Number(booking.service_charge) + Number(booking.materials_amount);
-  const quotedTotal = Number(booking.quoted_amount);
-  const expectedAmount = Math.round(approvedTotal * 100);
-  if (!Number.isFinite(approvedTotal) || approvedTotal < 1 ||
-      !Number.isFinite(quotedTotal) || Math.round(quotedTotal * 100) !== expectedAmount ||
-      !Number.isSafeInteger(expectedAmount) || payment.amount !== expectedAmount || payment.currency !== "INR") {
-    return "amount_mismatch";
-  }
-
-  const patchUrl = new URL("/rest/v1/service_bookings", SUPABASE_URL);
-  patchUrl.searchParams.set("id", "eq." + booking.id);
-  patchUrl.searchParams.set("razorpay_order_id", "eq." + orderId);
-  patchUrl.searchParams.set("payment_status", "not.in.(paid,refunded)");
-
-  const patched = await fetch(patchUrl, {
-    method: "PATCH",
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: "Bearer " + SUPABASE_KEY,
-      "Content-Type": "application/json",
-      Prefer: "return=representation"
-    },
-    body: JSON.stringify({
-      payment_status: "paid",
-      amount_paid: Number((payment.amount / 100).toFixed(2)),
-      razorpay_payment_id: payment.id,
-      payment_verified_at: new Date().toISOString()
-    })
-  });
-  if (!patched.ok) throw new Error("Booking payment update failed");
-  const updated = await patched.json();
-  if (Array.isArray(updated) && updated.length) return "updated";
-
-  // A concurrent webhook may have updated the row after our initial read.
-  // Re-read to distinguish a true duplicate from a different payment conflict.
-  const latestResponse = await fetch(url, {
-    method: "GET",
-    headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
-  });
-  if (!latestResponse.ok) throw new Error("Booking payment reconciliation failed");
-  const latestRows = await latestResponse.json();
-  const latest = Array.isArray(latestRows) ? latestRows[0] : null;
-  if (latest?.payment_status === "paid" && latest.razorpay_payment_id === payment.id) {
-    return "already_processed";
-  }
-  if (latest?.payment_status === "paid") return "payment_conflict";
-  return "update_not_applied";
+  // Historical bookings without an immutable bill are not eligible for new payment settlement.
+  return "booking_not_payable";
 }
 
 async function reconcileRefund(refund, eventName) {
