@@ -428,7 +428,7 @@ Customer:
 7. Materials/parts की itemized list, quantity/rate/amount और Customer approval अलग रिकॉर्ड हों; unapproved item final bill में charge न हो।
 8. Final bill एक server-authoritative snapshot हो: labour, approved materials, other charges, total (integer paise), currency, payment method/status/eligibility, receipt ID।
 9. Online payment order/verification और cash confirmation final bill + customer-confirmed completion से जुड़ें; duplicate payment, amount mismatch और refund reconciliation सुरक्षित रहे।
-10. Earnings/commission 15% Company + 85% Technician के owner-confirmed full customer booking payment basis से reconcile हो; tax/refund/rounding/settlement treatment स्पष्ट हो।
+10. Earnings/commission 15% Company + 85% Technician केवल service_charge/labour पर; materials/parts पर commission/platform fee 0%। Tax/refund/rounding/settlement treatment स्पष्ट हो।
 11. Complaint, cancellation, contact privacy, offer assignment और historical bookings की behavior matrix दें।
 12. Exact deployed RPC names, request/response JSON, SQL migration IDs, RLS/grants, staging test evidence और rollback plan उपलब्ध कराएँ।
 
