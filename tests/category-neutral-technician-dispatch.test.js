@@ -83,3 +83,31 @@ test('existing expiry worker keeps legacy Electrician flow and safely adds Techn
   assert.match(worker, /dispatchResponse\.status !== 404/);
   assert.match(worker, /electrician_offers_advanced/);
 });
+
+test('service bookings store canonical category, skill and requested Technician count without rewriting legacy fields', () => {
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS srk_service_category_code text/);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS srk_service_skill_code text/);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS srk_required_technician_count smallint NOT NULL DEFAULT 1/);
+  assert.match(migration, /service_bookings_srk_category_skill_pair/);
+  assert.match(migration, /service_bookings_srk_required_technicians_valid/);
+});
+
+test('new canonical-category bookings bypass only legacy Electrician broadcast and start shared dispatch transactionally', () => {
+  assert.match(migration, /IF NEW\.srk_service_category_code IS NOT NULL THEN\s+RETURN NEW;/);
+  assert.match(migration, /srk_start_category_neutral_booking_dispatch/);
+  assert.match(migration, /srk_dispatch_create_for_booking\(/);
+  assert.match(migration, /srk_dispatch_issue_next_offer\(NEW\.id\)/);
+  assert.match(migration, /AFTER INSERT ON public\.service_bookings/);
+});
+
+test('legacy bookings with no canonical category continue through the existing Electrician dispatcher', () => {
+  assert.match(migration, /PERFORM private\.srk_offer_booking_to_eligible_electricians\(NEW\.id\)/);
+  assert.match(migration, /IF NEW\.srk_service_category_code IS NOT NULL THEN\s+RETURN NEW;[\s\S]*?PERFORM private\.srk_offer_booking_to_eligible_electricians/);
+});
+
+test('manual location bookings are retained in searching state until GPS becomes available', () => {
+  assert.match(migration, /work_latitude double precision CHECK/);
+  assert.match(migration, /reason','work_location_gps_missing'/);
+  assert.match(migration, /srk_refresh_pending_dispatch_location/);
+  assert.match(migration, /AFTER UPDATE OF location_lat,location_lng ON public\.service_bookings/);
+});
