@@ -11,6 +11,11 @@ test('Technician screen loads canonical Master wallet across categories',()=>{
  assert.match(technician,/pending_paise/);
  assert.match(technician,/requested_paise/);
  assert.match(technician,/paid_paise/);
+ assert.match(technician,/commission_due_paise/);
+ assert.match(technician,/cash_collected_paise/);
+ assert.match(technician,/commission_recovered_paise/);
+ assert.match(technician,/SRK कमीशन बकाया हिस्ट्री/);
+ assert.match(technician,/ऑनलाइन कमाई से समायोजित कमीशन/);
 });
 test('Technician can submit an idempotent UPI or bank payout request',()=>{
  assert.match(technician,/function requestMasterTechnicianPayout\(\)/);
