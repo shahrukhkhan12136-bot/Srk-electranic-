@@ -11,14 +11,15 @@ CREATE TABLE IF NOT EXISTS srk_private.legacy_booking_financial_evidence (
   quote_responded_at timestamptz,
   customer_suggested_amount numeric(12,2),
   electrician_quote_kind text,
+  legacy_booking_status text,
   archived_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 ALTER TABLE srk_private.legacy_booking_financial_evidence ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON srk_private.legacy_booking_financial_evidence FROM PUBLIC,anon,authenticated;
-GRANT SELECT,INSERT ON srk_private.legacy_booking_financial_evidence TO service_role;
+GRANT SELECT ON srk_private.legacy_booking_financial_evidence TO service_role;
 INSERT INTO srk_private.legacy_booking_financial_evidence
  (booking_id,quoted_amount,service_charge,materials_amount,quote_status,quote_note,
-  quote_submitted_at,quote_responded_at,customer_suggested_amount,electrician_quote_kind)
+  quote_submitted_at,quote_responded_at,customer_suggested_amount,electrician_quote_kind,legacy_booking_status)
 SELECT b.id,
  nullif(to_jsonb(b)->>'quoted_amount','')::numeric,
  nullif(to_jsonb(b)->>'service_charge','')::numeric,
@@ -27,7 +28,7 @@ SELECT b.id,
  nullif(to_jsonb(b)->>'quote_submitted_at','')::timestamptz,
  nullif(to_jsonb(b)->>'quote_responded_at','')::timestamptz,
  nullif(to_jsonb(b)->>'customer_suggested_amount','')::numeric,
- to_jsonb(b)->>'electrician_quote_kind'
+ to_jsonb(b)->>'electrician_quote_kind',to_jsonb(b)->>'status'
 FROM public.service_bookings b
 WHERE nullif(to_jsonb(b)->>'quoted_amount','') IS NOT NULL
  OR nullif(to_jsonb(b)->>'service_charge','') IS NOT NULL
@@ -38,6 +39,7 @@ WHERE nullif(to_jsonb(b)->>'quoted_amount','') IS NOT NULL
  OR to_jsonb(b)->>'quote_responded_at' IS NOT NULL
  OR to_jsonb(b)->>'customer_suggested_amount' IS NOT NULL
  OR to_jsonb(b)->>'electrician_quote_kind' IS NOT NULL
+ OR to_jsonb(b)->>'status' IN ('inspection','awaiting_quote_approval','quote_approved','quote_rejected')
 ON CONFLICT (booking_id) DO NOTHING;
 
 -- Restore the legacy Admin manual-payment RPC and reconcile labour/materials separately.
