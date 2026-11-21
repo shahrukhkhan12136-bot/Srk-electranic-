@@ -20,6 +20,14 @@ async function verifyCustomerSession(authorization, booking) {
 }
 
 async function paymentAmountPaise(booking){
+  if(booking.srk_service_category_code){
+    const bills=await db("srk_booking_final_bills?select=subtotal_paise,labour_amount_paise,materials_amount_paise&id=eq."+encodeURIComponent(booking.id)+"&limit=1");
+    const bill=bills?.[0];
+    const total=Number(bill?.subtotal_paise),labour=Number(bill?.labour_amount_paise),materials=Number(bill?.materials_amount_paise);
+    if(!Number.isSafeInteger(total)||total<100||!Number.isSafeInteger(labour)||labour<1||!Number.isSafeInteger(materials)||materials<0||total!==labour+materials)
+      throw new Error("Invalid immutable Master final bill");
+    return total;
+  }
   if(booking.selected_category){
     const breakdown=await db("rpc/srk_service_role_get_booking_payment_breakdown",{
       method:"POST",body:JSON.stringify({p_booking_id:booking.id})
@@ -46,14 +54,14 @@ exports.handler=async event=>{
   try{
     const b=JSON.parse(event.body||"{}");bookingId=b.booking_id;
     if(!uuid(bookingId))return json(400,{success:false,error:"बुकिंग ID सही नहीं है।"});
-    let rows=await db("service_bookings?select=id,phone,customer_user_id,payment_method,quoted_amount,service_charge,materials_amount,payment_status,razorpay_order_id,status,quote_status,selected_category&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
+    let rows=await db("service_bookings?select=id,phone,customer_user_id,payment_method,quoted_amount,service_charge,materials_amount,payment_status,razorpay_order_id,status,quote_status,selected_category,srk_service_category_code&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
     let booking=rows?.[0];if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
     await verifyCustomerSession(event.headers?.authorization || event.headers?.Authorization || "", booking);
     if(!["razorpay","online"].some(token=>String(booking.payment_method||"").trim().toLowerCase().includes(token)))return json(409,{success:false,error:"इस बुकिंग के लिए Razorpay ऑनलाइन भुगतान नहीं चुना गया है।"});
     if(booking.payment_status==="refunded")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही रिफंड हो चुका है। Admin से संपर्क करें।"});
     if(booking.payment_status==="paid")return json(409,{success:false,error:"इस बुकिंग का भुगतान पहले ही हो चुका है।"});
     if(booking.status!=="completed")return json(409,{success:false,error:"भुगतान केवल काम पूरा होने के बाद किया जा सकता है।"});
-    if(!booking.selected_category&&booking.quote_status!=="approved")return json(409,{success:false,error:"पुरानी बुकिंग के लिए ग्राहक द्वारा मंजूर कोटेशन आवश्यक है।"});
+    if(!booking.selected_category&&!booking.srk_service_category_code&&booking.quote_status!=="approved")return json(409,{success:false,error:"पुरानी बुकिंग के लिए ग्राहक द्वारा मंजूर कोटेशन आवश्यक है।"});
     let amount;
     try{amount=await paymentAmountPaise(booking);}catch(_){return json(409,{success:false,error:"अंतिम Labour Bill / cancellation fee का हिसाब तैयार नहीं है। Admin से जाँच कराएँ।"});}
     if(!Number.isSafeInteger(amount)||amount<100)return json(400,{success:false,error:"बुकिंग में कम से कम ₹1 की सही राशि दर्ज होनी चाहिए।"});
