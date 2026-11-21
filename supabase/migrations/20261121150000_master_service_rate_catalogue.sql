@@ -263,7 +263,10 @@ CREATE OR REPLACE FUNCTION public.srk_admin_upsert_service_rate(
   p_effective_from timestamptz DEFAULT clock_timestamp(),p_effective_to timestamptz DEFAULT NULL
 )
 RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
-DECLARE v_id uuid; v_before jsonb:='{}'::jsonb; v_after jsonb; v_action text:='created'; v_model text;
+DECLARE
+  v_id uuid; v_existing public.srk_service_rates%rowtype;
+  v_before jsonb:='{}'::jsonb; v_after jsonb;
+  v_action text:='created'; v_model text; v_old record;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
   IF p_service_code IS NULL OR p_level_code !~ '^[a-z][a-z0-9_]{1,79}$'
@@ -283,16 +286,45 @@ BEGIN
     OR (v_model='fixed_per_unit' AND (p_fixed_labour_paise IS NULL OR p_technician_hourly_paise IS NOT NULL OR coalesce(p_helper_hourly_paise,0)<>0)) THEN
     RAISE EXCEPTION 'RATE_FIELDS_DO_NOT_MATCH_BILLING_MODEL' USING ERRCODE='22023';
   END IF;
-  SELECT id,to_jsonb(r) INTO v_id,v_before FROM public.srk_service_rates r
+
+  PERFORM pg_advisory_xact_lock(pg_catalog.hashtextextended(p_service_code||':'||p_level_code,0));
+  SELECT * INTO v_existing FROM public.srk_service_rates
     WHERE service_code=p_service_code AND level_code=p_level_code AND rate_version=p_rate_version FOR UPDATE;
-  IF v_id IS NOT NULL THEN v_action:=CASE WHEN p_status='active' THEN 'activated' ELSE 'updated' END; END IF;
-  INSERT INTO public.srk_service_rates(service_code,level_code,level_label,technician_hourly_paise,helper_hourly_paise,fixed_labour_paise,rate_version,status,effective_from,effective_to,created_by)
-  VALUES(p_service_code,p_level_code,btrim(p_level_label),p_technician_hourly_paise,coalesce(p_helper_hourly_paise,0),p_fixed_labour_paise,btrim(p_rate_version),p_status,p_effective_from,p_effective_to,auth.uid())
-  ON CONFLICT(service_code,level_code,rate_version) DO UPDATE SET level_label=EXCLUDED.level_label,
-    technician_hourly_paise=EXCLUDED.technician_hourly_paise,helper_hourly_paise=EXCLUDED.helper_hourly_paise,
-    fixed_labour_paise=EXCLUDED.fixed_labour_paise,status=EXCLUDED.status,
-    effective_from=EXCLUDED.effective_from,effective_to=EXCLUDED.effective_to
-  RETURNING id,to_jsonb(srk_service_rates) INTO v_id,v_after;
+  IF FOUND THEN
+    IF v_existing.status='active' OR v_existing.status='retired' THEN
+      RAISE EXCEPTION 'RATE_VERSION_IS_IMMUTABLE_CREATE_A_NEW_VERSION' USING ERRCODE='55000';
+    END IF;
+    v_id:=v_existing.id; v_before:=to_jsonb(v_existing); v_action:='updated';
+    UPDATE public.srk_service_rates SET level_label=btrim(p_level_label),
+      technician_hourly_paise=p_technician_hourly_paise,helper_hourly_paise=coalesce(p_helper_hourly_paise,0),
+      fixed_labour_paise=p_fixed_labour_paise,status=p_status,
+      effective_from=p_effective_from,effective_to=p_effective_to
+    WHERE id=v_id RETURNING to_jsonb(srk_service_rates) INTO v_after;
+  ELSE
+    INSERT INTO public.srk_service_rates(service_code,level_code,level_label,technician_hourly_paise,
+      helper_hourly_paise,fixed_labour_paise,rate_version,status,effective_from,effective_to,created_by)
+    VALUES(p_service_code,p_level_code,btrim(p_level_label),p_technician_hourly_paise,
+      coalesce(p_helper_hourly_paise,0),p_fixed_labour_paise,btrim(p_rate_version),
+      'pending_admin_configuration',p_effective_from,p_effective_to,auth.uid())
+    RETURNING id,to_jsonb(srk_service_rates) INTO v_id,v_after;
+  END IF;
+
+  IF p_status='active' THEN
+    FOR v_old IN SELECT * FROM public.srk_service_rates
+      WHERE service_code=p_service_code AND level_code=p_level_code
+        AND status='active' AND id<>v_id FOR UPDATE
+    LOOP
+      UPDATE public.srk_service_rates SET status='retired',effective_to=least(coalesce(effective_to,'infinity'::timestamptz),clock_timestamp())
+        WHERE id=v_old.id;
+      INSERT INTO public.srk_service_rate_events(rate_id,actor_user_id,action,before_data,after_data)
+      SELECT v_old.id,auth.uid(),'retired',to_jsonb(v_old),to_jsonb(r)
+      FROM public.srk_service_rates r WHERE r.id=v_old.id;
+    END LOOP;
+    UPDATE public.srk_service_rates SET status='active' WHERE id=v_id;
+    SELECT to_jsonb(r) INTO v_after FROM public.srk_service_rates r WHERE r.id=v_id;
+    v_action:='activated';
+  END IF;
+
   INSERT INTO public.srk_service_rate_events(rate_id,actor_user_id,action,before_data,after_data)
   VALUES(v_id,auth.uid(),v_action,v_before,v_after);
   RETURN v_id;
