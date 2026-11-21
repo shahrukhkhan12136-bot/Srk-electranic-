@@ -46,18 +46,22 @@ test('Razorpay order creation uses Master final bill subtotal, not quote fields'
  assert.match(createOrder,/srk_booking_final_bills\?select=subtotal_paise,labour_amount_paise,materials_amount_paise/);
  assert.match(createOrder,/booking\.srk_service_category_code/);
  assert.match(createOrder,/selected_category,srk_service_category_code/);
- assert.match(createOrder,/status,quote_status,selected_category,srk_service_category_code&id=eq/);
+ assert.match(createOrder,/payment_status,razorpay_order_id,status,selected_category,srk_service_category_code&id=eq/);
+ assert.doesNotMatch(createOrder,/quote_status|quoted_amount|service_charge|materials_amount/);
+ assert.match(createOrder,/A verified immutable labour bill is required before payment/);
 });
 
 test('Customer payment verification records captured Master payment through service-only RPC',()=>{
  assert.match(verifyPayment,/srk_service_role_record_master_online_payment/);
  assert.match(verifyPayment,/booking\.srk_service_category_code/);
+ assert.doesNotMatch(verifyPayment,/quote_status|quoted_amount|service_charge|materials_amount/);
  assert.match(verifyPayment,/p_amount_paise:p\.amount/);
 });
 
 test('Razorpay webhook reconciles Master payment from signed captured event and final bill',()=>{
  assert.match(webhook,/srk_service_role_record_master_online_payment/);
  assert.match(webhook,/booking\.srk_service_category_code/);
+ assert.doesNotMatch(webhook,/quote_status|quoted_amount|service_charge|materials_amount/);
  assert.match(webhook,/payment\.amount !== expectedAmount/);
 });
 
