@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(20);
+SELECT plan(21);
 
 SELECT has_table('public','srk_service_offerings','service offerings are separate from technician skills');
 SELECT has_table('public','srk_service_rates','versioned Admin-controlled labour rates exist');
