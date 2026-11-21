@@ -167,6 +167,10 @@ const work_details = clean(body.work_details, 2000);
       return json(400, { success: false, error: "बुकिंग अनुरोध की सुरक्षित पहचान नहीं मिली। कृपया दोबारा कोशिश करें।" });
     }
 
+    if (isMasterBooking && process.env.SRK_MASTER_BOOKING_ENABLED !== "true") {
+      return json(503, { success: false, code: "MASTER_BOOKING_BACKEND_NOT_READY",
+        error: "नई Master Booking अभी सुरक्षित rollout के लिए तैयार नहीं है। कृपया थोड़ी देर बाद कोशिश करें।" });
+    }
     if (!customer_name || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address ||
         (isMasterBooking
