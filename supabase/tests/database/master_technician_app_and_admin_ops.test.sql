@@ -1,9 +1,10 @@
 BEGIN;
-SELECT plan(10);
+SELECT plan(11);
 SELECT has_function('public','srk_technician_get_my_applications',ARRAY[]::text[],'Technician can read own shared applications');
 SELECT ok(position('application_skill_id' in pg_get_functiondef('public.srk_technician_get_my_applications()'::regprocedure))>0,'own application projection includes skill IDs for KYC attachment');
 SELECT ok(position('customer_decision' in pg_get_functiondef('public.srk_customer_get_technician_workdays(uuid)'::regprocedure))>0,'Customer can see the daily decision state');
 SELECT has_function('public','srk_technician_get_my_presence',ARRAY[]::text[],'Technician can read own online presence');
+SELECT has_function('public','srk_customer_get_master_final_bill',ARRAY['uuid'],'Customer can read own Master final bill and GST snapshot');
 SELECT ok(has_function_privilege('authenticated','public.srk_technician_get_my_presence()','EXECUTE')
  AND NOT has_function_privilege('anon','public.srk_technician_get_my_presence()','EXECUTE'),'Technician presence read is authenticated-only');
 SELECT has_function('public','srk_admin_list_master_dispatch_queue',ARRAY['integer'],'Admin can monitor Master dispatch queue');
