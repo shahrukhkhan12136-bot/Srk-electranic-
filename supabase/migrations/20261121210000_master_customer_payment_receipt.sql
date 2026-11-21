@@ -20,8 +20,8 @@ BEGIN
  IF b.srk_service_category_code IS NOT NULL THEN
   SELECT * INTO f FROM public.srk_booking_final_bills WHERE booking_id=p_booking_id;
   SELECT * INTO p FROM public.srk_master_booking_payments WHERE booking_id=p_booking_id AND payment_status='paid';
-  IF NOT FOUND OR f.id IS NULL OR p.final_bill_id<>f.id OR p.amount_paise<>f.subtotal_paise
-    OR round(b.amount_paid*100)::bigint<>f.subtotal_paise THEN
+  IF NOT FOUND OR f.id IS NULL OR p.final_bill_id<>f.id OR p.amount_paise<>(SELECT t.total_due_paise FROM public.srk_booking_tax_snapshots t WHERE t.booking_id=p_booking_id)
+    OR round(b.amount_paid*100)::bigint<>p.amount_paise THEN
    RAISE EXCEPTION 'MASTER_FINAL_BILL_PAYMENT_RECONCILIATION_FAILED' USING ERRCODE='55000';
   END IF;
   IF f.material_request_id IS NOT NULL AND f.material_decision='approved' THEN
@@ -33,14 +33,20 @@ BEGIN
   END IF;
   RETURN jsonb_build_object(
    'receipt_reference','SRK-PAY-'||upper(left(replace(b.id::text,'-',''),12)),
+   'invoice_number',(SELECT i.invoice_number FROM public.srk_master_tax_invoices i WHERE i.payment_id=p.id),
+   'taxable_value_paise',(SELECT t.taxable_value_paise FROM public.srk_booking_tax_snapshots t WHERE t.booking_id=p_booking_id),
+   'cgst_paise',(SELECT t.total_cgst_paise FROM public.srk_booking_tax_snapshots t WHERE t.booking_id=p_booking_id),
+   'sgst_paise',(SELECT t.total_sgst_paise FROM public.srk_booking_tax_snapshots t WHERE t.booking_id=p_booking_id),
+   'igst_paise',(SELECT t.total_igst_paise FROM public.srk_booking_tax_snapshots t WHERE t.booking_id=p_booking_id),
+   'total_tax_paise',(SELECT t.total_tax_paise FROM public.srk_booking_tax_snapshots t WHERE t.booking_id=p_booking_id),
    'booking_id',b.id,'customer_name',b.customer_name,'service_type',b.service_type,
    'address',b.address,'district',b.district,'state',b.state,'pincode',b.pincode,
    'booking_date',b.created_at,'payment_date',p.verified_at,
    'payment_method',p.payment_method,'payment_reference',coalesce(p.razorpay_payment_id,p.payment_reference),
-   'amount_paid',f.subtotal_paise/100.0,'labour_amount',f.labour_amount_paise/100.0,
+   'amount_paid',p.amount_paise/100.0,'labour_amount',f.labour_amount_paise/100.0,
    'materials_amount',f.materials_amount_paise/100.0,'material_items',v_items,
    'cancellation_fee_amount',0,'cancellation_fee_items','[]'::jsonb,
-   'total_amount',f.subtotal_paise/100.0,
+   'total_amount',p.amount_paise/100.0,
    'description','सत्यापित भुगतान रसीद — मेहनताना और ग्राहक-मंजूर सामग्री अलग-अलग',
    'document_type','payment_receipt'
   );
