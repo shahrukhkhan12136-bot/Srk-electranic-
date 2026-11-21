@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:srk_mobile_core/srk_mobile_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'service_category_picker.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +62,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   String? _error;
   List<Map<String, dynamic>> _bookings = [];
   List<Map<String, dynamic>> _complaints = [];
+  String? _selectedServicePreview;
 
   @override
   void initState() {
@@ -309,6 +311,50 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           padding: const EdgeInsets.all(16),
           children: [
             const SrkFounderBanner(),
+            const SizedBox(height: 14),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('हमारी सेवाएँ', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 4),
+                    const Text('अपनी जरूरत के अनुसार सेवा चुनें।'),
+                    const SizedBox(height: 12),
+                    SrkServiceCategoryPicker(
+                      onSelection: ({
+                        required String categoryId,
+                        required String categoryTitle,
+                        String? subcategoryId,
+                        String? subcategoryTitle,
+                        String? taskTitle,
+                      }) {
+                        final selection = [
+                          categoryTitle,
+                          if (subcategoryTitle != null) subcategoryTitle,
+                          if (taskTitle != null) taskTitle,
+                        ].join(' • ');
+                        setState(() => _selectedServicePreview = selection);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('चयन हुआ: $selection')),
+                        );
+                      },
+                    ),
+                    if (_selectedServicePreview != null) ...[
+                      const SizedBox(height: 8),
+                      Text('आपका चयन: $_selectedServicePreview',
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                    const SizedBox(height: 6),
+                    const Text(
+                      'नोट: यह नया सेवा चयन अभी प्रारूप है। मौजूदा बुकिंग फॉर्म और बुकिंग भेजने की प्रक्रिया अलग और यथावत है।',
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 14),
             Text('मेरी बुकिंग',
                 style: Theme.of(context).textTheme.headlineSmall),
