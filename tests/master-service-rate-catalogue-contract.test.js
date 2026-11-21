@@ -57,7 +57,7 @@ test('new booking schema stores canonical category, service, duration and immuta
   ]) assert.match(migration, new RegExp('ADD COLUMN IF NOT EXISTS ' + field));
   assert.match(migration, /service_bookings_srk_rate_snapshot_complete/);
   assert.match(migration, /DROP CONSTRAINT IF EXISTS service_bookings_estimate_matches_rate_card/);
-  assert.match(migration, /Historical booking snapshots never change/);
+  assert.match(migration, /historical booking snapshots never change/i);
 });
 
 test('Admin service offering and rate changes are audited and no direct client table access is granted', () => {
