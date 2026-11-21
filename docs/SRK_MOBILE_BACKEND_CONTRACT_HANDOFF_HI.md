@@ -463,3 +463,27 @@ Customer:
 - Provide historical commission reconciliation/backfill and rollback plan before modifying existing records.
 
 **No live financial code changed:** this is an audit/handoff only. Existing commission trigger, earnings RPC, wallet schema, Razorpay, Route and payout controls remain untouched. Do not claim the mobile app implements the owner-confirmed 15/85 split until backend rollout and cash/online staging reconciliation pass.
+
+
+## 30. Mobile screen/navigation inventory और Play Store release gaps (21-11-2026)
+
+Source audit में Customer और Technician दोनों ऐप मुख्यतः एक scrollable dashboard screen के रूप में हैं; अलग bottom navigation/tab/drawer नहीं मिला।
+
+### Customer मौजूदा entry points
+OTP auth; dashboard + latest bookings; new booking form route; six-category draft picker; booking detail/actions inline; complaints inline; refresh/logout. अलग profile/account, saved address, notification centre, payment receipt/history, help/FAQ/settings screens का source evidence नहीं मिला।
+
+### Technician मौजूदा entry points
+OTP auth; dashboard + profile approval state; offer inbox; offer price details; assigned booking/map/contact; legacy quote/work/cash actions; earnings/wallet; refresh/logout. अलग profile/KYC, verified skills, availability, notifications, support, bank/payout/settings screens का source evidence नहीं मिला।
+
+### Backend / product dependencies
+- Category picker submit integration requires deployed canonical taxonomy IDs and dispatch/verified-skill contract.
+- Customer/Technician confirmation screens require deployed quote-free work lifecycle.
+- Payment receipt/history and earnings/payout views require canonical final bill, verified collection, 15/85 ledger and actual payout status APIs.
+- Verified skill management requires Admin-approved skill schema and safe update/read APIs.
+- Notifications require registered device token, push provider, event policy and deep-link contract.
+- Do not add decorative or duplicate screens; owner must approve minimum navigation map before UI implementation.
+
+### Play Store release checklist gaps to verify
+Privacy policy URL and in-app access; terms; support contact; data safety declaration; account deletion request path; permission rationale; push notification behavior; deep links; network/offline/error states; accessibility/text scaling; app icons/splash/screenshots/feature graphic; package IDs/signing/versioning; Android 13+ notification permission; target SDK and policy compliance; release build and physical-device QA.
+
+**No runtime code or backend changed.** Inventory is source-based and not a claim of Play Store readiness. Release build and store policy review remain unverified.
