@@ -10,6 +10,7 @@ test('Admin can verify Master manual cash payments using GST-inclusive total due
  assert.match(migration,/srk_admin_list_master_pending_manual_payments/);
  assert.match(paymentMigration,/srk_admin_record_master_manual_payment/);
  assert.match(migration,/total_due_paise/);
+ assert.match(migration,/razorpay_payment_id IS NULL/);
  assert.match(admin,/srk_admin_list_master_pending_manual_payments/);
  assert.match(admin,/srk_admin_record_master_manual_payment/);
 });
