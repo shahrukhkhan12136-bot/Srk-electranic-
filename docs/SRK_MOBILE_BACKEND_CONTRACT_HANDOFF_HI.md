@@ -382,3 +382,21 @@ Customer picker callback supports a nullable selection. Changing a category or s
 ## 26. Task selection visual state
 
 The Customer picker now highlights the selected task using a selected FilterChip state. Changing the subcategory clears the previous task ID and highlight; changing the category resets both subcategory and task state. Widget assertions cover the highlight and reset behavior but have not been run yet. No API payload or backend behavior changed.
+
+
+## 27. Technician Offer Inbox और Accept/Reject server contract audit (21-11-2026)
+
+Source audit में Technician app `electrician_profiles` से current auth user की profile पढ़ता है, फिर `job_offers` को उसी `electrician_id` से query करता है। Offer details और price details अलग RPCs से आते हैं। Accept/Reject `srk_respond_to_offer` RPC से होते हैं। UI का PIN/district match label authorization नहीं है।
+
+Backend response/verification आवश्यकताएँ:
+1. Offer read पर authenticated Technician ownership और offer status/expiry validate हो।
+2. Accept RPC एक transaction में offer ownership, offered status, expiry, booking की current state, कोई existing assignment, active + approved + unexpired verified service skill और canonical catalogue version जाँचे।
+3. Competing Technicians में एक booking का केवल एक accept सफल हो; बाकी offers atomically unavailable/closed हों।
+4. Decline action ownership/status validate करे और duplicate request सुरक्षित/idempotent हो।
+5. Booking से offer तक immutable canonical service IDs/version copy हों; Customer selection, booking snapshot, offer और verified Technician skill एक ही backend-approved taxonomy से हों।
+6. PIN/district/GPS-distance match level server द्वारा निकाला जाए; यदि 30 km radius policy लागू हो तो server-side distance calculation, missing GPS fallback और boundary policy लिखित हों। Frontend label को eligibility का प्रमाण न मानें।
+7. Offer preview में customer का phone/address न लौटे; assignment के बाद dedicated authorized contact RPC ही निजी जानकारी दे।
+8. Raw `job_offers` query और `srk_get_my_offer_details` response के status/ownership consistency की staging test evidence दें।
+9. Frontend को exact deployed response schema और migration/version confirmation मिलने के बाद ही नई fields/RPC पढ़ने दें।
+
+**सीमा:** कोई Backend, database, dispatch, Supabase, payment या production बदलाव नहीं किया गया। यह contract handoff है, deployed API का दावा नहीं।
