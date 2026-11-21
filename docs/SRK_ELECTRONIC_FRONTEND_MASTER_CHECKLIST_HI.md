@@ -786,3 +786,17 @@
 - [ ] Run Flutter formatter, analyzer, shared-core tests, Customer widget tests and Android builds; none are claimed as executed by this source update.
 
 **सीमा:** केवल shared presentation catalogue और Customer picker data source बदला है। Existing booking form/submit payload, booking lifecycle, Technician live screens/skill authorization, APIs, Supabase, database, payment, production और Admin में कोई बदलाव नहीं।
+
+
+## 2AB. Technician verified-skill IDs का shared catalogue से read-only मिलान (2026-11-21)
+
+- [x] Technician skill model में अलग parser `fromDraftCatalogueServerJson` जोड़ा; यह केवल exact draft catalogue version, known category/subcategory IDs और उसी subcategory के known task ID को स्वीकार करता है।
+- [x] Display labels shared catalogue से लिए जाते हैं; server के पुराने/गलत labels को canonical display label नहीं माना जाता।
+- [x] Unknown category/subcategory/task, missing या अलग catalogue version, pending/rejected/inactive/expired skill fail-closed रहती है।
+- [x] Verified Services barrel exports को वास्तविक source file paths पर ठीक किया।
+- [x] Tests जोड़े: valid AC skill + canonical label, unknown IDs, AC/Fridge task mismatch और version mismatch।
+- [ ] Existing generic parser और offer matcher अभी isolated preview helpers हैं; उन्हें live Supabase profile, offer filtering/acceptance या work/payment authorization में नहीं जोड़ा गया।
+- [ ] Backend canonical IDs/version, deployed JSON response और server-side revalidation contract approve करे; draft version को production में न भेजें।
+- [ ] Flutter format, analyzer, Technician tests, Customer/shared-core tests और Android build अभी run/verify नहीं हुए।
+
+**सीमा:** यह ID/label consistency check है, Technician approval/dispatch authorization नहीं। Existing offer inbox, accept/reject, assigned booking, map/contact, status, cash/online payment, earnings/wallet, Supabase, backend, database और production behavior untouched हैं।
