@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:srk_mobile_core/srk_service_catalog.dart' as catalog;
 
 /// Customer-facing service catalogue prototype.
 ///
@@ -31,87 +32,34 @@ class SrkServiceSubcategory {
   final List<String> children;
 }
 
-const List<SrkServiceCategory> srkServiceCategories = [
-  SrkServiceCategory(
-    id: 'electrician',
-    title: 'इलेक्ट्रीशियन',
-    icon: Icons.electrical_services,
-    subcategories: [
-      SrkServiceSubcategory(id: 'electrical_wiring', title: 'इलेक्ट्रिकल वायरिंग'),
-      SrkServiceSubcategory(id: 'fan_install_repair', title: 'पंखा लगाना / मरम्मत'),
-      SrkServiceSubcategory(id: 'switch_socket', title: 'स्विच और सॉकेट मरम्मत'),
-      SrkServiceSubcategory(id: 'light_install', title: 'लाइट लगाना'),
-      SrkServiceSubcategory(id: 'mcb_distribution', title: 'MCB / डिस्ट्रीब्यूशन बोर्ड'),
-      SrkServiceSubcategory(id: 'inverter_battery', title: 'इन्वर्टर / बैटरी'),
-      SrkServiceSubcategory(id: 'appliance_electrical', title: 'इलेक्ट्रिकल उपकरण की मरम्मत'),
-      SrkServiceSubcategory(id: 'other_electrical', title: 'अन्य इलेक्ट्रिकल काम'),
-    ],
-  ),
-  SrkServiceCategory(
-    id: 'plumber',
-    title: 'प्लंबर',
-    icon: Icons.plumbing,
-  ),
-  SrkServiceCategory(
-    id: 'painter',
-    title: 'पेंटर',
-    icon: Icons.format_paint,
-  ),
-  SrkServiceCategory(
-    id: 'ac_fridge',
-    title: 'AC + फ्रिज',
-    icon: Icons.ac_unit,
-    subcategories: [
-      SrkServiceSubcategory(
-        id: 'ac',
-        title: 'AC',
-        children: [
-          'AC रिपेयर',
-          'इंस्टॉलेशन',
-          'अनइंस्टॉलेशन',
-          'सर्विसिंग',
-          'गैस चार्जिंग',
-          'लीकेज जाँच',
-          'कंप्रेसर',
-          'PCB',
-        ],
-      ),
-      SrkServiceSubcategory(
-        id: 'fridge',
-        title: 'फ्रिज',
-        children: [
-          'फ्रिज रिपेयर',
-          'कूलिंग समस्या',
-          'कंप्रेसर',
-          'गैस / लीकेज',
-          'PCB और अन्य मरम्मत',
-        ],
-      ),
-    ],
-  ),
-  SrkServiceCategory(
-    id: 'motor_pump',
-    title: 'मोटर और पंप',
-    icon: Icons.water,
-    subcategories: [
-      SrkServiceSubcategory(id: 'tullu_pump', title: 'घरेलू टुल्लू पंप'),
-      SrkServiceSubcategory(id: 'pump_repair', title: 'पंप रिपेयर'),
-      SrkServiceSubcategory(id: 'submersible', title: 'सबमर्सिबल पंप'),
-      SrkServiceSubcategory(id: 'winding', title: 'वाइंडिंग'),
-      SrkServiceSubcategory(id: 'capacitor', title: 'कैपेसिटर'),
-      SrkServiceSubcategory(id: 'starter', title: 'स्टार्टर'),
-      SrkServiceSubcategory(id: 'installation_removal', title: 'इंस्टॉलेशन / हटाना'),
-    ],
-  ),
-  SrkServiceCategory(
-    id: 'cooler',
-    title: 'कूलर',
-    icon: Icons.mode_fan,
-    subcategories: [
-      SrkServiceSubcategory(id: 'cooler_repair', title: 'कूलर रिपेयर'),
-    ],
-  ),
-];
+IconData _iconForService(String key) => switch (key) {
+      'electrical_services' => Icons.electrical_services,
+      'plumbing' => Icons.plumbing,
+      'format_paint' => Icons.format_paint,
+      'ac_unit' => Icons.ac_unit,
+      'water' => Icons.water,
+      'mode_fan' => Icons.mode_fan,
+      _ => Icons.miscellaneous_services,
+    };
+
+/// Customer picker is a presentation adapter over the shared core catalogue.
+/// It does not submit a booking or authorize technician eligibility.
+final List<SrkServiceCategory> srkServiceCategories =
+    catalog.srkServiceCatalog.map((category) {
+  return SrkServiceCategory(
+    id: category.id,
+    title: category.displayName,
+    icon: _iconForService(category.iconKey),
+    subcategories: category.options
+        .where((option) => option.id != null)
+        .map((option) => SrkServiceSubcategory(
+              id: option.id!,
+              title: option.displayName ?? option.name,
+              children: option.tasks.map((task) => task.name).toList(),
+            ))
+        .toList(),
+  );
+}).toList();
 
 class SrkServiceCategoryPicker extends StatefulWidget {
   const SrkServiceCategoryPicker({
