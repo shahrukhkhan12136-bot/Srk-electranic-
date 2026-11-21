@@ -69,7 +69,7 @@ class SrkServiceCategoryPicker extends StatefulWidget {
   });
 
   /// Emits a versioned shared selection; still preview-only.
-  final void Function(SrkServiceSelection selection) onSelection;
+  final void Function(SrkServiceSelection? selection) onSelection;
 
   @override
   State<SrkServiceCategoryPicker> createState() =>
@@ -81,6 +81,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   SrkServiceSubcategory? _subcategory;
 
   void _selectCategory(SrkServiceCategory category) {
+    widget.onSelection(null);
     setState(() {
       _category = category;
       _subcategory = null;
@@ -94,6 +95,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   void _selectSubcategory(SrkServiceSubcategory subcategory) {
     final category = _category;
     if (category == null) return;
+    widget.onSelection(null);
     setState(() => _subcategory = subcategory);
     if (subcategory.children.isEmpty) {
       final selection = SrkServiceSelection.create(
