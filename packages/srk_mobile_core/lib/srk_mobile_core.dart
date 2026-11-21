@@ -331,102 +331,135 @@ class SrkWelcomeHeader extends StatelessWidget {
   );
 }
 
-/// Wide dashboard banner inspired by the supplied customer/electrician dashboard model.
+/// Branded dashboard banner with a compact founder portrait on the left.
 class SrkFounderBanner extends StatelessWidget {
   const SrkFounderBanner({super.key, this.compact = false});
   final bool compact;
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(18),
-    child: Container(
-      width: double.infinity,
-      constraints: BoxConstraints(minHeight: compact ? 112 : 150),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [Color(0xFF073B91), Color(0xFF0759C7), Color(0xFF0876E8)],
+  Widget build(BuildContext context) {
+    final portraitWidth = compact ? 88.0 : 108.0;
+    final portraitHeight = compact ? 92.0 : 116.0;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: double.infinity,
+        constraints: BoxConstraints(minHeight: compact ? 112 : 142),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [Color(0xFF062B70), Color(0xFF0759C7), Color(0xFF0876E8)],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -18,
+              top: -42,
+              child: Icon(Icons.bolt, size: compact ? 128 : 164,
+                  color: Colors.white.withValues(alpha: .08)),
+            ),
+            Row(
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    compact ? 9 : 12, compact ? 9 : 12, compact ? 8 : 10,
+                    compact ? 9 : 12,
+                  ),
+                  child: Container(
+                    width: portraitWidth,
+                    height: portraitHeight,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFC928),
+                      borderRadius: BorderRadius.circular(17),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: .20),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.asset(
+                        'packages/srk_mobile_core/assets/founder(2).webp',
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: const Color(0xFF0A347F),
+                          child: const Icon(Icons.person, color: Colors.white, size: 42),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      compact ? 5 : 8, compact ? 12 : 16, compact ? 12 : 18,
+                      compact ? 12 : 16,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.bolt, color: Color(0xFFFFD447), size: 20),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                'SRK ELECTRONIC',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: compact ? 15 : 18,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: .25,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          'आपकी सेवा में हमेशा तैयार...',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: .96),
+                            fontSize: compact ? 12 : 14,
+                            fontWeight: FontWeight.w700,
+                            height: 1.25,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          height: 4,
+                          width: compact ? 62 : 82,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFC928),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              child: Container(height: 3, color: const Color(0xFFFFC928)),
+            ),
+          ],
         ),
       ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -24,
-            top: -36,
-            child: Icon(Icons.bolt, size: compact ? 130 : 180,
-                color: Colors.white.withValues(alpha: .07)),
-          ),
-          Row(
-            children: [
-              SizedBox(
-                width: compact ? 108 : 132,
-                height: compact ? 112 : 150,
-                child: Image.asset(
-                  'packages/srk_mobile_core/assets/founder(2).webp',
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: const Color(0xFF0A347F),
-                    child: const Icon(Icons.person, color: Colors.white, size: 52),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: compact ? 12 : 16,
-                    vertical: compact ? 10 : 16,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'SRK ELECTRONIC',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: compact ? 16 : 19,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: .3,
-                        ),
-                      ),
-                      const SizedBox(height: 7),
-                      Text(
-                        'आपकी सेवा में हमेशा तैयार...',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: compact ? 13 : 15,
-                          fontWeight: FontWeight.w700,
-                          height: 1.25,
-                        ),
-                      ),
-                      const SizedBox(height: 9),
-                      Container(
-                        height: 4,
-                        width: compact ? 66 : 88,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFC928),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Positioned(
-            left: 0, right: 0, bottom: 0,
-            child: Container(height: 3, color: const Color(0xFFFFC928)),
-          ),
-        ],
-      ),
-    ),
-  );
+    );
+  }
 }
 export 'srk_service_selection_contract.dart';
