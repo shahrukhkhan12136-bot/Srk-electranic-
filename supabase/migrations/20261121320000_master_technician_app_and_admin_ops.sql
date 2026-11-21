@@ -63,6 +63,40 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_customer_get_technician_workdays(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_customer_get_technician_workdays(uuid) TO authenticated;
 
+CREATE OR REPLACE FUNCTION public.srk_customer_get_master_final_bill(p_booking_id uuid)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $function$
+DECLARE v_uid uuid:=auth.uid();b public.service_bookings%rowtype;f public.srk_booking_final_bills%rowtype;
+ t public.srk_booking_tax_snapshots%rowtype;v_items jsonb:='[]'::jsonb;
+BEGIN
+ IF v_uid IS NULL THEN RAISE EXCEPTION 'CUSTOMER_LOGIN_REQUIRED' USING ERRCODE='42501';END IF;
+ IF p_booking_id IS NULL THEN RAISE EXCEPTION 'BOOKING_ID_REQUIRED' USING ERRCODE='22023';END IF;
+ SELECT * INTO b FROM public.service_bookings WHERE id=p_booking_id AND customer_user_id=v_uid;
+ IF NOT FOUND OR b.srk_service_category_code IS NULL THEN RAISE EXCEPTION 'OWN_MASTER_BOOKING_REQUIRED' USING ERRCODE='42501';END IF;
+ SELECT * INTO f FROM public.srk_booking_final_bills WHERE booking_id=p_booking_id;
+ IF NOT FOUND THEN RETURN NULL;END IF;
+ SELECT * INTO t FROM public.srk_booking_tax_snapshots WHERE booking_id=p_booking_id;
+ IF f.material_request_id IS NOT NULL AND f.material_decision='approved' THEN
+  SELECT COALESCE(jsonb_agg(jsonb_build_object('name',i.item_name,'quantity',i.quantity,
+   'unit_price_paise',i.unit_price_paise,'line_total_paise',i.line_total_paise) ORDER BY i.line_number),'[]'::jsonb)
+  INTO v_items FROM public.srk_booking_material_request_items i WHERE i.request_id=f.material_request_id;
+ END IF;
+ RETURN jsonb_build_object('booking_id',p_booking_id,'final_bill_id',f.id,
+  'labour_amount_paise',f.labour_amount_paise,'materials_amount_paise',f.materials_amount_paise,
+  'subtotal_paise',f.subtotal_paise,'taxable_value_paise',COALESCE(t.taxable_value_paise,f.subtotal_paise),
+  'cgst_paise',COALESCE(t.total_cgst_paise,0),'sgst_paise',COALESCE(t.total_sgst_paise,0),
+  'igst_paise',COALESCE(t.total_igst_paise,0),'total_tax_paise',COALESCE(t.total_tax_paise,0),
+  'total_due_paise',COALESCE(t.total_due_paise,f.subtotal_paise),
+  'tax_treatment',COALESCE(t.tax_treatment,'unregistered'),
+  'labour_tax_rate_basis_points',COALESCE(t.labour_rate_basis_points,0),
+  'materials_tax_rate_basis_points',COALESCE(t.materials_rate_basis_points,0),
+  'material_items',v_items,'material_decision',f.material_decision,
+  'rate_version',b.srk_rate_version_snapshot,'billing_model',b.srk_billing_model_snapshot,
+  'created_at',f.created_at);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_customer_get_master_final_bill(uuid) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_customer_get_master_final_bill(uuid) TO authenticated;
+
 CREATE OR REPLACE FUNCTION public.srk_technician_get_my_presence()
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_tid uuid;v_result jsonb;
