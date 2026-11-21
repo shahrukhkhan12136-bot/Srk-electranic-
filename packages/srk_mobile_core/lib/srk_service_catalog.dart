@@ -36,11 +36,13 @@ class SrkServiceCategory {
   final String name;
   final String description;
   final List<SrkServiceOption> options;
+  final List<SrkServiceOption> skillLevels;
 
   const SrkServiceCategory({
     required this.name,
     required this.description,
     required this.options,
+    this.skillLevels = const [],
   });
 }
 
@@ -61,37 +63,30 @@ const List<SrkServiceCategory> srkServiceCatalog = [
       SrkServiceOption(name: 'Inverter / Battery'),
       SrkServiceOption(name: 'Appliance Electrical Repair'),
       SrkServiceOption(name: 'Other Electrical Work'),
-      SrkServiceOption(
-        name: 'Basic',
-        rates: [SrkServiceRate(label: 'मजदूरी', amount: '₹100', unit: 'प्रति घंटा')],
-      ),
-      SrkServiceOption(
-        name: 'Expert Residential',
-        rates: [
-          SrkServiceRate(label: 'बिना Helper', amount: '₹1,000', unit: '8 घंटे'),
-          SrkServiceRate(label: 'Helper सहित', amount: '₹1,500', unit: '8 घंटे', helperAmount: '₹62.50 प्रति घंटा अतिरिक्त'),
-        ],
-      ),
-      SrkServiceOption(
-        name: 'Factory / Large Project',
-        rates: [
-          SrkServiceRate(label: 'बिना Helper', amount: '₹400', unit: 'प्रति घंटा'),
-          SrkServiceRate(label: 'Helper सहित', amount: '₹550', unit: 'प्रति घंटा', helperAmount: '₹150 प्रति घंटा अतिरिक्त'),
-        ],
-      ),
-      SrkServiceOption(
-        name: 'Master',
-        rates: [
-          SrkServiceRate(label: 'बिना Helper', amount: '₹700', unit: 'प्रति घंटा'),
-          SrkServiceRate(label: 'Helper सहित', amount: '₹950', unit: 'प्रति घंटा', helperAmount: '₹250 प्रति घंटा अतिरिक्त'),
-        ],
-      ),
+    ],
+    skillLevels: [
+      SrkServiceOption(name: 'Basic', rates: [
+        SrkServiceRate(label: 'मजदूरी', amount: '₹100', unit: 'प्रति घंटा'),
+      ]),
+      SrkServiceOption(name: 'Expert Residential', rates: [
+        SrkServiceRate(label: 'बिना Helper', amount: '₹1,000', unit: '8 घंटे'),
+        SrkServiceRate(label: 'Helper सहित', amount: '₹1,500', unit: '8 घंटे', helperAmount: '₹62.50 प्रति घंटा अतिरिक्त'),
+      ]),
+      SrkServiceOption(name: 'Factory / Large Project', rates: [
+        SrkServiceRate(label: 'बिना Helper', amount: '₹400', unit: 'प्रति घंटा'),
+        SrkServiceRate(label: 'Helper सहित', amount: '₹550', unit: 'प्रति घंटा', helperAmount: '₹150 प्रति घंटा अतिरिक्त'),
+      ]),
+      SrkServiceOption(name: 'Master', rates: [
+        SrkServiceRate(label: 'बिना Helper', amount: '₹700', unit: 'प्रति घंटा'),
+        SrkServiceRate(label: 'Helper सहित', amount: '₹950', unit: 'प्रति घंटा', helperAmount: '₹250 प्रति घंटा अतिरिक्त'),
+      ]),
     ],
   ),
   SrkServiceCategory(
     name: 'Plumber',
     description: 'पाइप, नल, फिटिंग और प्लंबिंग कार्य',
-    options: [
+    options: [],
+    skillLevels: [
       SrkServiceOption(name: 'Basic', rates: [
         SrkServiceRate(label: 'मजदूरी', amount: '₹100', unit: 'प्रति घंटा', helperAmount: 'Helper ₹50 प्रति घंटा; कुल ₹150 प्रति घंटा'),
       ]),
@@ -106,15 +101,16 @@ const List<SrkServiceCategory> srkServiceCatalog = [
   SrkServiceCategory(
     name: 'Painter',
     description: 'घर, दुकान और कमर्शियल पेंटिंग',
-    options: [
+    options: [],
+    skillLevels: [
       SrkServiceOption(name: 'Basic', rates: [
         SrkServiceRate(label: 'मजदूरी', amount: '₹700', unit: '8 घंटे'),
       ]),
       SrkServiceOption(name: 'Expert', rates: [
-        SrkServiceRate(label: 'मजदूरी', amount: '₹900', unit: '8 घंटे', helperAmount: 'Helper ₹75 अतिरिक्त'),
+        SrkServiceRate(label: 'मजदूरी', amount: '₹900', unit: '8 घंटे', helperAmount: 'Helper ₹75 प्रति घंटा अतिरिक्त'),
       ]),
       SrkServiceOption(name: 'Master / Commercial', rates: [
-        SrkServiceRate(label: 'मजदूरी', amount: '₹1,200', unit: '8 घंटे', helperAmount: 'Helper ₹100 अतिरिक्त'),
+        SrkServiceRate(label: 'मजदूरी', amount: '₹1,200', unit: '8 घंटे', helperAmount: 'Helper ₹100 प्रति घंटा अतिरिक्त'),
       ]),
     ],
   ),
