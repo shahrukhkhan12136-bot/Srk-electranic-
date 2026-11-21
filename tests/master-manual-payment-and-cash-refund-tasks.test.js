@@ -3,11 +3,12 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const migration=fs.readFileSync('supabase/migrations/20261121330000_master_manual_payment_and_cash_refund_tasks.sql','utf8');
+const paymentMigration=fs.readFileSync('supabase/migrations/20261121190000_master_payment_collection_and_technician_payables.sql','utf8');
 const admin=fs.readFileSync('admin.html','utf8');
 const technician=fs.readFileSync('electrician.html','utf8');
 test('Admin can verify Master manual cash payments using GST-inclusive total due',()=>{
  assert.match(migration,/srk_admin_list_master_pending_manual_payments/);
- assert.match(migration,/srk_admin_record_master_manual_payment/);
+ assert.match(paymentMigration,/srk_admin_record_master_manual_payment/);
  assert.match(migration,/total_due_paise/);
  assert.match(admin,/srk_admin_list_master_pending_manual_payments/);
  assert.match(admin,/srk_admin_record_master_manual_payment/);
