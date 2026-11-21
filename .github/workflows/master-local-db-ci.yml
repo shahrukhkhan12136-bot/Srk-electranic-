@@ -1,0 +1,63 @@
+name: SRK Master System local database validation
+
+on:
+  push:
+    branches:
+      - tmp/master-final-ui-20261121
+  pull_request:
+    branches:
+      - feature/master-rating-ui-followup-v2-20261121
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: srk-master-local-db-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-database:
+    name: Apply all migrations and run pgTAP in isolated local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - name: Create isolated local Supabase project
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/srk-master-local"
+          cd "$RUNNER_TEMP/srk-master-local"
+          supabase init
+          rm -rf supabase/migrations supabase/tests
+          cp -R "$GITHUB_WORKSPACE/supabase/migrations" supabase/migrations
+          cp -R "$GITHUB_WORKSPACE/supabase/tests" supabase/tests
+          test "$(find supabase/migrations -maxdepth 1 -name '*.sql' | wc -l)" -ge 100
+
+      - name: Start isolated local Supabase stack
+        working-directory: ${{ runner.temp }}/srk-master-local
+        run: supabase start
+
+      - name: Apply every repository migration to the isolated database
+        working-directory: ${{ runner.temp }}/srk-master-local
+        run: supabase db reset --local
+
+      - name: Lint the migrated local schema
+        working-directory: ${{ runner.temp }}/srk-master-local
+        run: supabase db lint --local --fail-on error
+
+      - name: Run every pgTAP database test
+        working-directory: ${{ runner.temp }}/srk-master-local
+        run: supabase test db
+
+      - name: Stop isolated local Supabase stack
+        if: always()
+        working-directory: ${{ runner.temp }}/srk-master-local
+        run: supabase stop --no-backup
