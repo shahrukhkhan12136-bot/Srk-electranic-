@@ -854,3 +854,13 @@
 - [ ] Flutter tests/analyzer/formatter अभी execute नहीं हुए।
 
 **सुरक्षा:** यह केवल form preview state है; legacy booking payload और backend flow अपरिवर्तित हैं।
+
+## 2AG. चुने हुए task का स्पष्ट visual feedback (2026-11-21)
+
+- [x] Task selection को FilterChip selected state से highlight किया।
+- [x] Subcategory बदलने पर पुराना task selection और highlight reset किया।
+- [x] Category बदलने पर subcategory/task state reset सुरक्षित रखा।
+- [x] Widget test में task highlight तथा subcategory बदलने पर reset assertions जोड़े।
+- [ ] Flutter tests/analyzer/formatter अभी execute नहीं हुए।
+
+**सीमा:** केवल picker UI state बदली; live booking payload या backend नहीं बदला।
