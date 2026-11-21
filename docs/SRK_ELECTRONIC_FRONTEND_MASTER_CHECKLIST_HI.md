@@ -224,3 +224,71 @@
 | 2026-11-21 | प्रारंभिक source audit | कोई app source file नहीं बदली | GitHub source inspection; build अभी नहीं चलाया | In progress |\n| 2026-11-21 | CI scope correction | `.github/workflows/flutter-android-ci.yml` | Workflow re-fetched; Customer + Technician steps मौजूद, Admin references अनुपस्थित; CI run/build अभी नहीं किया | Complete (scope edit only) |
 | 2026-11-21 | Founder clarification: booking flow preservation | Checklist sections 1–4 | मौजूदा booking system को दोबारा नहीं बनाना; केवल quotation/अनावश्यक विकल्प हटाने और आवश्यक category/rate आदि सुधारने का निर्देश दर्ज | Complete (checklist correction only) |
 | 2026-11-21 | Detailed booking/quote dependency audit | Customer/Technician Flutter source, `create-booking.js`, quote migration | Existing booking, offer, cancellation, complaint, payment, map, work-status और quote dependencies दर्ज; backend contract के बिना lifecycle बदलाव रोकने का blocker दर्ज | Audit recorded; source changes pending |
+
+
+## 2B. विस्तृत विकल्प-दर-विकल्प Frontend Audit (2026-11-21)
+
+**Audit scope:** केवल approved mobile feature branch के Customer Flutter app, Technician Flutter app, shared core, दोनों pubspec और Android CI workflow का source inspection। इस चरण में कोई Dart source, backend, database या production file नहीं बदली गई।
+
+### Customer App — रखना / हटाना / बदलना
+
+| मौजूदा विकल्प / सुविधा | निर्णय | कारण / आगे का काम |
+|---|---|---|
+| OTP login और verified session | रखना | मौजूदा Supabase OTP flow उपयोगी है; पहली login पर नाम लेने और बाद में सीधे Home जाने का profile flow जोड़ना बाकी है। |
+| Founder banner, Home, Refresh, Logout | रखना | ब्रांडिंग और सामान्य navigation; अनावश्यक बदलाव नहीं। |
+| नई बुकिंग का मौजूदा form और `/api/create-booking` submission | रखना और उसी में विस्तार | form को शून्य से नहीं बनाना; category/subcategory/level/helper/duration/technician count/rate summary उसी flow में जोड़ने हैं। |
+| मौजूदा Electrical-only service dropdown | बदलना | ठीक छह main categories और उनके service/task विकल्प चाहिए; अभी केवल आठ electrical service values हैं। |
+| ग्राहक का नाम हर booking पर भरना | बदलना | पहली सफल login पर नाम profile में लें; बाद की bookings में profile से स्वतः लें। |
+| OTP-verified मोबाइल नंबर का editable field | बदलना | verified account phone स्वतः लें; ग्राहक से वही नंबर दोबारा भरवाना नहीं। |
+| State, district, PIN, full address | रखना और बढ़ाना | locality/place field जोड़ें; GPS optional रहे; अन्य शहर का work address स्वीकार हो। |
+| Optional GPS location button | रखना | GPS न देने पर manual address से booking चलनी चाहिए। |
+| Preferred date/time | रखना | existing booking preference के रूप में; multi-day duration/shift rules अलग जोड़ने हैं। |
+| Work details / problem description | रखना | category-specific task और अतिरिक्त निर्देश के साथ। |
+| Customer suggested amount | हटाना | नई fixed/admin rates व्यवस्था में ग्राहक की शुरुआती बोली/रकम अनावश्यक है; API contract के बाद payload से भी हटाने का प्रभाव जाँचना है। |
+| Customer cash/online dropdown | बदलना | technician-ID आधारित completed-booking rotation लागू होना है; ग्राहक को ऐसा payment mode चुनने न दें जो assigned technician के लिए अनुमत न हो। Backend eligibility contract आवश्यक। |
+| Quotation / Counter Offer / approve / reject / quote status / quote waiting copy | हटाना | उपयोगकर्ता ने quotation system नहीं रखना कहा है। Materials की अलग itemized सूची और customer approval बनी रहेगी; उसे quotation नाम या workflow न दें। |
+| Existing booking history, status, assigned technician phone/call | रखना और status labels सुधारना | useful history/contact flow; नए lifecycle status API से map होंगे। |
+| Booking cancellation | रखना | मौजूदा cancel RPC और eligibility नियम backend contract से verify हों। |
+| Complaint / support | रखना | complaint flow उपयोगी है; category label में “कीमत / कोटेशन” को “बिल / अतिरिक्त सामान” जैसे सही शब्द से बदलना है। |
+| Completed booking payment / Razorpay verification | रखना और बदलना | verified backend success ही success दिखाए; quote-approved gating हटाने का तरीका backend lifecycle/payment contract के बाद तय होगा। |
+| Payment amount source | बदलना | quoted amount पर निर्भर display के स्थान पर approved labour + approved materials + travel/other valid charges का backend-confirmed bill चाहिए। |
+
+### Technician App — रखना / हटाना / बदलना
+
+| मौजूदा विकल्प / सुविधा | निर्णय | कारण / आगे का काम |
+|---|---|---|
+| Technician OTP login | रखना | मौजूदा flow उपयोगी; role/profile eligibility के साथ सुरक्षित रखना। |
+| Profile link, approval/active status | रखना और बढ़ाना | अभी linked profile और approved/active indicator है; पूरा onboarding, KYC, skills, experience और rejection reason UI बाकी है। |
+| New booking offers और accept/decline | रखना | मौजूदा offer inbox/response RPC महत्वपूर्ण है; dispatch rules नए backend contract से मिलाने हैं। |
+| Offer match by PIN/district | बदलना | GPS-based 30 km, verified skill, online/availability और nearest-first dispatch चाहिए; केवल PIN/district match पर्याप्त नहीं। |
+| Assigned booking list | रखना और विस्तार | मौजूदा booking details, address, date/time और work notes को preserve करें। |
+| Customer map/directions और assigned customer phone | रखना | उपयोगी operational controls। |
+| Inspection action | बदलना | इसे quote lifecycle से स्वतंत्र सुरक्षित inspection/work-start lifecycle में map करना होगा; backend owner contract के बिना button/state न बदलें। |
+| Quote details, labour/material quote, counter offer, quote status | हटाना | Technician-facing quotation feature समाप्त; material itemization/approval अलग controlled feature होगा। |
+| “ग्राहक को कोटेशन भेजें” और `_QuoteSubmissionDialog` | हटाना | user-facing quote submission नहीं चाहिए; `srk_submit_booking_quote` call भी तभी हटे जब backend नया flow उपलब्ध कराए। |
+| Work start केवल `quote_approved` पर | बदलना, अभी blocked | वर्तमान RPC `srk_update_booking_work_status` quote approval पर निर्भर है; frontend-only बदलाव से काम शुरू नहीं होगा। |
+| Work complete action | रखना और विस्तार | completion verification, customer confirmation, timer/day logs, rating और payment calculation से जोड़ना है। |
+| Cash payment confirmation | रखना और बदलना | duplicate-safe backend confirmation, customer receipt, 85/15 ledger और cash-cycle rules से जोड़ना है। |
+| Earnings, wallet summary | रखना और बढ़ाना | अभी केवल paid earnings और balance का सीमित view है; 85% share, pending/requested/paid payout, cash due, UTR/history चाहिए। |
+| Online/offline toggle, live GPS status, 30 km radius | जोड़ना | मौजूदा audited dashboard में उपलब्ध नहीं दिखे; backend contract और permissions आवश्यक। |
+| Work timer, pause/resume, overtime, day-wise schedule | जोड़ना | मौजूदा audited screen में नहीं दिखे; authoritative timer API के बिना local-only timer न बनाएं। |
+| Customer/Technician ratings | जोड़ना | दोनों तरफ rating flow आवश्यक। |
+
+### Shared core, dependencies और build workflow
+
+- Shared core `packages/srk_mobile_core/lib/srk_mobile_core.dart`: OTP UI, Supabase initialization और founder artwork उपलब्ध; Customer/Technician dashboards shared core में नहीं हैं। `SrkAppRole.admin` और generic Admin login code मौजूद है, पर वर्तमान deliverable में Admin Android app नहीं बनाना है। इस unused role/code को हटाने से पहले package consumers की जाँच करें।
+- Customer dependencies: Flutter, shared core, `url_launcher`, `geolocator`, `razorpay_flutter`; Technician dependencies: Flutter, shared core, `url_launcher`। कोई नई dependency इस audit में नहीं जोड़ी गई।
+- CI workflow Customer और Technician debug APK बनाता है; Android scaffolding हर run पर temporary `flutter create` से बनता है। Permanent Android folders, signed Release AAB और Play Store signing अभी बाकी हैं।
+- CI manifest permission injection की `sed` command और workflow execution अभी वास्तविक runner पर verify नहीं हुए; workflow run/analyze/build को evidence मिलने तक **Not verified** रखें।
+- दोनों app source में अभी onboarding, complete category catalog, technician GPS/online controls, job timer, multi-day decision flow और payout request screens का पूरा implementation नहीं दिखता। इन्हें “मौजूद” न मानें।
+
+### सुरक्षित बदलाव का क्रम
+
+1. Backend owner/GPT-2 से quote-free lifecycle, materials approval, final bill/payment eligibility और status RPC contract लें।
+2. Customer और Technician source में quotation UI/API dependency हटाने का contract-backed change करें; पुराने bookings के legacy quote data को read-only compatibility दें।
+3. Existing customer booking form को छह categories और लागू booking fields से बढ़ाएँ; old create-booking endpoint payload compatibility पहले जाँचें।
+4. Technician offer/assigned job screens को preserve करते हुए verified GPS/availability, work timer, daily log, completion और payout views क्रमशः जोड़ें।
+5. प्रत्येक source change के बाद `dart format`, `dart analyze`, relevant tests और CI evidence दर्ज करें।
+6. कोई backend migration, production change, Main merge या deployment इस mobile frontend authorization के अंतर्गत नहीं है।
+
+**स्थिति:** विकल्प audit recorded; कोई Dart source change नहीं किया गया। Quote lifecycle, payment mode eligibility और material approval अभी backend contract पर Blocked हैं।
