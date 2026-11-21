@@ -27,8 +27,7 @@ ALTER TABLE public.service_bookings
   DROP CONSTRAINT IF EXISTS service_bookings_status_check;
 ALTER TABLE public.service_bookings
   ADD CONSTRAINT service_bookings_status_check CHECK (status = ANY (ARRAY[
-    'new','confirmed','assigned','inspection','awaiting_quote_approval',
-    'quote_approved','quote_rejected','awaiting_work_start_approval',
+    'new','confirmed','assigned','awaiting_work_start_approval',
     'in_progress','completed','cancelled'
   ]::text[]));
 
@@ -37,8 +36,7 @@ ALTER TABLE public.service_bookings
 ALTER TABLE public.service_bookings
   ADD CONSTRAINT service_bookings_assignment_status_requires_electrician CHECK (
     status <> ALL (ARRAY[
-      'assigned','inspection','awaiting_quote_approval','quote_approved',
-      'quote_rejected','awaiting_work_start_approval','in_progress','completed'
+      'assigned','awaiting_work_start_approval','in_progress','completed'
     ]::text[]) OR assigned_electrician_id IS NOT NULL
   );
 
@@ -313,7 +311,7 @@ BEGIN
       b.labour_rate_tier_snapshot,b.labour_rate_card_version_snapshot,b.labour_rate8h_paise_snapshot,
       b.work_timer_elapsed_seconds,v_minutes,v_paise,v_amount);
     INSERT INTO srk_private.work_transition_authorizations VALUES(pg_catalog.txid_current(),p_booking_id,'completed');
-    UPDATE public.service_bookings SET status='completed',service_charge=v_amount,
+    UPDATE public.service_bookings SET status='completed',
       completion_approval_status='approved',customer_completed_at=clock_timestamp()
     WHERE id=p_booking_id;
     DELETE FROM srk_private.work_transition_authorizations WHERE transaction_id=pg_catalog.txid_current()
@@ -395,10 +393,9 @@ CREATE FUNCTION public.srk_get_my_offer_details()
 RETURNS TABLE(
   offer_id uuid,offer_status text,match_level text,offer_created_at timestamptz,
   booking_id uuid,service_type text,state text,district text,pincode text,
-  preferred_date date,preferred_time time,work_details text,quoted_amount numeric,
+  preferred_date date,preferred_time time,work_details text,
   booking_status text,customer_name text,customer_phone text,address text,
-  location_lat double precision,location_lng double precision,service_charge numeric,
-  materials_amount numeric,quote_status text,quote_note text,
+  location_lat double precision,location_lng double precision,
   selected_category text,selected_duration_hours smallint,selected_rate_tier text,
   work_start_approval_status text,completion_approval_status text,
   completion_requested_at timestamptz,work_timer_elapsed_seconds numeric,
@@ -408,16 +405,12 @@ LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path TO 'pg_catalog','public','auth','pg_temp'
 AS $function$
   SELECT o.id,o.status,o.match_level,o.created_at,b.id,b.service_type,b.state,b.district,b.pincode,
-    b.preferred_date,b.preferred_time,b.work_details,b.quoted_amount,b.status,
+    b.preferred_date,b.preferred_time,b.work_details,b.status,
     CASE WHEN b.assigned_electrician_id=p.id THEN b.customer_name ELSE NULL END,
     CASE WHEN b.assigned_electrician_id=p.id THEN b.phone ELSE NULL END,
     CASE WHEN b.assigned_electrician_id=p.id THEN b.address ELSE NULL END,
     CASE WHEN b.assigned_electrician_id=p.id THEN b.location_lat ELSE NULL END,
     CASE WHEN b.assigned_electrician_id=p.id THEN b.location_lng ELSE NULL END,
-    CASE WHEN b.assigned_electrician_id=p.id THEN b.service_charge ELSE NULL END,
-    CASE WHEN b.assigned_electrician_id=p.id THEN b.materials_amount ELSE NULL END,
-    CASE WHEN b.assigned_electrician_id=p.id THEN b.quote_status ELSE NULL END,
-    CASE WHEN b.assigned_electrician_id=p.id THEN b.quote_note ELSE NULL END,
     b.selected_category,b.selected_duration_hours,b.selected_rate_tier,
     b.work_start_approval_status,b.completion_approval_status,b.completion_requested_at,
     b.work_timer_elapsed_seconds,b.work_started_at,b.work_timer_running
@@ -441,119 +434,7 @@ SET search_path TO 'pg_catalog','public','auth','pg_temp'
 AS $function$
 DECLARE v_profile_id uuid; v_booking public.service_bookings%ROWTYPE;
 BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_booking_id IS NULL OR p_service_charge IS NULL OR p_service_charge<=0
-    OR p_materials_amount IS NULL OR p_materials_amount<0
-    OR p_service_charge>10000000 OR p_materials_amount>10000000 THEN
-    RAISE EXCEPTION 'Invalid quote amounts' USING ERRCODE='22023';
-  END IF;
-  SELECT id INTO v_profile_id FROM public.electrician_profiles
-  WHERE (user_id=auth.uid() OR auth_user_id=auth.uid())
-    AND verification_status='approved' AND active=true
-  ORDER BY created_at DESC LIMIT 1;
-  IF v_profile_id IS NULL THEN RAISE EXCEPTION 'Approved active electrician required' USING ERRCODE='42501'; END IF;
-  SELECT * INTO v_booking FROM public.service_bookings
-  WHERE id=p_booking_id AND assigned_electrician_id=v_profile_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Assigned booking not found' USING ERRCODE='42501'; END IF;
-  IF v_booking.selected_category IS NOT NULL THEN
-    RAISE EXCEPTION 'नई बुकिंग में अलग कोटेशन नहीं है; ग्राहक द्वारा चुनी दर और सर्वर टाइमर लागू हैं';
-  END IF;
-  IF v_booking.status NOT IN ('assigned','inspection','quote_rejected') THEN
-    RAISE EXCEPTION 'Booking is not ready for a legacy quote';
-  END IF;
-  UPDATE public.service_bookings SET service_charge=round(p_service_charge,2),
-    materials_amount=round(p_materials_amount,2),
-    quoted_amount=round(p_service_charge+p_materials_amount,2),
-    quote_note=left(coalesce(p_quote_note,''),1000),quote_status='pending',
-    quote_submitted_at=clock_timestamp(),quote_responded_at=NULL,status='awaiting_quote_approval'
-  WHERE id=p_booking_id;
-  RETURN jsonb_build_object('success',true,'total',round(p_service_charge+p_materials_amount,2),'quote_status','pending');
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.srk_customer_respond_booking_quote(p_booking_id uuid,p_response text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','auth','pg_temp'
-AS $function$
-DECLARE v_booking public.service_bookings%ROWTYPE;
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_response NOT IN ('approved','rejected') THEN RAISE EXCEPTION 'Invalid quote response' USING ERRCODE='22023'; END IF;
-  SELECT * INTO v_booking FROM public.service_bookings
-  WHERE id=p_booking_id AND customer_user_id=auth.uid() FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Customer booking not found' USING ERRCODE='42501'; END IF;
-  IF v_booking.selected_category IS NOT NULL THEN
-    RAISE EXCEPTION 'नई बुकिंग में कोटेशन मंजूरी लागू नहीं है';
-  END IF;
-  IF v_booking.status<>'awaiting_quote_approval' OR v_booking.quote_status<>'pending' THEN
-    RAISE EXCEPTION 'No legacy quote is waiting for approval';
-  END IF;
-  UPDATE public.service_bookings SET quote_status=p_response,quote_responded_at=clock_timestamp(),
-    status=CASE WHEN p_response='approved' THEN 'quote_approved' ELSE 'quote_rejected' END
-  WHERE id=p_booking_id;
-  RETURN jsonb_build_object('success',true,'quote_status',p_response);
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.srk_update_booking_work_status(p_booking_id uuid,p_status text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','auth','pg_temp'
-AS $function$
-DECLARE v_profile_id uuid; v_booking public.service_bookings%ROWTYPE;
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; END IF;
-  IF p_status NOT IN ('inspection','in_progress','completed') THEN RAISE EXCEPTION 'Invalid work status' USING ERRCODE='22023'; END IF;
-  SELECT id INTO v_profile_id FROM public.electrician_profiles
-  WHERE (user_id=auth.uid() OR auth_user_id=auth.uid())
-    AND verification_status='approved' AND active=true
-  ORDER BY created_at DESC LIMIT 1;
-  IF v_profile_id IS NULL THEN RAISE EXCEPTION 'Approved active electrician required' USING ERRCODE='42501'; END IF;
-  SELECT * INTO v_booking FROM public.service_bookings
-  WHERE id=p_booking_id AND assigned_electrician_id=v_profile_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Assigned booking not found' USING ERRCODE='42501'; END IF;
-  IF v_booking.selected_category IS NOT NULL THEN
-    RAISE EXCEPTION 'नई बुकिंग का Status केवल Customer-approved server timer workflow बदल सकता है' USING ERRCODE='42501';
-  END IF;
-  IF p_status='inspection' AND v_booking.status='assigned' THEN
-    UPDATE public.service_bookings SET status='inspection' WHERE id=p_booking_id;
-  ELSIF p_status='in_progress' AND v_booking.status='quote_approved' AND v_booking.quote_status='approved' THEN
-    UPDATE public.service_bookings SET status='in_progress',work_started_at=clock_timestamp() WHERE id=p_booking_id;
-  ELSIF p_status='completed' AND v_booking.status='in_progress' THEN
-    UPDATE public.service_bookings SET status='completed' WHERE id=p_booking_id;
-  ELSE
-    RAISE EXCEPTION 'Invalid legacy booking status transition';
-  END IF;
-  RETURN jsonb_build_object('success',true,'status',p_status);
-END;
-$function$;
-
-REVOKE ALL ON FUNCTION public.srk_submit_booking_quote(uuid,numeric,numeric,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.srk_submit_booking_quote(uuid,numeric,numeric,text) TO authenticated;
-REVOKE ALL ON FUNCTION public.srk_customer_respond_booking_quote(uuid,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.srk_customer_respond_booking_quote(uuid,text) TO authenticated;
-REVOKE ALL ON FUNCTION public.srk_update_booking_work_status(uuid,text) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.srk_update_booking_work_status(uuid,text) TO authenticated;
-
-
--- Prevent direct Admin/browser status edits from bypassing the customer-approved
--- server-timed work lifecycle for new-category bookings.
-CREATE OR REPLACE FUNCTION public.srk_guard_new_category_booking_status_transition()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $function$
-DECLARE
-  v_authorized boolean := false;
-  v_cancel_request_id text;
-BEGIN
-  IF NEW.selected_category IS DISTINCT FROM OLD.selected_category THEN
-    RAISE EXCEPTION 'BOOKING_CATEGORY_IS_IMMUTABLE'
-      USING ERRCODE='42501';
-  END IF;
-
-  IF NEW.status IS NOT DISTINCT FROM OLD.status
-     OR OLD.selected_category IS NULL THEN
+  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; LD.selected_category IS NULL THEN
     RETURN NEW;
   END IF;
 
