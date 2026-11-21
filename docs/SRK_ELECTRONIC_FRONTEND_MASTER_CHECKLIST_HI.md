@@ -507,3 +507,17 @@
 8. Quote-free lifecycle + material approval + cash confirmation + Razorpay order/verify/webhook replacement contracts, सभी एक साथ और duplicate-safe।
 
 **Decision / रोक:** अभी six-category UI को production-like booking submit से जोड़ना सुरक्षित नहीं, क्योंकि service-to-skill dispatch guarantee प्रमाणित नहीं। इस चरण में कोई backend/SQL/production बदलाव नहीं किया गया। अगला frontend कदम केवल non-submitting catalog prototype या isolated UI component हो सकता है; live booking payload/dispatch तभी बदले जब backend owner का versioned contract उपलब्ध हो। Existing booking system और वर्तमान booking submission तब तक intact रहेंगे।
+
+
+## 2H. Isolated six-category catalogue model (2026-11-21)
+
+- [x] Added `packages/srk_mobile_core/lib/srk_service_catalog.dart` as a reusable, immutable Dart catalogue model.
+- [x] Six top-level categories and approved order recorded: Electrician, Plumber, Painter, AC + Fridge, Motor & Pump, Cooler.
+- [x] Included confirmed task lists and owner-approved rate entries only. Fridge rate and Motor & Pump winding above 20 HP remain explicitly unpriced pending owner confirmation.
+- [x] AC + Fridge model keeps AC and Fridge as separate second-level choices; AC task list is attached only to AC.
+- [x] Cooler fixed ₹500 labour and separate-parts note are recorded; winding is kept in Motor & Pump.
+- [x] This is data/model preparation only: it is not imported into Customer/Technician screens, does not replace the existing booking form, does not change `service_type` payload, does not submit bookings, and does not dispatch work.
+- [ ] Before UI integration: backend owner must publish the versioned category/skill/dispatch/rate contract in section 2G; confirm all pending rates; then add widget/unit tests and Flutter analyze/build.
+- [ ] Before any live category booking: end-to-end test every category/subcategory against an approved matching Technician account and verify no cross-category offer.
+
+**Validation boundary:** GitHub file creation was confirmed. Flutter SDK analysis/build and runtime rendering have not yet been run; this file must not be described as build-tested.
