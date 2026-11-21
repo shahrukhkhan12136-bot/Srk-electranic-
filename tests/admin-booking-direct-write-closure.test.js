@@ -11,7 +11,7 @@ test('Admin booking location uses dedicated RPC; historical quotes are read-only
   assert.match(admin, /srk_admin_update_booking_customer_location/);
   assert.doesNotMatch(admin, /srk_admin_update_legacy_booking_quote/);
   assert.doesNotMatch(admin, /id="amt-/);
-  assert.match(admin, /ऐतिहासिक रिकॉर्ड केवल पढ़ने के लिए/);
+  assert.match(admin, /सत्यापित भुगतान/);
   assert.doesNotMatch(admin, /\.from\(['"]service_bookings['"]\)\s*\.update\s*\(/);
 });
 
