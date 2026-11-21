@@ -68,7 +68,7 @@ class SrkServiceCategory {
 
 /// Approved catalogue revision. IDs remain local keys, not deployed backend IDs.
 /// Keep the legacy constant name to avoid breaking existing app references.
-const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.1';
+const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.2';
 
 /// Six approved top-level categories, in the owner's requested order.
 ///
@@ -194,6 +194,24 @@ const List<SrkServiceCategory> srkServiceCatalog = [
       SrkServiceOption(id: 'tullu_pump', name: 'Domestic Tullu Pump', displayName: 'घरेलू टुल्लू पंप'),
       SrkServiceOption(id: 'pump_repair', name: 'Pump Repair', displayName: 'पंप रिपेयर'),
       SrkServiceOption(id: 'submersible', name: 'Submersible Pump', displayName: 'सबमर्सिबल पंप'),
+      SrkServiceOption(
+        id: 'motor_pump_mechanic_charge',
+        name: 'Motor / Pump Mechanic Charge',
+        displayName: 'मोटर-पंप मैकेनिक चार्ज',
+        rates: [
+          SrkServiceRate(label: '0.5 HP', amount: '₹300', unit: 'एक बार का फिक्स चार्ज'),
+          SrkServiceRate(label: '1 HP', amount: '₹400', unit: 'एक बार का फिक्स चार्ज'),
+          SrkServiceRate(label: '1.5 HP', amount: '₹500', unit: 'एक बार का फिक्स चार्ज'),
+          SrkServiceRate(label: '2 HP', amount: '₹600', unit: 'एक बार का फिक्स चार्ज'),
+          SrkServiceRate(label: '3 HP', amount: '₹700', unit: 'एक बार का फिक्स चार्ज'),
+          SrkServiceRate(label: '5 HP', amount: '₹800', unit: 'एक बार का फिक्स चार्ज'),
+          SrkServiceRate(label: '7.5 HP', amount: '₹900', unit: 'एक बार का फिक्स चार्ज'),
+          SrkServiceRate(label: '10 HP', amount: '₹1,000', unit: 'एक बार का फिक्स चार्ज'),
+          SrkServiceRate(label: '15 HP', amount: '₹1,100', unit: 'एक बार का फिक्स चार्ज'),
+          SrkServiceRate(label: '20 HP', amount: '₹1,200', unit: 'एक बार का फिक्स चार्ज'),
+        ],
+        note: 'इसमें जाँच, खोलना, ले जाना, बनवाकर वापस लाना और फिटिंग शामिल है। वाइंडिंग और सामान का खर्च अलग; ग्राहक की मंजूरी के बाद।',
+      ),
       SrkServiceOption(id: 'winding', name: 'Winding', displayName: 'वाइंडिंग', rates: [
         SrkServiceRate(label: '0.5 HP', amount: '₹500', unit: 'फिक्स'),
         SrkServiceRate(label: '1 HP', amount: '₹600', unit: 'फिक्स'),
