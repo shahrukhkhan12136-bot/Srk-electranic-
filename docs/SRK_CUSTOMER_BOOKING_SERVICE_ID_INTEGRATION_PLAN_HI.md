@@ -140,7 +140,7 @@ Backend staging response और API contract मिलने के बाद �
 
 - Shared service selection DTO और Customer picker callback मौजूद हैं।
 - Technician preview matcher उसी versioned ID shape को समझता है।
-- Customer picker अभी Dashboard preview-only है।
+- Customer picker अब मौजूदा booking form के अंदर form-local preview है; यह submit payload में शामिल नहीं है।
 - Existing `POST /api/create-booking` payload unchanged है।
 - कोई Supabase query/RPC, backend, database, payment, dispatch या production code नहीं बदला।
 - Flutter tests/analyzer/formatter/Android build/device tests इस चरण में execute/verify नहीं किए गए।
@@ -170,3 +170,29 @@ Backend staging response और API contract मिलने के बाद �
 - Parent category बदलने पर subcategory और task दोनों state reset होते हैं।
 - Widget regression test में selected highlight और subcategory reset assertions जोड़े गए हैं; tests अभी execute नहीं हुए।
 - यह UI-only सुधार है; booking payload, API और backend flow नहीं बदले।
+
+
+## 12. Customer booking form compatibility audit (21-11-2026)
+
+### सुरक्षित पाए गए मौजूदा fields और checks
+- OTP session तथा `phoneConfirmedAt` की जाँच submit से पहले होती है; फोन नंबर OTP account से read-only लिया जाता है।
+- नाम, राज्य, जिला, पता, तारीख, समय और सर्विस आवश्यक हैं; PIN Code के लिए 6 अंक और काम की जानकारी के लिए कम-से-कम 5 अक्षर validate होते हैं।
+- GPS optional है। लोकेशन मिलने पर latitude/longitude दोनों साथ request में जाते हैं; न मिलने पर दोनों null रहते हैं।
+- Cash/online payment selection पुराने `payment_method` field में ही जाता है।
+- Secure HTTPS endpoint, bearer session token, response status/success validation, loading lock, timeout और error feedback मौजूद हैं।
+- सफल response में booking ID दिखती है; इसके बाद form बंद होता है।
+
+### पुराने सिस्टम के साथ संगतता
+- Legacy `service_type` dropdown अभी required है और `POST /api/create-booking` में वही पुराना field जाता है।
+- नए category picker का `SrkServiceSelection` केवल draft state/display तक सीमित है। `catalogue_version/category_id/subcategory_id/task_id` payload में नहीं जाते।
+- Picker बदलने पर nullable callback पुराने draft selection को clear करता है; यह legacy `service_type` को auto-select या बदलता नहीं।
+- तारीख/समय की जाँच submit के अलग guard में है, Form validator में नहीं; वर्तमान व्यवहार फिर भी submit रोकता है।
+- कोई booking payload, payment choice, GPS behavior, endpoint, backend या database बदलाव नहीं किया गया।
+
+### सीमाएँ और अगली आवश्यकताएँ
+- मौजूदा आठ legacy service विकल्प electrical-only हैं। इसलिए नए छह-category picker को legacy dropdown से जोड़ना सुरक्षित नहीं; Backend canonical service contract और legacy-to-new dispatch compatibility पहले चाहिए।
+- Location permission permanently denied होने पर उपयोगकर्ता को Settings खोलने का सीधा मार्ग अभी नहीं दिया गया; इसे अलग UX सुधार के रूप में जाँचा जा सकता है, पर manual address fallback मौजूद है।
+- Widget/regression tests, formatter, analyzer, Android build और device test इस audit में execute नहीं किए गए।
+- Backend-approved schema और staging contract आने तक draft picker को केवल preview ही रखें।
+
+**निष्कर्ष:** मौजूदा submit path और पुराने booking fields को सुरक्षित रखा गया है। कोई runtime code परिवर्तन इस audit में नहीं किया गया।
