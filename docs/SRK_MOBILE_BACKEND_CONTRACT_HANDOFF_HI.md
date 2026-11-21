@@ -250,3 +250,17 @@ Frontend has added an isolated read-only DTO/test prototype only. The proposed n
 **Backend must publish before live integration:** exact RPC names and request/response/error JSON; authoritative state enum and transition matrix; customer-owner and assigned-technician authorization; skill revalidation; server timestamp source/meaning; optimistic version conflict rules; idempotency storage/retention and retry semantics; material approval separation; completion confirmation/dispute/timeout/Admin override; and historical quote-booking compatibility.
 
 Do not connect this prototype to Customer/Technician screens, buttons, Supabase queries or existing work-status RPCs yet. It does not authorize a transition or create a timer. Existing live booking, quote, payment, cash, map/contact, earnings and wallet paths remain untouched.
+
+## 16. Customer confirmation and final-bill presentation preview (21 Nov 2026)
+
+The Customer app now has an isolated read-only presentation model and tests. All field names below are proposals, not deployed schema:
+
+- Confirmation states: `start_confirmation_pending`, `completion_confirmation_pending`, `start_confirmed`, `completion_confirmed`, `disputed`, plus other/unknown.
+- Suggested final-bill fields in integer paise: `labour_amount_paise`, `approved_materials_amount_paise`, `other_charges_amount_paise`, `total_amount_paise`, `currency`, `payment_status`, `payment_method`, `payment_eligibility`, `receipt_id`.
+- The UI preview may flag pending customer attention but must not enable a confirmation action without the exact deployed RPC, ownership and version checks.
+- Amount breakdown is checked for non-negative integer paise and exact equality to the server-provided total. A mismatch must be surfaced for refresh/review; never silently recompute or overwrite the server total.
+- Payment eligibility is informational only. Every order-creation/payment request must revalidate eligibility, amount, booking owner, current status and idempotency on the server.
+
+**Backend must define:** exact field names/types and nullability; INR/currency and paise rounding rules; labour/material/other-charge and tax/fee semantics; proof of customer material approval; authoritative total; payment-method/status and eligibility rules; receipt identity/content; confirmation request ownership, idempotency, dispute/timeout/Admin override and historical quote compatibility.
+
+Do not connect this model to the live Customer booking card, confirmation buttons, receipt or Razorpay flow until backend contract is deployed and verified. Existing booking, quote, cancel, complaint, contact privacy and cash/online payment paths remain untouched.
