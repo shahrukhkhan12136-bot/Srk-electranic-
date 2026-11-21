@@ -374,3 +374,7 @@ Detailed staged rollout and backend acceptance gates are documented in `docs/SRK
 The new shared-catalogue picker has been moved from the Customer Dashboard preview into the existing booking form. The form stores a local `SrkServiceSelection?` draft value and displays its label/version. It explicitly tells the customer that the draft selection is not submitted before backend approval.
 
 The legacy required `service_type` dropdown remains because the current create-booking endpoint and dispatch still depend on that field. The new selection is not mapped into that legacy field: doing so could misroute non-electrical or task-specific services through the old service path. Existing OTP, customer/address, date/time, work details, payment method, GPS and request handling remain unchanged. Backend canonical catalogue approval and staging contract are required before payload integration.
+
+## 25. Customer picker selection reset
+
+Customer picker callback supports a nullable selection. Changing a category or subcategory clears the prior completed selection before a new valid hierarchy is emitted. This prevents stale AC/Fridge/Cooler or other service IDs from remaining visible after the customer changes a parent choice. A widget regression test was added but has not yet been run. This is presentation-state behavior only; no booking API payload or backend behavior changed.
