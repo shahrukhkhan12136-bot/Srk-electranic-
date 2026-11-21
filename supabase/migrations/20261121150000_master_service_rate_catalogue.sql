@@ -170,7 +170,7 @@ BEGIN
           AND srk_rate_level_code IS NULL AND srk_rate_level_label_snapshot IS NULL
           AND srk_rate_version_snapshot IS NULL AND srk_billing_model_snapshot IS NULL
           AND srk_technician_hourly_paise_snapshot IS NULL AND srk_helper_hourly_paise_snapshot IS NULL
-          AND srk_fixed_labour_paise_snapshot IS NULL AND srk_estimated_labour_paise IS NULL
+          AND srk_helper_included_snapshot=false AND srk_fixed_labour_paise_snapshot IS NULL AND srk_estimated_labour_paise IS NULL
           AND srk_duration_minutes IS NULL AND srk_service_quantity IS NULL)
         OR
         (srk_service_code IS NOT NULL AND srk_service_category_code IS NOT NULL AND srk_service_skill_code IS NOT NULL
