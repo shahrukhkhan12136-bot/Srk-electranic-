@@ -1113,3 +1113,20 @@
 - [x] Existing booking SELECT, cancellation, quote/payment RPC, form payload और booking lifecycle नहीं बदले।
 - Source: `apps/customer_app/lib/main.dart`, commit `7b48352e5cdfb296d3668e2bd6965ab2c72c8f2c`.
 - [ ] Flutter format/analyzer/widget tests और Android build चलाना बाकी है; इस environment में ये execute नहीं हुए।
+
+
+## 2AR. Production commission trigger — fresh read-only check (21-11-2026)
+
+- [x] Active commission trigger में `service_charge` UPDATE dependency missing है; commission function service_charge × persisted rate / 100 ही करता है।
+- [x] Payout trigger service_charge/materials_amount updates पर चलता है; pending payout को update करता है, paid payout को upsert filter से overwrite नहीं करता।
+- [x] Aggregate-only check: 1 completed+paid booking, rate 15%; 1 paid payout; उस single payout पर service-only 15% formula match, booking-vs-payout commission mismatch 0।
+- [ ] केवल एक live row का snapshot है; historical population reconciliation और paid amount edits के लिए Admin-audited reconciliation guard अभी बाकी है।
+- [ ] TEST schema baseline incomplete होने के कारण trigger migration/test अभी blocked है; Production पर कोई DDL/DML नहीं हुआ।
+
+## 2AS. Customer dashboard partial-load UX fix (21-11-2026)
+
+- [x] Contact RPC failure अब स्पष्ट warning दिखाता है, booking list फिर भी दिखाई जाती है।
+- [x] Complaint RPC failure अब empty complaint list जैसा गलत संकेत नहीं देता; warning दिखती है और पहले से loaded list रखी जाती है।
+- [x] Missing auth session पर दोबारा OTP login का संदेश।
+- [x] Source commit: `7b48352e5cdfb296d3668e2bd6965ab2c72c8f2c`.
+- [ ] Flutter format/analyzer/widget test/Android build/device QA अभी बाकी; execute नहीं हुए।
