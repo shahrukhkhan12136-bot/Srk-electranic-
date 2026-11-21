@@ -63,6 +63,17 @@ The next integration audit inspected the feature-branch source for booking creat
 6. The existing electrician identity bridge is a useful legacy adapter, not the universal application/identity system. New category onboarding must link to the same canonical Technician ID using the verified Auth identity and must reject duplicate/ambiguous verified phone identities.
 7. The existing dispatch flow is sequential and nearest-first, but its eligibility and candidate tables are Electrician-specific. The future generic dispatcher must preserve the existing timeout/decline/next-candidate behavior while evaluating approved status, skill/category, online availability, fresh location, work-area match, capacity and duplicate assignment for every category.
 
+### Read-only Production schema snapshot
+
+A read-only metadata query was also run against the Production project to inspect table columns and RPC names; no rows containing customer or technician personal data were queried.
+
+- `electrician_applications` stores the Electrician-specific application fields (name, phone, state, district, PIN, skills, experience, status, active flag and optional coordinates). No shared Technician application table appeared in the inspected public schema.
+- `electrician_profiles` stores the Electrician-specific identity, KYC/approval, skills, availability and coordinates. No general `srk_technicians` table exists in Production yet; the canonical Technician tables remain feature-branch migration source only.
+- `job_offers` is keyed by `electrician_id`; `service_bookings` still has `assigned_electrician_id` and legacy quotation columns.
+- The public `services` table is only a simple service-name/description/active catalogue in the inspected schema; category hierarchy, skill mapping and versioned rate configuration are not represented there.
+- The inspected RPC inventory remains Electrician-named for offer response, work controls, KYC documents, availability-related workflows and payout operations. A category-neutral Technician API/RPC layer is not present in the inspected Production schema.
+- Quote-related RPC names are still present in the inspected Production function inventory. Therefore the earlier migration name that retires legacy quotation RPCs must not be interpreted as proof that all quote functions and dependencies are absent.
+
 ### Integration decision
 
 Do not add a thin category-name switch to the old Electrician API and call it complete. First establish the shared Technician application/profile and category-skill schema, then introduce a category-neutral booking contract and dispatch relation that writes to `srk_booking_technician_assignments`. Keep the Electrician tables/RPCs as compatibility adapters during migration; retain their rows and histories.
@@ -78,4 +89,4 @@ Do not add a thin category-name switch to the old Electrician API and call it co
 
 ### Scope and safety
 
-This is a source-code audit and planning update on the approved feature branch only. No database schema was queried or changed in this audit; no migration was applied; no Production, Main Branch, payment, payout or deployment action was performed.
+This is a source-code audit plus read-only Production schema metadata inspection. No database rows were changed, no DDL or migration was applied, and no Main Branch, live payment, payout or deployment action was performed.
