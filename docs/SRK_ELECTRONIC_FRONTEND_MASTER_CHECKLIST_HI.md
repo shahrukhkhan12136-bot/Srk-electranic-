@@ -1161,3 +1161,15 @@
 - [ ] No workflow run/build artifact is available as verification for the latest app commits. Current connected GitHub actions do not provide a workflow-dispatch operation, so CI was not triggered from this session.
 - [ ] User/repository maintainer must manually run the workflow on approved feature branch and review analyzer, tests and both APK outputs before any Play Store release claim.
 - [ ] Debug APK build is not a Play Store release build; signing, release configuration, privacy/data safety review and device QA remain separate release gates.
+
+
+## 2AW. Owner-provided official brand images and screen reference (21-11-2026)
+
+- [x] इस वार्तालाप में मिली पहली image को Founder portrait, दूसरी image को SRK ELECTRONIC logo और तीसरी image को Customer/Technician app screen reference के रूप में पहचाना।
+- [x] मौजूदा UI audit: shared `SrkWelcomeHeader` login/welcome header में उपयोग होता है; `SrkFounderBanner` दोनों dashboards में मौजूद है। Shared founder banner अभी `packages/srk_mobile_core/assets/founder.webp` asset पढ़ता है।
+- [x] Customer dashboard में founder banner पहले से है; Technician dashboard में भी founder banner है। Technician OTP login में shared welcome header है।
+- [ ] तीसरी reference image के अनुसार branded welcome/home/dashboard layout polish करना है; booking lifecycle, booking form, payment actions, navigation और existing working booking system को न बदलें।
+- [ ] Logo image को shared header/banner में शामिल करना है; app launcher icon/splash treatment भी इसी logo और brand palette से align करना है।
+- [ ] इस सत्र में uploaded binary images को Git repository में सीधे transfer/commit करने का supported path उपलब्ध नहीं हुआ। इसलिए नई images को assets के रूप में जोड़ने या मौजूदा `founder.webp` को बदलने का दावा नहीं किया गया; current asset को बिना पुष्टि overwrite नहीं किया।
+- [ ] अगला asset step: uploaded Founder portrait और logo को repository में `packages/srk_mobile_core/assets/` में क्रमशः `founder.webp` और `srk_logo.webp` के रूप में जोड़ें; उसके बाद pubspec/header में logo wire-up और visual QA करें।
+- [ ] Third image is a visual reference/mockup, not a production screen asset; use it to guide layout, not as a full-screen screenshot.
