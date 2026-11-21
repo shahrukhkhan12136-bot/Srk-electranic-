@@ -37,6 +37,7 @@ class SrkServiceOption {
   final String? displayName;
   final List<SrkServiceTask> tasks;
   final List<SrkServiceRate> rates;
+  final List<SrkServiceOption> children;
   final String? note;
 
   const SrkServiceOption({
@@ -45,6 +46,7 @@ class SrkServiceOption {
     this.displayName,
     this.tasks = const [],
     this.rates = const [],
+    this.children = const [],
     this.note,
   });
 }
@@ -71,7 +73,7 @@ class SrkServiceCategory {
 
 /// Approved catalogue revision. IDs remain local keys, not deployed backend IDs.
 /// Keep the legacy constant name to avoid breaking existing app references.
-const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.8';
+const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.9';
 
 /// Six approved top-level categories, in the owner's requested order.
 ///
@@ -88,12 +90,28 @@ const List<SrkServiceCategory> srkServiceCatalog = [
     description: 'घर, दुकान और फैक्ट्री की इलेक्ट्रिकल सेवाएँ',
     options: [
       SrkServiceOption(
-        id: 'electrical_wiring',
-        name: 'Electrical Wiring',
-        displayName: 'इलेक्ट्रिकल वायरिंग',
-        tasks: [
-          SrkServiceTask(id: 'normal_wiring', name: 'नॉर्मल वायरिंग (घर / दुकान)'),
-          SrkServiceTask(id: 'factory_large_project_wiring', name: 'बड़े प्रोजेक्ट की वायरिंग (बड़ी फैक्ट्री / कंपनी / औद्योगिक भवन)'),
+        id: 'expert_electrician',
+        name: 'Expert Electrician',
+        displayName: 'एक्सपर्ट इलेक्ट्रीशियन',
+        children: [
+          SrkServiceOption(
+            id: 'normal_wiring',
+            name: 'Normal Wiring',
+            displayName: 'नॉर्मल वायरिंग (घर / दुकान)',
+            rates: [
+              SrkServiceRate(label: 'बिना Helper', amount: '₹1,000', unit: '8 घंटे'),
+              SrkServiceRate(label: 'Helper सहित', amount: '₹1,500', unit: '8 घंटे', helperAmount: '₹62.50 प्रति घंटा अतिरिक्त'),
+            ],
+          ),
+          SrkServiceOption(
+            id: 'factory_large_project_wiring',
+            name: 'Project Wiring',
+            displayName: 'प्रोजेक्ट वायरिंग (बड़ी फैक्ट्री / कंपनी / औद्योगिक भवन)',
+            rates: [
+              SrkServiceRate(label: 'बिना Helper', amount: '₹400', unit: 'प्रति घंटा'),
+              SrkServiceRate(label: 'Helper सहित', amount: '₹550', unit: 'प्रति घंटा', helperAmount: '₹150 प्रति घंटा अतिरिक्त'),
+            ],
+          ),
         ],
       ),
       SrkServiceOption(id: 'fan_install_repair', name: 'Fan Installation / Repair', displayName: 'पंखा लगाना / मरम्मत'),
