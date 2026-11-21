@@ -378,3 +378,7 @@ The legacy required `service_type` dropdown remains because the current create-b
 ## 25. Customer picker selection reset
 
 Customer picker callback supports a nullable selection. Changing a category or subcategory clears the prior completed selection before a new valid hierarchy is emitted. This prevents stale AC/Fridge/Cooler or other service IDs from remaining visible after the customer changes a parent choice. A widget regression test was added but has not yet been run. This is presentation-state behavior only; no booking API payload or backend behavior changed.
+
+## 26. Task selection visual state
+
+The Customer picker now highlights the selected task using a selected FilterChip state. Changing the subcategory clears the previous task ID and highlight; changing the category resets both subcategory and task state. Widget assertions cover the highlight and reset behavior but have not been run yet. No API payload or backend behavior changed.
