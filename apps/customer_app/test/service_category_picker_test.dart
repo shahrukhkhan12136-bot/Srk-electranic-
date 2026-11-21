@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:srk_customer_app/service_category_picker.dart';
+import 'package:srk_mobile_core/srk_service_catalog.dart';
 
 void main() {
   group('SRK service category picker', () {
@@ -16,6 +17,31 @@ void main() {
           'cooler',
         ],
       );
+    });
+
+    test('picker category groups stay aligned with shared rate catalogue', () {
+      const categoryToCatalogName = {
+        'electrician': 'Electrician',
+        'plumber': 'Plumber',
+        'painter': 'Painter',
+        'ac_fridge': 'AC + Fridge',
+        'motor_pump': 'Motor & Pump',
+        'cooler': 'Cooler',
+      };
+
+      for (final pickerCategory in srkServiceCategories) {
+        final catalogName = categoryToCatalogName[pickerCategory.id];
+        expect(catalogName, isNotNull);
+        final catalogCategory = srkServiceCatalog.singleWhere(
+          (item) => item.name == catalogName,
+        );
+        expect(
+          pickerCategory.subcategories.length,
+          catalogCategory.options.length,
+          reason: 'Picker and shared catalogue differ for ${pickerCategory.id}',
+        );
+      }
+      expect(categoryToCatalogName.length, srkServiceCategories.length);
     });
 
     testWidgets('AC and Fridge show separate task lists', (tester) async {
