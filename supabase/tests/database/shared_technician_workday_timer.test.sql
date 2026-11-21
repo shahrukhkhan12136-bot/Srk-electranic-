@@ -1,10 +1,16 @@
 BEGIN;
-SELECT plan(16);
+SELECT plan(19);
 
 SELECT has_table('public','srk_booking_technician_workdays',
   'each assigned Technician has an independent daily work record');
 SELECT has_table('public','srk_booking_technician_work_events',
   'work timer transitions are stored as an event history');
+SELECT has_column('public','service_bookings','srk_helper_included_snapshot',
+  'booking snapshots whether one helper is included with each assigned Technician');
+SELECT has_column('public','srk_booking_technician_workdays','helper_hourly_paise_snapshot',
+  'daily workday freezes the helper hourly rate');
+SELECT has_column('public','srk_booking_technician_labour_ledger','helper_total_paise',
+  'daily ledger separates optional helper earnings');
 SELECT has_table('public','srk_booking_technician_labour_ledger',
   'daily Technician labour is recorded in an immutable ledger');
 SELECT has_table('public','srk_booking_workday_customer_decisions',
