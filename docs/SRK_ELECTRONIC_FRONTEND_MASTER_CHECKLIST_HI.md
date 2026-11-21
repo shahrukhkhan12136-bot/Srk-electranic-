@@ -1072,3 +1072,12 @@
 - [ ] Example acceptance: ₹600 service + ₹400 materials → company ₹90; Technician payable ₹510 + ₹400 = ₹910; customer total ₹1,000। No materials commission.
 - [x] Legacy `PORTAL_SCHEMA.sql` का quoted_amount formula active production trigger नहीं है; active trigger metadata से service_charge-only formula मिला।
 - [x] No production mutation. No migration/deployment. Source/docs only.
+
+
+## 2AO. Commission trigger coverage — सुधार प्रस्ताव
+
+- [x] Production trigger issue documented: commission function uses service_charge, but trigger UPDATE OF list omits service_charge.
+- [ ] New migration via Supabase CLI generator; include service_charge in UPDATE OF list.
+- [ ] TEST project regression test; verify commission and payout ledger.
+- [ ] Production deployment only after separate approval.
+- No SQL file/code or database was changed in this step.
