@@ -1081,3 +1081,12 @@
 - [ ] TEST project regression test; verify commission and payout ledger.
 - [ ] Production deployment only after separate approval.
 - No SQL file/code or database was changed in this step.
+
+
+## 2AO. Commission trigger fix — TEST readiness और execution gate (21-11-2026)
+
+- अलग `SRK ELECTRONIC TEST` Supabase project उपलब्ध और ACTIVE_HEALTHY है।
+- Supabase CLI उपलब्ध terminal इस कार्य-सत्र में नहीं है; इसलिए `supabase migration new` चलाकर timestamped migration बनाना संभव नहीं हुआ।
+- Migration file manually नहीं बनाई गई; TEST या Production database में कोई SQL/DDL execute नहीं किया गया।
+- अगला कदम: approved repository terminal में CLI से migration generate करें, source review करें, फिर केवल TEST project पर apply करके service_charge-only recalculation, materials-only no-change, payment/status/rate regression और payout side effects जाँचें।
+- Production बदलाव के लिए अलग explicit approval अनिवार्य है।
