@@ -81,6 +81,35 @@ CREATE TRIGGER srk_master_cash_refund_reviews_append_only
 BEFORE UPDATE OR DELETE ON public.srk_master_cash_refund_reviews
 FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_cash_refund_records();
 
+-- Include directly-collected cash payables in refund reversal. This does not create a new
+-- Technician payout: the Technician already received and then returned the customer's cash.
+CREATE OR REPLACE FUNCTION public.srk_master_refund_payable_state_sync()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $
+DECLARE v_payment public.srk_master_booking_payments%rowtype;
+BEGIN
+ IF NEW.payment_status='refunded' AND OLD.payment_status IS DISTINCT FROM NEW.payment_status THEN
+   UPDATE public.srk_master_technician_payables
+      SET payout_status='refunded'
+    WHERE booking_id=NEW.id AND payout_status IN ('pending','requested','blocked','cash_collected');
+   UPDATE public.srk_master_booking_payments SET payment_status='refunded'
+    WHERE booking_id=NEW.id AND payment_status='paid' RETURNING * INTO v_payment;
+   IF FOUND THEN
+     INSERT INTO public.srk_master_payment_events(
+       booking_id,payment_id,event_type,amount_paise,provider_reference,event_data
+     ) VALUES(
+       NEW.id,v_payment.id,'refund_processed',v_payment.amount_paise,
+       coalesce(v_payment.razorpay_payment_id,v_payment.payment_reference),
+       jsonb_build_object('refund_status','processed','payment_method',v_payment.payment_method,
+         'refund_channel',CASE WHEN v_payment.payment_method='cash'
+           THEN 'technician_to_customer' ELSE 'company_payment_provider' END)
+     );
+   END IF;
+ END IF;
+ RETURN NEW;
+END;
+$;
+REVOKE ALL ON FUNCTION public.srk_master_refund_payable_state_sync() FROM PUBLIC,anon,authenticated;
+
 CREATE OR REPLACE FUNCTION public.srk_technician_submit_master_cash_refund_evidence(
   p_booking_id uuid, p_amount_paise bigint, p_refund_reference text,
   p_evidence_uri text DEFAULT NULL, p_evidence_note text DEFAULT NULL
