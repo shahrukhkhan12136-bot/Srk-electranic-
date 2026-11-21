@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:srk_mobile_core/srk_service_catalog.dart';
+import 'package:srk_mobile_core/srk_service_selection_contract.dart';
 import 'package:srk_electrician_app/verified_services/srk_verified_service_skill.dart';
 import 'package:srk_electrician_app/verified_services/srk_offer_skill_match_preview.dart';
 
@@ -96,6 +97,31 @@ void main() {
     'verification_status': 'approved',
     'active': true,
   }, now: DateTime.utc(2026, 11, 21))!;
+
+  test('customer selection payload matches the same-version technician skill', () {
+    final customerSelection = SrkServiceSelection.create(
+      categoryId: 'ac_fridge',
+      subcategoryId: 'ac',
+      taskId: 'gas_charging',
+    )!;
+    final technicianSkill =
+        SrkVerifiedServiceSkill.fromDraftCatalogueServerJson({
+      ...customerSelection.toJson(),
+      'category_label': 'पुराना नाम अनदेखा होगा',
+      'subcategory_label': 'पुराना नाम अनदेखा होगा',
+      'task_label': 'पुराना नाम अनदेखा होगा',
+      'verification_status': 'approved',
+      'active': true,
+    }, now: DateTime.utc(2026, 11, 21))!;
+
+    expect(
+      previewOfferSkillMatchAgainstDraftCatalogue(
+        offer: customerSelection.toJson(),
+        verifiedSkills: [technicianSkill],
+      ),
+      SrkOfferSkillMatch.matched,
+    );
+  });
 
   group('previewOfferSkillMatchAgainstDraftCatalogue', () {
     test('matches only known IDs and the exact catalogue version', () {
