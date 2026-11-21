@@ -11,7 +11,7 @@ test('Only confirmed SRK service rates are activated with exact Technician and H
   "'residential_wiring','basic','Basic',10000,0",
   "'residential_wiring','expert','Expert Residential',12500,6250",
   "'factory_wiring','expert','Expert Factory / Industrial Wiring',30000,12500",
-  "'residential_wiring','master','Master Electrician',70000,20000",
+  "'residential_wiring','master','Master Electrician (Technician only)',70000,0",
   "'fridge_technician','standard','Fridge Technician + Helper',15000,7500",
   "'cooler_repair','standard','Cooler Repair / per cooler',NULL,0,50000"
  ])assert.ok(migration.includes(value),'missing approved rate: '+value);
@@ -29,5 +29,6 @@ test('AC team rate and Pump Repair remain pending instead of guessing a pay spli
  assert.match(migration,/Pump Repair — Admin Rate Pending/);
  assert.match(migration,/Basic Electrician \+ Helper — Helper Rate Pending/);
  assert.match(migration,/Above 20 HP — Admin Rate Pending/);
+ assert.match(migration,/conflicting ₹900\/₹950 totals; Admin decision pending/);
  assert.match(migration,/pending_admin_configuration/);
 });
