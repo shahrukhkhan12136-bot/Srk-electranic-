@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261121260000_master_cash_commission_due_and_online_offset.sql'), 'utf8');
 
 test('Technician cash collection records 15 percent company commission as a separate due', () => {
-  assert.match(migration, /payment_method='cash'/);
+  assert.match(migration, /v_method='cash'/);
   assert.match(migration, /cash_commission_due/);
   assert.match(migration, /commission_due_paise/);
   assert.match(migration, /payout_status='cash_collected'/);
@@ -23,7 +23,7 @@ test('Future company-collected online/manual UPI or bank earnings recover older 
 
 test('Cash commission and recovery have an append-only audit trail', () => {
   assert.match(migration, /srk_master_technician_commission_events/);
-  assert.match(migration, /srk_master_commission_events_append_only/);
+  assert.match(migration, /srk_master_technician_commission_events_append_only/);
   assert.match(migration, /MASTER_COMMISSION_EVENTS_ARE_APPEND_ONLY/);
 });
 
