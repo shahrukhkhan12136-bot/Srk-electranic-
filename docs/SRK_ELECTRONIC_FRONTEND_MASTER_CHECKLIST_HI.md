@@ -576,3 +576,12 @@
 - [x] Technician offer accept/decline, map, assigned customer contact, work completion, cash confirmation, earnings and wallet views are functional lifecycle actions; preserve them.
 - [x] Quote screens/actions and quote-dependent status labels are still tied to current work-start, cash confirmation and Razorpay backend checks. They remain explicitly blocked for removal pending quote-free lifecycle + materials-approval + payment contract. No quote UI was deceptively hidden.
 - [x] No additional safe-to-delete functional option was identified in this pass; no Flutter source changed. This is intentional preservation, not a missed implementation.
+
+
+## 2L. Backend contract handoff prepared (2026-11-21)
+
+- [x] Created `docs/SRK_MOBILE_BACKEND_CONTRACT_HANDOFF_HI.md` on the approved mobile frontend branch (commit 5c12919).
+- [x] Handoff covers six-category catalogue IDs, verified skills, category-safe dispatch, booking payload, rate snapshots, quote-free lifecycle, materials approval, technician offers, payment/Razorpay/cash cycle, 85/15 fee-base conflict, payout and legacy compatibility.
+- [x] Explicitly records unresolved rate conflicts between the older Master Requirements document and later owner decisions; no rates/formula are silently combined.
+- [ ] This handoff has NOT been sent to GPT-2 or implemented in backend. Backend owner review/contract is pending.
+- [ ] Frontend picker remains preview-only until verified-skill dispatch and booking payload are available.
