@@ -35,7 +35,7 @@ WITH profile_identity AS (
 ),
 canonical AS (
   SELECT
-    min(profile_id) AS technician_id,
+    (array_agg(profile_id ORDER BY profile_id))[1] AS technician_id,
     linked_user_id AS auth_user_id,
     (array_agg(phone ORDER BY profile_id))[1] AS primary_phone,
     identity_key
