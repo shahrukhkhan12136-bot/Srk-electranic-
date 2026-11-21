@@ -65,3 +65,11 @@ Migration: `supabase/migrations/20261121260000_master_cash_commission_due_and_on
 - `electrician.html` Master Wallet shows these values and due history; SRK platform commission is not shown in Technician Rate Lists.
 - Node contract tests and pgTAP source added. Latest Node CI run `44895311921`: 526 passed, 0 failed.
 - Important remaining checks: execute migration replay and pgTAP in disposable PostgreSQL; review cash-booking refund/reversal behavior; add Admin company-side outstanding commission due report; run browser E2E. No production migration applied.
+
+
+## Admin SRK Cash Commission report — 21-Nov-2026
+- Added Main Admin-only read-only RPC `srk_admin_list_master_commission_dues()`.
+- Admin Panel now shows original 15% cash commission, recovered amount, outstanding amount, open due count, Technician-wise totals and booking-wise due history.
+- The report is read-only; it cannot waive, edit, or manually mark commission as recovered. Actual recovery remains transactionally tied to future company-collected Technician payables.
+- Tests added: `tests/master-admin-cash-commission-report.test.js` and `supabase/tests/database/master_admin_cash_commission_report.test.sql`.
+- Cash booking refund remains a separate gap: the existing Master refund RPC is specifically for verified Razorpay payments; no cash-refund reversal RPC is being claimed as complete.
