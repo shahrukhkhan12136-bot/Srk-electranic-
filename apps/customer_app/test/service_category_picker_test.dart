@@ -101,6 +101,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('कूलर रिपेयर'), findsOneWidget);
       expect(find.text('वाइंडिंग'), findsNothing);
+      await tester.tap(find.text('कूलर रिपेयर'));
+      await tester.pump();
       expect(selected, {
         'category': 'cooler',
         'subcategory': 'cooler_repair',
