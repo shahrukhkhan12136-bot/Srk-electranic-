@@ -1,3 +1,4 @@
+const vm=require('node:vm');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -67,4 +68,10 @@ test('Master customer receipt reads only the immutable final bill and verified p
  assert.match(receipt,/material_items/);
  assert.match(receipt,/MASTER_FINAL_BILL_PAYMENT_RECONCILIATION_FAILED/);
  assert.match(receipt,/Preserve the historical single-Electrician and quote-era receipt contracts/);
+});
+
+test('modified payment serverless endpoints have valid JavaScript syntax',()=>{
+ for(const file of ['create-order.js','verify-payment.js','razorpay-webhook.js']){
+  assert.doesNotThrow(()=>new vm.Script(read(file),{filename:file}),file+' must parse');
+ }
 });
