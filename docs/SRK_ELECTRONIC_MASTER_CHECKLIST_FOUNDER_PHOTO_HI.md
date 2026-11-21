@@ -186,7 +186,7 @@
 
 ## 9. Test, release और approval gates
 
-- [x] Latest completed staging Node CI before founder-photo placeholder update: run `44906454353`, HEAD `280a6a17`: **573 PASS / 0 FAIL**. Founder-photo placeholder change and its revised contract test are newer and must receive a fresh CI run. Node CI is source-level only; pgTAP/live DB/browser E2E/Preview/mobile QA remain separate gates.
+- [x] Latest completed staging Node CI exact HEAD `1478a4ae221d969ae39ec2d707064f124876842b`: run `44907394337`, **573 PASS / 0 FAIL**, including founder-photo placeholder contract and updated progress-card tests. Node CI is source-level only; pgTAP/live DB/browser E2E/Preview/mobile QA remain separate gates.
 - [x] Push Deno check और local PostgreSQL Push migration/RPC runtime checks PASS।
 - [ ] ऊपर सूचीबद्ध शेष Customer/Electrician/Admin/Staff/legacy-payment SQL और browser workflows के isolated runtime tests पूरे करें।
 - [ ] Backup schedule/retention/security और वास्तविक restore test; restore के बाद booking/payment/refund/commission ledger integrity reconcile करें।
