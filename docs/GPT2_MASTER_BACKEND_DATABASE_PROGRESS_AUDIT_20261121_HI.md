@@ -1,13 +1,13 @@
 # SRK ELECTRONIC — Backend / Database Progress Audit
 तारीख: 21-11-2026
 सुरक्षित Feature Branch: `feature/master-gst-accounting-20261121`
-Audit head before this documentation refresh: `e956b735181bac6bf4b59ba1b305a8700b1f2d3e`
+Latest verified source before audit refresh: `35c2f357583276fd6da1386672e43aa084b3082b`
 Repository: `shahrukhkhan12136-bot/Srk-electranic-`
 
 ## सत्यापित स्थिति
 
 - इस branch पर Master backend के लिए migrations, RPCs, endpoint changes, API contracts और Node/pgTAP source tests मौजूद हैं।
-- नवीनतम GitHub Actions Node suite: **521 passed, 0 failed** (latest verified run `44894686674`, commit `e956b735181bac6bf4b59ba1b305a8700b1f2d3e`).
+- नवीनतम GitHub Actions Node suite: **526 passed, 0 failed** (latest verified run `44895311921`, commit `35c2f357583276fd6da1386672e43aa084b3082b`).
 - यह source/contract verification है; PostgreSQL migration replay, pgTAP runtime, full browser/E2E और Production readiness का प्रमाण नहीं।
 - Supabase Production migration history पुराने baseline पर है; 21-Nov के Master migrations Production में लागू नहीं हैं।
 - Vercel status में build rate-limit failure आया; कोई successful deployment प्रमाणित नहीं।
@@ -24,11 +24,11 @@ Repository: `shahrukhkhan12136-bot/Srk-electranic-`
 7. Razorpay payment verification/webhook, Admin manual payment, per-Technician 85/15 payable split, refund/receipt integration.
 8. Technician wallet, payout request, company Razorpay settlement evidence, Admin manual UPI/bank transfer, UTR और Paid gate.
 9. GST future-ready accounting; no company GST registration means no GST charged and no GST tax invoice.
-10. 21-Nov branch update: Technician's own approved-skill 85% rate list, all-category 85% reference list, Admin skill-level assignment RPC, two-way booking rating submit RPCs and Admin moderation audit.
+10. 21-Nov branch update: Technician's own approved-skill 85% rate list, all-category 85% reference list, Admin skill-level assignment RPC, two-way booking rating submit RPCs and Admin moderation audit.\n11. 21-Nov branch update: cash collected directly by Technician creates a 15% SRK commission due; subsequent company-collected Razorpay/UPI/bank Technician share offsets outstanding dues oldest-first. Wallet shows cash collected, outstanding commission, recovered commission, offset and due history. Technician wallet UI updated.
 
 ## अभी शेष Backend / Database कार्य
 
-1. **Cash collected directly by Technician — commission due and recovery:** current Master manual-payment function creates Technician 85% payable rows for a manually recorded cash payment. It does not yet represent the separate case where Technician already collected the full cash amount and owes the Company 15%. Add a distinct collection-source/evidence state, append-only commission-due ledger, wallet due display and exact offset/recovery against future online earnings without double deduction.
+1. **Cash collected directly by Technician — implemented in Feature Branch source:** a trigger now classifies cash-collected Technician shares as already received, records 15% SRK commission due in a separate due ledger, and offsets the due against future company-collected Razorpay/UPI/bank earnings oldest-first. Wallet RPC and Technician Wallet UI show outstanding dues, recovered commission and booking-level due history. Still needs pgTAP runtime/replay, refund edge-case review and Admin-side due reporting.
 2. **Rating read / profile aggregates:** submit and Admin hide/restore RPCs exist; customer/Technician/Admin list APIs, published average/count, report/appeal workflow and UI integration are not yet complete.
 3. **Verified skill level workflow:** Admin RPC now assigns an active rate level to an approved skill. Admin UI, Technician profile display, pending-level handling and regression/runtime coverage remain.
 4. **Rate catalogue completeness:** only the three explicitly confirmed Plumber rates are seeded active. Electrician, Painter, AC, Fridge, Motor/Pump and Cooler conflicting/unconfirmed prices remain pending Admin configuration; do not activate guessed rates.
@@ -41,7 +41,7 @@ Repository: `shahrukhkhan12136-bot/Srk-electranic-`
 
 ## Latest 21-Nov change details
 
-Migration: `supabase/migrations/20261121250000_master_technician_rates_and_two_way_ratings.sql` (latest source revision `e956b735181bac6bf4b59ba1b305a8700b1f2d3e`)
+Migration: `supabase/migrations/20261121250000_master_technician_rates_and_two_way_ratings.sql` (source revision `e956b735181bac6bf4b59ba1b305a8700b1f2d3e`)
 
 - Adds Admin-assigned approved skill level.
 - Adds Technician own-skill 85% rate-list RPC and all-category 85% reference RPC; the latter is informational only and does not grant work eligibility.
@@ -54,3 +54,14 @@ Migration: `supabase/migrations/20261121250000_master_technician_rates_and_two_w
 ## Safety / next sequence
 
 Continue only on this Feature Branch. Do not apply migrations to Production, merge to Main, create a paid Development Branch, deploy, or execute real payments/payouts without separate explicit authorization. Finish source implementation and review first; the one Development Branch and full database replay remain deferred until the end as already requested.
+
+
+## Cash commission follow-up — 21-Nov-2026
+Migration: `supabase/migrations/20261121260000_master_cash_commission_due_and_online_offset.sql`
+- Cash-collected booking creates a separate 15% company commission due for each Technician based on the allocated commission snapshot.
+- Cash-collected 85% is marked as already collected; it is not put into the Admin payout queue again.
+- Next company-collected online/manual UPI/bank Technician payable is reduced by oldest outstanding cash commission due, up to the Technician's 85% labour share. Materials reimbursement is excluded from recovery.
+- Wallet summary exposes outstanding due, recovered commission, cash already collected, and offset details.
+- `electrician.html` Master Wallet shows these values and due history; SRK platform commission is not shown in Technician Rate Lists.
+- Node contract tests and pgTAP source added. Latest Node CI run `44895311921`: 526 passed, 0 failed.
+- Important remaining checks: execute migration replay and pgTAP in disposable PostgreSQL; review cash-booking refund/reversal behavior; add Admin company-side outstanding commission due report; run browser E2E. No production migration applied.
