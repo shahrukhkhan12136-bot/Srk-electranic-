@@ -845,10 +845,13 @@ function renderCustomerMasterServices(){
 function renderCustomerMasterRateList(){
  const box=document.getElementById('customerMasterRateList');if(!box)return;
  if(!customerMasterRates.length){box.textContent='अभी कोई Service Rate Admin द्वारा Active नहीं की गई है। Rate Configuration पूरी होने पर यहाँ दरें दिखेंगी।';return;}
- box.innerHTML='<div class="scroll"><table><thead><tr><th>Category / Service / Level</th><th>Technician 8h</th><th>Helper 8h</th><th>Combined 8h</th></tr></thead><tbody>'+
+ box.innerHTML='<div class="scroll"><table><thead><tr><th>Category / Service / Level</th><th>Technician / hour</th><th>Helper / hour</th><th>Combined / hour</th><th>Technician 8h</th><th>Helper 8h</th><th>Combined 8h / Fixed</th></tr></thead><tbody>'+
  customerMasterRates.map(r=>{
   const hourly=r.billing_model==='hourly';
   return '<tr><td><b>'+customerEsc(customerMasterCategoryLabels[r.category_code]||r.category_code)+'</b><br>'+customerEsc(r.service_name)+'<br><small>'+customerEsc(r.level_label)+'</small></td>'+
+   '<td>'+(hourly?customerMasterMoney(r.technician_hourly_paise):'—')+'</td>'+
+   '<td>'+(hourly?customerMasterMoney(r.helper_hourly_paise):'—')+'</td>'+
+   '<td>'+(hourly?customerMasterMoney(Number(r.technician_hourly_paise)+Number(r.helper_hourly_paise)):'—')+'</td>'+
    '<td>'+(hourly?customerMasterMoney(Number(r.technician_hourly_paise)*8):'—')+'</td>'+
    '<td>'+(hourly?customerMasterMoney(Number(r.helper_hourly_paise)*8):'—')+'</td>'+
    '<td>'+(hourly?customerMasterMoney((Number(r.technician_hourly_paise)+Number(r.helper_hourly_paise))*8):customerMasterMoney(r.fixed_labour_paise)+' / '+customerEsc(r.unit_label))+'</td></tr>';
