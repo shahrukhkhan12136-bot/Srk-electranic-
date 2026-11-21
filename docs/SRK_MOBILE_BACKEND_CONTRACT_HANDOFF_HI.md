@@ -190,3 +190,12 @@ Please return, in writing:
 - Once the contract is available, add typed parsing, empty/loading/error states, verified-skill display, offer-to-skill match presentation and widget tests. Treat missing/unknown IDs as non-eligible and fail closed.
 - Before enabling live offers, test approved, pending, rejected, expired and revoked skills; AC-vs-Fridge separation; specialist gas/sealed-system tasks; duplicate accept race; and reassignment after skill revocation.
 - No backend, SQL, database, production or payment code was changed by this audit.
+
+
+## 11. Technician verified-services UI prototype (21 Nov 2026)
+- Added isolated typed model `SrkVerifiedServiceSkill` and read-only `SrkVerifiedServicesPanel` under `apps/electrician_app/lib/verified_services/`.
+- Parser accepts only explicit `approved` + `active == true` records with non-empty category/subcategory IDs and labels; an expired `valid_until` is rejected. Unknown/missing status or IDs fail closed.
+- Panel is presentation-only and explicitly states that booking eligibility is server-authoritative. It is not connected to profile query, offer inbox, accept action, assignment, work-start or payment.
+- Contract field names are a proposed frontend shape only. Do not add them to Supabase queries until backend confirms deployed JSON/schema exactly.
+- Added tests for approved, pending, rejected, inactive, expired, missing IDs, AC/Fridge separation and empty/non-empty panel.
+- Technician CI now runs `flutter test` after `dart analyze`; execution remains pending until the workflow is actually run.
