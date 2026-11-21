@@ -1,11 +1,24 @@
 BEGIN;
-SELECT plan(20);
+SELECT plan(26);
 
 SELECT has_table('public','srk_technician_presence','Technician presence and GPS state exists');
 SELECT has_table('public','srk_technician_dispatch_requests','category-neutral dispatch requests exist');
 SELECT has_table('public','srk_technician_dispatch_offers','sequential Technician offers exist');
 SELECT has_table('public','srk_technician_dispatch_events','dispatch audit history exists');
 SELECT has_column('public','srk_technician_presence','last_location_at','GPS freshness is recorded');
+SELECT has_column('public','service_bookings','srk_service_category_code','booking stores canonical service category');
+SELECT has_column('public','service_bookings','srk_service_skill_code','booking stores canonical skill');
+SELECT has_column('public','service_bookings','srk_required_technician_count','booking stores required Technician count');
+SELECT has_trigger('public','service_bookings','srk_start_category_neutral_booking_dispatch',
+  'canonical-category booking starts shared dispatch');
+SELECT has_trigger('public','service_bookings','srk_refresh_pending_dispatch_location',
+  'pending dispatch refreshes when booking GPS becomes available');
+SELECT ok(
+  position('srk_service_category_code' in pg_get_functiondef('public.broadcast_booking_job()'::regprocedure))>0
+  AND position('srk_dispatch_create_for_booking' in pg_get_functiondef(
+    'public.srk_start_category_neutral_booking_dispatch()'::regprocedure))>0,
+  'legacy Electrician broadcast is preserved while canonical bookings start shared dispatch'
+);
 SELECT has_index('public','srk_technician_dispatch_offers','srk_technician_dispatch_one_live_offer_per_booking_uidx',
   'only one live offer can exist per booking');
 SELECT has_index('public','srk_technician_dispatch_offers','srk_technician_dispatch_offers_expiry_idx',
