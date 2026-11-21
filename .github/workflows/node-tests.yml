@@ -6,9 +6,11 @@ on:
       - feat/customer-login-first-dashboard-20261114
       - feature/master-technician-payment-cycle-20261121
       - feature/master-gst-accounting-20261121
+      - feature/master-rating-ui-followup-v2-20261121
   pull_request:
     branches:
       - main
+      - feature/master-gst-accounting-20261121
   workflow_dispatch:
 
 permissions:
