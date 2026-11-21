@@ -384,14 +384,14 @@
 - **AC** चुनने पर **AC Installation** और **AC Repair** दिखेंगे।
 - **Fridge** चुनने पर Fridge का booking flow खुलेगा; AC Installation/Repair विकल्प Fridge के अंदर नहीं दिखेंगे।
 - Helper विकल्प उसी संबंधित booking flow के अंदर रहेगा; इसे अलग top-level category या अलग booking entry नहीं बनाना है।
-- AC Installation और AC Repair दोनों के लिए स्वीकृत labour rate: technician अकेले ₹250/hour; helper जोड़ने पर कुल ₹400/hour; helper add-on ₹150/hour। सभी रकम labour-only हैं। Materials/parts अलग होंगे और customer approval के बाद ही bill होंगे।
+- AC Technician का user-approved rate ₹437/hour है; AC helper rate अभी अलग से confirm नहीं। ₹250/₹400 वाला पुराना assistant-derived उल्लेख लागू न करें। सभी labour rates से materials/parts अलग रहेंगे और customer approval के बाद ही जोड़े जाएँगे।
 - Admin को future rate/commission configuration की आवश्यकता बताई गई है; पुराने bookings में उस समय लागू rate snapshot सुरक्षित रहना चाहिए।
 
 **Rates/catalog gaps जिन्हें अनुमान से नहीं भरना है**
-- Electrician के लिए master document के चार approved skill tiers और 8-hour customer rates §2 में उपलब्ध हैं; इन्हें Electrician category के अंदर skill/rate selection के रूप में रखें, अलग top-level categories न बनाएं।
-- Plumber, Painter, Motor & Pump, Cooler और Fridge के final current labour rates/subcategories इस recovered decision set में पूरी तरह निश्चित नहीं हैं। पुराने/आंशिक rate mentions को current approved rate मानकर लागू न करें।
-- Fridge helper applicability/rate, Motor & Pump service list/rates, Cooler booking/rate rules, Plumber/Painter service options/rates अभी लिखित रूप में पूर्ण नहीं हैं।
-- AC/Fridge category के अंदर Fridge booking flow निश्चित है; उसके अन्दर के sub-options केवल उपलब्ध approved catalog के अनुसार दिखेंगे—AC वाले विकल्प वहाँ नहीं दोहराने हैं।
+- Electrician के लिए बाद की owner-approved दरें §2E-2 में हैं; Master Requirements के पुराने चार tiers को नए approved price catalog पर प्राथमिकता न दें। इन्हें Electrician category के अंदर skill/rate selection के रूप में रखें, अलग top-level categories न बनाएं।
+- Plumber, Painter, Motor & Pump और Cooler की approved दरें §2E-2 में दर्ज हैं। Fridge rate/helper और AC helper rate अभी verified user approval के बिना final न दिखाएँ।
+- Fridge की helper applicability/rate अभी confirm नहीं; Motor & Pump, Cooler, Plumber और Painter के approved options/rates §2E-2 में दर्ज हैं।
+- AC और Fridge के सभी approved sub-options §2E-2 में दिए हैं; Fridge flow में AC options नहीं दिखाने हैं।
 
 **Implementation guardrail:** छह top-level category cards/list और ऊपर दिए गए AC/Fridge navigation को frontend में जोड़ा जा सकता है; लेकिन जिन categories के rates या sub-options final नहीं हैं, उनके लिए मनगढ़ंत rate/subcategory नहीं दिखानी है। Existing booking form/lifecycle को preserve करके category-specific fields उसी flow में न्यूनतम रूप से जोड़े जाएँ। Master Requirements document को भी बाद में इस recovered approved catalog से reconcile करना होगा।
 
@@ -403,6 +403,7 @@
 - [x] Technician app के offer price panel से legacy customer-suggested-amount display हटाया। Existing quote/material information और booking lifecycle को अभी नहीं छेड़ा, क्योंकि work-start/payment RPCs quote approval पर निर्भर हैं।
 - [x] Customer booking form में OTP-verified account phone पहले से auto-fill होता है; अब field read-only है ताकि user अलग/unverified phone number बदलकर न भेजे। Name field, address, GPS, date/time, service details और existing booking submission सुरक्षित रखे।
 - [x] Source re-fetch verification: Customer SHA `fb919b0e2eb17c791d79875933cda4bbdab9b646`; Technician SHA `502657a78a42777fb21b38ab5a554554c17b905c`. Re-fetch में customer suggested amount field/display absent, technician suggested-price display absent, verified phone read-only और existing booking form मौजूद मिले।
+- [x] Customer booking form से बचा हुआ stale संदेश हटाया जिसमें suggested price, quote/counter-offer और quote approval लिखा था; उसकी जगह neutral fixed-rate/material-approval guidance रखी। Payment helper text से भी quote approval wording हटाई। Re-fetch Customer SHA `d3c00aadf003732ddb3bded9b72eaffeda98d863` पर verified: stale quote/suggested-price copy absent; existing booking form intact।
 - [ ] Flutter format/analyze/build/Android device tests अभी नहीं चले; source changes को compile/test evidence मिलने तक verified build न मानें।
 - [ ] Quote/counter-offer UI removal अभी **Blocked** है: existing work-start, cash confirmation और Razorpay order/verify/webhook paths quote approval/amount checks पर निर्भर हैं। Backend lifecycle replacement contract मिलने के बाद ही दोनों apps से quote UI/actions हटाएँ।
 - [ ] Six-category catalog को मौजूदा form में जोड़ने से पहले backend category-specific dispatch/payload support verify/contract करना बाकी है। छह categories और AC/helper flow की approved details §2E-1 में दर्ज हैं; अधूरे rates/subcategories अनुमान से नहीं भरेंगे।
