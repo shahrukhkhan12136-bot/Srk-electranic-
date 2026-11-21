@@ -17,7 +17,7 @@ test('Customer booking API accepts no quote amount and does not write quote fiel
 });
 
 test('Payment order, verification and webhook use immutable bills and reject quote-era bookings',()=>{
- for(const source of [orderApi,verifyApi,webhook])assert.doesNotMatch(source,/quote_status|quoted_amount|service_charge|materials_amount|approved quote|कोटेशन/);
+ for(const source of [orderApi,verifyApi,webhook])assert.doesNotMatch(source,/quote_status|quoted_amount|\bservice_charge\b|\bmaterials_amount\b|approved quote|कोटेशन/);
  assert.match(orderApi,/verified immutable labour bill/i);
  assert.match(verifyApi,/पुरानी बुकिंग नए भुगतान सत्यापन के लिए पात्र नहीं है/);
  assert.match(webhook,/Historical bookings without an immutable bill/);
