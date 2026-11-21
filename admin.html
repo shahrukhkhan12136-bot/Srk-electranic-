@@ -78,6 +78,12 @@
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="alt" type="button" onclick="loadAdminRefundRequests()">Refund Requests रीफ़्रेश करें</button><span id="adminRefundReviewStatus" class="muted" aria-live="polite"></span></div>
 <div id="adminRefundReviewInbox" style="margin-top:12px">Refund requests लोड हो रही हैं…</div>
 </div>
+<div class="card" id="adminMasterCashRefundCard">
+<h2>Master Cash Refund — Technician प्रमाण और Admin पुष्टि</h2>
+<p class="muted">Cash ग्राहक को Technician सीधे लौटाता है। पहले Customer Refund Request को ऊपर Approve करें। हर assigned Technician अपना वास्तविक refund reference / प्रमाण दर्ज करेगा। सभी Technician प्रमाणों का कुल योग पूरा होने पर ही Main Admin इसे अंतिम रूप दे सकता है।</p>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="alt" onclick="loadAdminMasterCashRefunds()">Cash Refund सूची रीफ़्रेश करें</button><span id="adminMasterCashRefundStatus" class="muted" aria-live="polite"></span></div>
+<div id="adminMasterCashRefundInbox" style="margin-top:12px">Cash refund सूची लोड करें।</div>
+</div>
 <div class="card" id="adminRazorpayRefundCard">
 <h2>Razorpay Full Refund — Main Admin</h2>
 <p class="muted">केवल verified Razorpay-paid booking के लिए पूरा refund। Backend immutable labour bill / approved legacy quote और cancellation-fee ledger से exact amount निकालेगा। Refund शुरू होते ही pending electrician payout hold होगा; refund processed होने पर ही booking और fee ledger reverse होंगे। Retry पर वही idempotency key इस्तेमाल होगी।</p>
@@ -1135,6 +1141,42 @@ async function recordAdminManualCustomerRefund(bookingId,requestId){
   await loadAll();
  }catch(error){alert('Manual Refund दर्ज नहीं हुआ। भुगतान का वास्तविक प्रमाण और वर्तमान Booking स्थिति जाँचें। '+(error?.message||''));}
  finally{adminManualCustomerRefundBusy.delete(requestId);}
+}
+const adminMasterCashRefundBusy=new Set();
+async function loadAdminMasterCashRefunds(){
+ const box=document.getElementById('adminMasterCashRefundInbox'),status=document.getElementById('adminMasterCashRefundStatus');
+ if(!box||!sb||!user)return;
+ box.textContent='Master Cash Refund रिकॉर्ड लोड हो रहे हैं…';if(status)status.textContent='';
+ try{
+  const {data,error}=await sb.rpc('srk_admin_list_master_cash_refunds');if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  if(!rows.length){box.textContent='अभी कोई approved / submitted Master Cash Refund रिकॉर्ड नहीं है।';return;}
+  const money=p=>'₹'+(Number(p||0)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  box.innerHTML=rows.map(r=>{
+   const evidence=Array.isArray(r.technician_evidence)?r.technician_evidence:[];
+   const submitted=evidence.reduce((n,e)=>n+Number(e.amount_paise||0),0);
+   const approved=r.refund_request_status==='approved';
+   const complete=approved&&submitted===Number(r.amount_paise||0)&&evidence.length>0&&evidence.every(e=>e.status==='submitted');
+   return '<article class="job"><b>Booking:</b> <code>'+esc(r.booking_id)+'</code><p>ग्राहक Refund Request: '+esc(r.refund_request_status||'नहीं मिला')+' • Payment: '+esc(r.payment_status||'—')+'<br>Cash Payment: <b>'+money(r.amount_paise)+'</b> • Technician प्रमाण कुल: <b>'+money(submitted)+'</b></p>'+
+    (evidence.length?evidence.map(e=>'<div class="job"><b>Technician ID:</b> <code>'+esc(e.technician_id)+'</code><br>रिफंड राशि: '+money(e.amount_paise)+'<br>Reference: <code>'+esc(e.refund_reference)+'</code><br>प्रमाण: '+(e.evidence_uri?'<a href="'+esc(e.evidence_uri)+'" target="_blank" rel="noopener noreferrer">प्रमाण खोलें</a>':'दस्तावेज़ लिंक नहीं')+'<br>नोट: '+esc(e.evidence_note||'—')+'<br>स्थिति: '+esc(e.status||'submitted')+'</div>').join(''):'<p>अभी Technician प्रमाण जमा नहीं हुआ।</p>')+
+    (complete?'<label for="masterCashRefundNote_'+esc(r.booking_id)+'">Admin audit note (वैकल्पिक, 500 अक्षर तक)</label><input id="masterCashRefundNote_'+esc(r.booking_id)+'" maxlength="500" style="width:100%" placeholder="प्रमाण जाँच का संक्षिप्त विवरण"><button type="button" onclick="finalizeAdminMasterCashRefund(\''+esc(r.booking_id)+'\')">सभी प्रमाण जाँचकर Refund अंतिम करें</button>':'<p class="muted">Finalization तभी उपलब्ध होगी जब Customer request Approved हो और सभी Technician प्रमाणों का योग Cash भुगतान के बराबर हो।</p>')+
+   '</article>';
+  }).join('');
+  if(status)status.textContent=rows.length+' रिकॉर्ड लोड हुए।';
+ }catch(e){box.textContent='Cash refund सूची उपलब्ध नहीं: '+(e?.message||'Admin अनुमति / migration जाँचें।');if(status)status.textContent='लोड विफल';}
+}
+async function finalizeAdminMasterCashRefund(bookingId){
+ if(!bookingId||adminMasterCashRefundBusy.has(bookingId))return;
+ const note=document.getElementById('masterCashRefundNote_'+bookingId)?.value.trim()||'';
+ if(!confirm('क्या आपने Technician के वास्तविक Cash Refund प्रमाण जाँच लिए हैं और पूरी राशि Customer को लौटाई जा चुकी है? केवल पुष्टि के बाद आगे बढ़ें।'))return;
+ adminMasterCashRefundBusy.add(bookingId);
+ try{
+  const {data,error}=await sb.rpc('srk_admin_finalize_master_cash_refund',{p_booking_id:bookingId,p_admin_note:note||null});
+  if(error||!data?.success)throw error||new Error('Refund finalization was not confirmed');
+  alert('Master Cash Refund रिकॉर्ड सफलतापूर्वक अंतिम हुआ।');
+  await Promise.all([loadAdminMasterCashRefunds(),loadMasterPayouts(),loadAdminRefundRequests()]);
+ }catch(e){alert('Cash Refund अंतिम नहीं हुआ। Customer approval, पूरी Technician राशि और payment स्थिति जाँचें। '+(e?.message||''));}
+ finally{adminMasterCashRefundBusy.delete(bookingId);}
 }
 async function decideAdminRefundRequest(id,decision){
  if(!['in_review','approved','rejected'].includes(decision)||adminRefundReviewBusy.has(id))return;
