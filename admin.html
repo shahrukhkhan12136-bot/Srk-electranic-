@@ -1213,6 +1213,7 @@ async function saveAdminMasterServiceRate(){
  }else if(offering?.billing_model==='fixed_per_unit'){
   if(!Number.isFinite(fixed)||fixed<=0||technician!==null||helper!==0){alert('Fixed सेवा में केवल Fixed Labour Rate भरें; Hourly fields खाली और Helper 0 रखें।');return;}
  }else{alert('पहले Service Offering सुरक्षित करें और फिर Rate Version बनाएं।');return;}
+ if(status==='active'&&from>new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'})){alert('Future Effective Date वाला Rate पहले Pending रखें। Active केवल आज या पिछली तारीख से लागू करें।');return;}
  if(!confirm('क्या यह नया Rate Version '+(status==='active'?'Active':'Pending')+' करना है? पुराना Version सुरक्षित रहेगा।'))return;
  const iso=d=>d?d+'T00:00:00+05:30':null;
  const paise=n=>n===null?null:Math.round(n*100);
