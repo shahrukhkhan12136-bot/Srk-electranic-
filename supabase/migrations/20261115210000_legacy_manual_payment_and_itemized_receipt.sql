@@ -1,164 +1,51 @@
+-- Keep immutable historical financial evidence before removing live quote columns.
+CREATE SCHEMA IF NOT EXISTS srk_private;
+CREATE TABLE IF NOT EXISTS srk_private.legacy_booking_financial_evidence (
+  booking_id uuid PRIMARY KEY REFERENCES public.service_bookings(id) ON DELETE RESTRICT,
+  quoted_amount numeric(12,2),
+  service_charge numeric(12,2),
+  materials_amount numeric(12,2),
+  quote_status text,
+  quote_note text,
+  quote_submitted_at timestamptz,
+  quote_responded_at timestamptz,
+  customer_suggested_amount numeric(12,2),
+  electrician_quote_kind text,
+  archived_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+ALTER TABLE srk_private.legacy_booking_financial_evidence ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON srk_private.legacy_booking_financial_evidence FROM PUBLIC,anon,authenticated;
+GRANT SELECT,INSERT ON srk_private.legacy_booking_financial_evidence TO service_role;
+INSERT INTO srk_private.legacy_booking_financial_evidence
+ (booking_id,quoted_amount,service_charge,materials_amount,quote_status,quote_note,
+  quote_submitted_at,quote_responded_at,customer_suggested_amount,electrician_quote_kind)
+SELECT b.id,
+ nullif(to_jsonb(b)->>'quoted_amount','')::numeric,
+ nullif(to_jsonb(b)->>'service_charge','')::numeric,
+ nullif(to_jsonb(b)->>'materials_amount','')::numeric,
+ to_jsonb(b)->>'quote_status',to_jsonb(b)->>'quote_note',
+ nullif(to_jsonb(b)->>'quote_submitted_at','')::timestamptz,
+ nullif(to_jsonb(b)->>'quote_responded_at','')::timestamptz,
+ nullif(to_jsonb(b)->>'customer_suggested_amount','')::numeric,
+ to_jsonb(b)->>'electrician_quote_kind'
+FROM public.service_bookings b
+WHERE nullif(to_jsonb(b)->>'quoted_amount','') IS NOT NULL
+ OR nullif(to_jsonb(b)->>'service_charge','') IS NOT NULL
+ OR nullif(to_jsonb(b)->>'materials_amount','') IS NOT NULL
+ OR to_jsonb(b)->>'quote_status' IS NOT NULL
+ OR to_jsonb(b)->>'quote_note' IS NOT NULL
+ OR to_jsonb(b)->>'quote_submitted_at' IS NOT NULL
+ OR to_jsonb(b)->>'quote_responded_at' IS NOT NULL
+ OR to_jsonb(b)->>'customer_suggested_amount' IS NOT NULL
+ OR to_jsonb(b)->>'electrician_quote_kind' IS NOT NULL
+ON CONFLICT (booking_id) DO NOTHING;
+
 -- Restore the legacy Admin manual-payment RPC and reconcile labour/materials separately.
 -- Feature-branch source only. Do not apply to Production without explicit approval.
 
-create or replace function public.srk_admin_record_manual_payment(
-  p_booking_id uuid,
-  p_method text,
-  p_reference text,
-  p_note text default null
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path=''
-as $function$
-declare
-  v_booking public.service_bookings%rowtype;
-  v_payment public.srk_manual_payment_entries%rowtype;
-  v_payout public.srk_electrician_payouts%rowtype;
-  v_reference text:=btrim(coalesce(p_reference,''));
-  v_note text:=btrim(coalesce(p_note,''));
-  v_service_paise bigint;
-  v_materials_paise bigint;
-  v_total_paise bigint;
-  v_commission_paise bigint;
-  v_payable_paise bigint;
-  v_service numeric(18,2);
-  v_materials numeric(18,2);
-  v_total numeric(18,2);
-  v_commission numeric(18,2);
-  v_payable numeric(18,2);
-begin
-  if auth.uid() is null or not public.is_srk_admin() then
-    raise exception 'ADMIN_ONLY' using errcode='42501';
-  end if;
-  if p_booking_id is null then
-    raise exception 'BOOKING_ID_REQUIRED' using errcode='22023';
-  end if;
-  if p_method is null or p_method not in ('cash','upi','bank_transfer') then
-    raise exception 'INVALID_MANUAL_PAYMENT_METHOD' using errcode='22023';
-  end if;
-  if char_length(v_reference)<4 or char_length(v_reference)>120 then
-    raise exception 'VALID_PAYMENT_RECEIPT_OR_UTR_REQUIRED' using errcode='22023';
-  end if;
-  if char_length(v_note)>250 then
-    raise exception 'PAYMENT_NOTE_TOO_LONG' using errcode='22023';
-  end if;
+-- Retire legacy quote-based manual payment entry. Historical payment rows remain intact.
+DROP FUNCTION IF EXISTS public.srk_admin_record_manual_payment(uuid,text,text,text);
 
-  select * into v_booking
-    from public.service_bookings
-   where id=p_booking_id
-   for update;
-  if not found then raise exception 'BOOKING_NOT_FOUND' using errcode='P0002'; end if;
-
-  if v_booking.selected_category is not null then
-    raise exception 'NEW_CATEGORY_BOOKING_USES_DEDICATED_SETTLEMENT' using errcode='55000';
-  end if;
-  if v_booking.status<>'completed'
-     or v_booking.assigned_electrician_id is null
-     or v_booking.quote_status is distinct from 'approved' then
-    raise exception 'COMPLETED_ASSIGNED_APPROVED_QUOTE_REQUIRED' using errcode='55000';
-  end if;
-  if coalesce(v_booking.payment_status,'unpaid') not in ('unpaid','pending')
-     or v_booking.payment_verified_at is not null
-     or coalesce(v_booking.amount_paid,0)<>0 then
-    raise exception 'BOOKING_ALREADY_HAS_PAYMENT_STATE' using errcode='55000';
-  end if;
-  if v_booking.razorpay_order_id is not null
-     or v_booking.razorpay_payment_id is not null then
-    raise exception 'RAZORPAY_BOOKING_MUST_USE_VERIFIED_ONLINE_FLOW' using errcode='55000';
-  end if;
-  if v_booking.service_charge is null or v_booking.service_charge<=0
-     or v_booking.materials_amount is null or v_booking.materials_amount<0
-     or v_booking.quoted_amount is null then
-    raise exception 'APPROVED_LABOUR_AND_MATERIAL_BREAKDOWN_REQUIRED' using errcode='55000';
-  end if;
-  if v_booking.commission_rate is null
-     or v_booking.commission_rate<0 or v_booking.commission_rate>100 then
-    raise exception 'COMMISSION_RATE_MISSING_OR_INVALID' using errcode='55000';
-  end if;
-
-  v_service_paise:=round(v_booking.service_charge*100)::bigint;
-  v_materials_paise:=round(v_booking.materials_amount*100)::bigint;
-  v_total_paise:=v_service_paise+v_materials_paise;
-  if v_total_paise<=0 or v_total_paise>1000000000
-     or round(v_booking.quoted_amount*100)::bigint<>v_total_paise then
-    raise exception 'APPROVED_QUOTE_TOTAL_DOES_NOT_MATCH_LABOUR_AND_MATERIALS' using errcode='55000';
-  end if;
-
-  v_commission_paise:=round(v_service_paise::numeric*v_booking.commission_rate/100)::bigint;
-  v_payable_paise:=v_total_paise-v_commission_paise;
-  v_service:=v_service_paise/100.0;
-  v_materials:=v_materials_paise/100.0;
-  v_total:=v_total_paise/100.0;
-  v_commission:=v_commission_paise/100.0;
-  v_payable:=v_payable_paise/100.0;
-
-  insert into public.srk_manual_payment_entries
-    (booking_id,payment_method,amount,payment_reference,note,recorded_by)
-  values
-    (p_booking_id,p_method,v_total,v_reference,nullif(v_note,''),auth.uid())
-  returning * into v_payment;
-
-  update public.service_bookings
-     set amount_paid=v_total,
-         payment_status='paid',
-         payment_method=p_method,
-         payment_verified_at=clock_timestamp(),
-         commission_amount=v_commission
-   where id=p_booking_id
-     and coalesce(payment_status,'unpaid') in ('unpaid','pending')
-     and payment_verified_at is null;
-  if not found then
-    raise exception 'BOOKING_PAYMENT_STATE_CHANGED' using errcode='40001';
-  end if;
-
-  -- Keep the exact labour/material/commission split required by the payout
-  -- reconciler. Materials are passed through without platform commission.
-  insert into public.srk_electrician_payouts
-    (booking_id,electrician_profile_id,razorpay_payment_id,
-     gross_service_amount,materials_amount,platform_commission,
-     electrician_payable,payout_status)
-  values
-    (p_booking_id,v_booking.assigned_electrician_id,null,
-     v_service,v_materials,v_commission,v_payable,'pending')
-  on conflict (booking_id) do nothing;
-
-  select * into v_payout
-    from public.srk_electrician_payouts
-   where booking_id=p_booking_id
-   for update;
-  if not found
-     or v_payout.electrician_profile_id is distinct from v_booking.assigned_electrician_id
-     or v_payout.payout_status<>'pending'
-     or round(v_payout.gross_service_amount*100)::bigint<>v_service_paise
-     or round(v_payout.materials_amount*100)::bigint<>v_materials_paise
-     or round(v_payout.platform_commission*100)::bigint<>v_commission_paise
-     or round(v_payout.electrician_payable*100)::bigint<>v_payable_paise
-     or v_payout.razorpay_payment_id is not null then
-    raise exception 'EXISTING_PAYOUT_DOES_NOT_MATCH_VERIFIED_MANUAL_PAYMENT' using errcode='55000';
-  end if;
-
-  return jsonb_build_object(
-    'success',true,
-    'booking_id',p_booking_id,
-    'payment_entry_id',v_payment.id,
-    'payment_method',p_method,
-    'amount_paid',v_total,
-    'labour_amount',v_service,
-    'materials_amount',v_materials,
-    'commission_amount',v_commission,
-    'electrician_payable',v_payable,
-    'payment_status','paid'
-  );
-end;
-$function$;
-
-revoke all on function public.srk_admin_record_manual_payment(uuid,text,text,text) from public,anon;
-grant execute on function public.srk_admin_record_manual_payment(uuid,text,text,text) to authenticated;
-
--- Correct the legacy receipt contract: approved labour and itemized materials
--- form the total; platform commission is calculated only on labour.
 create or replace function public.srk_customer_get_payment_receipt(p_booking_id uuid)
 returns jsonb
 language plpgsql
@@ -170,6 +57,7 @@ declare
   v_uid uuid:=auth.uid();
   v_booking public.service_bookings%rowtype;
   v_bill public.srk_booking_labour_bills%rowtype;
+  v_legacy srk_private.legacy_booking_financial_evidence%rowtype;
   v_fee_paise bigint:=0;
   v_fee_items jsonb:='[]'::jsonb;
   v_total_paise bigint;
@@ -220,13 +108,15 @@ begin
     );
   end if;
 
-  v_labour_paise:=round(coalesce(v_booking.service_charge,0)*100)::bigint;
-  v_materials_paise:=round(coalesce(v_booking.materials_amount,0)*100)::bigint;
+  select * into v_legacy from srk_private.legacy_booking_financial_evidence
+   where booking_id=p_booking_id;
+  if not found then raise exception 'Historical financial evidence is unavailable' using errcode='55000'; end if;
+  v_labour_paise:=round(coalesce(v_legacy.service_charge,0)*100)::bigint;
+  v_materials_paise:=round(coalesce(v_legacy.materials_amount,0)*100)::bigint;
   v_total_paise:=v_labour_paise+v_materials_paise;
-  if v_labour_paise<=0
-     or round(v_booking.amount_paid*100)::bigint<>v_total_paise
-     or round(coalesce(v_booking.quoted_amount,0)*100)::bigint<>v_total_paise then
-    raise exception 'Payment receipt does not reconcile to approved labour and materials' using errcode='55000';
+  if v_labour_paise<=0 OR round(v_booking.amount_paid*100)::bigint<>v_total_paise
+     OR (v_legacy.quoted_amount IS NOT NULL AND round(v_legacy.quoted_amount*100)::bigint<>v_total_paise) THEN
+    raise exception 'Historical receipt does not reconcile to archived financial evidence' using errcode='55000';
   end if;
 
   return jsonb_build_object(
