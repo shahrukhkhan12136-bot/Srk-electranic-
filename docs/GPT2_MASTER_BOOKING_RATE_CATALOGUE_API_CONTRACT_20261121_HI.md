@@ -75,6 +75,19 @@ Response में `fixed_labour_paise` और `unit_label` आएँगे। F
 8. Founder photo, OTP login, saved address, GPS/manual address, payment, idempotency, existing booking history और बाकी उपयोगी UI features सुरक्षित रखें।
 9. UI में customer phone field केवल verified Auth phone का readonly display रहे; API payload में phone भेजना आवश्यक नहीं।
 
+## Shared Technician Daily Work Timer
+Master hourly bookings के लिए पुराना Electrician-only timer इस्तेमाल नहीं होगा। हर accepted canonical Technician का अपना daily workday record होगा:
+- Technician RPC: `srk_technician_request_workday_start(booking_id)` → `start_pending`; Customer RPC `srk_customer_respond_technician_workday_start(workday_id,'approved'|'rejected')` से वास्तविक काम शुरू करने की अनुमति देता है।
+- Technician controls: `srk_technician_get_workday(workday_id)`, `srk_technician_pause_workday(workday_id)`, `srk_technician_resume_workday(workday_id)`, `srk_technician_stop_workday(workday_id)`.
+- Customer view: `srk_customer_get_technician_workdays(booking_id)`.
+- हर दिन पहले 4 वास्तविक काम के घंटे पूरे होने पर एक घंटे का lunch pause server-time से लगता है और उसके बाद timer अपने-आप फिर चलता है। Lunch time billable work में शामिल नहीं होता।
+- प्रत्येक Technician के हर दिन पहले 8 वास्तविक घंटे सामान्य दर पर; उसके बाद उसी दिन का समय 1.5x overtime पर। अगले दिन नया daily counter शुरू होता है।
+- दिन के अंत में Customer को ठीक तीन निर्णय मिलते हैं: `tomorrow`, `completed`, `replace_technician`. Replacement केवल भविष्य के काम के लिए पुराने Technician को बदलता है; पुराने workday और labour ledger सुरक्षित रहते हैं।
+- Daily Technician labour ledger append-only/immutable है। Replaced Technician जिसने billable work किया है, booking completion पर उसका completion counter भी गिना जाता है।
+- ये RPCs और schema अभी Feature Branch source हैं; DB पर लागू नहीं किए गए हैं।
+
+**अभी integration बाकी:** Helper count/charges का booking-level स्पष्ट snapshot, सभी daily Technician labour entries का consolidated Final Bill, customer-approved materials, Cash/Razorpay collection, refund और accounting reconciliation. इन चरणों के बिना Master Booking flag चालू नहीं होगा।
+
 ## Dispatch से Assigned Status
 - नई canonical category booking पहले उसी existing `service_bookings` row में `new` रहती है।
 - `srk_technician_dispatch_requests` पर requested और accepted Technician counts मिलते हैं।
