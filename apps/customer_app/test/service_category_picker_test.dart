@@ -68,7 +68,7 @@ void main() {
     });
 
     testWidgets('shows catalogue skill levels and clears old skill tasks on category change', (tester) async {
-      SrkServiceSelection? selected;
+      Object? selected;
       tester.view.physicalSize = const Size(900, 1400);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
