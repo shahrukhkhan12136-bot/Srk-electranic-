@@ -673,3 +673,12 @@
 - [x] Kept this component isolated: no profile query, Supabase RPC, offer filtering, assignment, work-start or payment behavior changed.
 - [ ] Backend must confirm exact deployed response field names and IDs before this panel is connected to live profile data.
 - [ ] Flutter analyze, tests and Android APK build are not yet executed/verified.
+
+
+## 2T. Technician offer-to-skill preview matching (2026-11-21)
+- [x] Added a pure, isolated preview matcher for exact category/subcategory and optional task/skill-tier IDs.
+- [x] Missing canonical IDs return `unknown`; mismatches return `notMatched`; exact verified-skill matches return `matched`.
+- [x] Added tests for exact match, AC-vs-Fridge/trade mismatch, subcategory mismatch, specialist task/tier mismatch and missing IDs.
+- [x] Exported the helper from the verified-services library barrel.
+- [ ] Do not connect matcher to offer visibility or accept/decline until backend supplies canonical fields and server-side eligibility guarantees.
+- [ ] No existing offer card, booking lifecycle, quote, payment, assignment or backend behavior was changed.
