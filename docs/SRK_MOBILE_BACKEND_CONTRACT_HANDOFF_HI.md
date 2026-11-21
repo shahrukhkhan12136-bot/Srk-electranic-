@@ -290,3 +290,19 @@ Tests were added in `packages/srk_mobile_core/test/srk_work_confirmation_contrac
 See `docs/SRK_MOBILE_API_INVENTORY_AND_CROSS_APP_MAP_HI.md` for the source-audited current Customer and Technician API/RPC inventory, quote-dependent legacy lifecycle, proposed quote-free endpoint capabilities, shared DTO fields and ordered backend rollout/acceptance gates.
 
 This inventory is a frontend source audit, not proof that every migration is deployed in production. Proposed API names are illustrative only. Backend owner must publish exact deployed routes, request/response/error schemas, authorization, idempotency, server-time and amount/ledger semantics before frontend wiring. No backend/database/payment/production changes were made.
+
+
+## 19. Shared service catalogue and draft identifier contract (21 Nov 2026)
+
+Frontend now maintains one shared draft catalogue in `packages/srk_mobile_core/lib/srk_service_catalog.dart` and the Customer category picker adapts from it instead of keeping a second hard-coded list.
+
+- Draft version: `draft-2026-11-21.1`.
+- Six top-level keys: `electrician`, `plumber`, `painter`, `ac_fridge`, `motor_pump`, `cooler`.
+- Shared data includes Hindi display labels, icon keys, known subcategory keys/labels, AC and Fridge task labels, and existing draft rate presentation.
+- AC and Fridge task keys are separately scoped. Plumber/Painter task lists remain intentionally empty until the owner confirms the task taxonomy.
+- Existing unconfirmed prices/helper rules remain unfilled; Fridge final rate and any other unconfirmed pricing must be supplied by the owner/Admin contract.
+- These keys are frontend draft identifiers only. They are not canonical deployed backend IDs, do not authorize a Technician skill, and must not be submitted to the current booking API or used for dispatch/payment.
+
+**Backend response required before integration:** approve a canonical catalogue version and immutable category/subcategory/task/skill-tier IDs; define localization/display labels separately from IDs; provide rate snapshot and helper/task structures with effective dates; define retired-ID compatibility for existing bookings; and return verified Technician skills using those exact IDs/version. Offer matching and every accept/work/payment transition must revalidate skills server-side.
+
+This source change only unifies presentation data and Customer picker rendering. Existing booking submission, Technician live skill/offer screens, booking lifecycle, APIs, Supabase, database, payment and production remain unchanged. Flutter formatting, analyzer, tests and Android builds have not been executed/verified.
