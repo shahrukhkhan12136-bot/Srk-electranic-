@@ -356,7 +356,7 @@ FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_tax_documents_immutable();
 
 
 CREATE OR REPLACE FUNCTION public.srk_customer_get_master_tax_invoice(p_booking_id uuid)
-RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $$
 DECLARE v_uid uuid:=auth.uid(); v_out jsonb;
 BEGIN
  IF v_uid IS NULL THEN RAISE EXCEPTION 'CUSTOMER_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
@@ -371,7 +371,7 @@ BEGIN
  WHERE i.booking_id=p_booking_id;
  IF v_out IS NULL THEN RAISE EXCEPTION 'CUSTOMER_TAX_INVOICE_NOT_FOUND' USING ERRCODE='42501'; END IF;
  RETURN v_out;
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.srk_customer_get_master_tax_invoice(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_customer_get_master_tax_invoice(uuid) TO authenticated;
 
