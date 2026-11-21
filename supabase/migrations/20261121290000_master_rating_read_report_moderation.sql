@@ -52,7 +52,8 @@ CREATE TRIGGER srk_master_rating_report_events_append_only
 CREATE OR REPLACE FUNCTION public.srk_customer_list_master_rating_tasks()
 RETURNS TABLE(
  booking_id uuid,technician_id uuid,rating_id uuid,stars smallint,review_text text,
- rating_created_at timestamptz,technician_average numeric,technician_rating_count bigint
+ rating_created_at timestamptz,technician_average numeric,technician_rating_count bigint,
+ subject_rating_id uuid,subject_rating_stars smallint,subject_rating_text text,subject_rating_created_at timestamptz
 )
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $function$
 BEGIN
@@ -62,11 +63,14 @@ BEGIN
   COALESCE((SELECT round(avg(p.stars)::numeric,2) FROM public.srk_master_booking_ratings p
    WHERE p.target_technician_id=a.technician_id AND p.reviewer_role='customer' AND p.moderation_status='published'),0),
   (SELECT count(*) FROM public.srk_master_booking_ratings p
-   WHERE p.target_technician_id=a.technician_id AND p.reviewer_role='customer' AND p.moderation_status='published')
+   WHERE p.target_technician_id=a.technician_id AND p.reviewer_role='customer' AND p.moderation_status='published'),
+  sr.id,sr.stars,sr.review_text,sr.created_at
  FROM public.service_bookings b
  JOIN public.srk_booking_technician_assignments a ON a.booking_id=b.id AND a.assignment_status='completed'
  LEFT JOIN public.srk_master_booking_ratings r ON r.booking_id=b.id
   AND r.target_technician_id=a.technician_id AND r.reviewer_role='customer'
+ LEFT JOIN public.srk_master_booking_ratings sr ON sr.booking_id=b.id
+  AND sr.target_user_id=b.customer_user_id AND sr.reviewer_role='technician'
  WHERE b.customer_user_id=auth.uid() AND b.status='completed'
   AND b.completion_approval_status='approved' AND b.customer_completed_at IS NOT NULL
  ORDER BY b.customer_completed_at DESC,a.technician_id;
@@ -77,8 +81,9 @@ GRANT EXECUTE ON FUNCTION public.srk_customer_list_master_rating_tasks() TO auth
 
 CREATE OR REPLACE FUNCTION public.srk_technician_list_master_rating_tasks()
 RETURNS TABLE(
- booking_id uuid,customer_user_id uuid,rating_id uuid,stars smallint,review_text text,
- rating_created_at timestamptz,customer_average numeric,customer_rating_count bigint
+ booking_id uuid,rating_id uuid,stars smallint,review_text text,
+ rating_created_at timestamptz,customer_average numeric,customer_rating_count bigint,
+ subject_rating_id uuid,subject_rating_stars smallint,subject_rating_text text,subject_rating_created_at timestamptz
 )
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_tid uuid;
@@ -88,15 +93,18 @@ BEGIN
  WHERE t.auth_user_id=auth.uid() AND t.account_status='active';
  IF v_tid IS NULL THEN RAISE EXCEPTION 'ACTIVE_TECHNICIAN_REQUIRED' USING ERRCODE='42501'; END IF;
  RETURN QUERY
- SELECT b.id,b.customer_user_id,r.id,r.stars,r.review_text,r.created_at,
+ SELECT b.id,r.id,r.stars,r.review_text,r.created_at,
   COALESCE((SELECT round(avg(p.stars)::numeric,2) FROM public.srk_master_booking_ratings p
    WHERE p.target_user_id=b.customer_user_id AND p.reviewer_role='technician' AND p.moderation_status='published'),0),
   (SELECT count(*) FROM public.srk_master_booking_ratings p
-   WHERE p.target_user_id=b.customer_user_id AND p.reviewer_role='technician' AND p.moderation_status='published')
+   WHERE p.target_user_id=b.customer_user_id AND p.reviewer_role='technician' AND p.moderation_status='published'),
+  cr.id,cr.stars,cr.review_text,cr.created_at
  FROM public.service_bookings b
  JOIN public.srk_booking_technician_assignments a ON a.booking_id=b.id AND a.technician_id=v_tid AND a.assignment_status='completed'
  LEFT JOIN public.srk_master_booking_ratings r ON r.booking_id=b.id
   AND r.reviewer_technician_id=v_tid AND r.reviewer_role='technician'
+ LEFT JOIN public.srk_master_booking_ratings cr ON cr.booking_id=b.id
+  AND cr.target_technician_id=v_tid AND cr.reviewer_role='customer'
  WHERE b.status='completed' AND b.completion_approval_status='approved'
   AND b.customer_completed_at IS NOT NULL
  ORDER BY b.customer_completed_at DESC;
@@ -193,7 +201,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 DECLARE q public.srk_master_rating_reports%rowtype; r public.srk_master_booking_ratings%rowtype; v_after text;
 BEGIN
  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
- IF p_report_id IS NULL OR p_decision NOT IN ('dismiss','hide_rating','restore_rating')
+ IF p_report_id IS NULL OR p_decision IS NULL OR p_decision NOT IN ('dismiss','hide_rating','restore_rating')
   OR p_note IS NULL OR length(btrim(p_note)) NOT BETWEEN 5 AND 1000 THEN
   RAISE EXCEPTION 'INVALID_RATING_REPORT_DECISION' USING ERRCODE='22023';
  END IF;
