@@ -1479,6 +1479,10 @@ Founder के नवीनतम निर्देश; पुराने Paus
 - [ ] Lunch शुरू होने के 1 घंटे बाद timer अपने आप फिर चालू होगा; Technician को Resume दबाने की जरूरत नहीं होगी।
 - [ ] Lunch के दौरान का 1 घंटा billable working minutes में शामिल न हो।
 - [ ] Customer और Technician दोनों को timer/status सही दिखे; Lunch शुरू होने और auto-resume होने का समय रिकॉर्ड हो।
+- [ ] Technician के Lunch बटन दबाते ही Customer को notification जाए कि Technician Lunch break पर गया है और timer 1 घंटे के लिए रुका है।
+- [ ] ठीक 1 घंटे का Lunch पूरा होने पर timer अपने आप शुरू होने के साथ Customer को notification जाए कि काम फिर से शुरू हो गया है।
+- [ ] प्रत्येक कार्य-दिन के 8 सामान्य working hours पूरे होते ही overtime शुरू होने का Customer को notification जाए; notification में overtime शुरू होने की स्थिति/समय स्पष्ट हो।
+- [ ] Lunch-start, Lunch auto-resume और overtime-start notifications के server events, delivery/retry handling तथा Customer UI display को implement और test करना बाकी है; केवल client timer या local notification को authoritative न मानें.
 - [ ] Lunch auto-resume, app बंद/नेटवर्क बंद होने या device time बदलने पर भी server-authoritative समय से सुरक्षित तरीके से चले; client clock को billing authority न मानें।
 - [ ] प्रति-मिनट रकम की rounding/paise policy backend contract से तय और test हो; frontend अनुमान से rounding rule न बनाए।
 - [ ] पुराने checklist में मौजूद सामान्य Pause/Resume UI requirements इस नवीनतम Lunch-only नियम से superseded हैं; उन्हें लागू न करें।
