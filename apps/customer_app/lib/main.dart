@@ -92,7 +92,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       if (user == null) return;
       final response = await _client
           .from('service_bookings')
-          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,materials_amount,quote_status,quote_note,district,state,pincode,customer_suggested_amount,electrician_quote_kind')
+          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,materials_amount,quote_status,quote_note,district,state,pincode,electrician_quote_kind')
           .eq('customer_user_id', user.id)
           .order('created_at', ascending: false)
           .limit(50);
@@ -384,8 +384,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               ),
             Text('इलाका: ${booking['district'] ?? ''}, ${booking['state'] ?? ''} • PIN ${booking['pincode'] ?? ''}'),
             Text('तारीख: ${booking['preferred_date'] ?? '—'} • समय: ${booking['preferred_time'] ?? '—'}'),
-            if (booking['customer_suggested_amount'] != null)
-              Text('आपकी शुरुआती अनुमानित कीमत: ₹${(booking['customer_suggested_amount'] as num).toStringAsFixed(2)}'),
             if (quoteStatus != 'not_submitted') ...[
               const Divider(),
               Text(booking['electrician_quote_kind'] == 'counter_offer' ? 'इलेक्ट्रिशियन का Counter Offer' : 'इलेक्ट्रिशियन का कोटेशन',
@@ -464,7 +462,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   final _pincode = TextEditingController();
   final _address = TextEditingController();
   final _work = TextEditingController();
-  final _suggestedAmount = TextEditingController();
   final _client = Supabase.instance.client;
   String? _service;
   DateTime? _date;
@@ -496,7 +493,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   @override
   void dispose() {
     _name.dispose(); _phone.dispose(); _state.dispose(); _district.dispose();
-    _pincode.dispose(); _address.dispose(); _work.dispose(); _suggestedAmount.dispose();
+    _pincode.dispose(); _address.dispose(); _work.dispose();
     super.dispose();
   }
 
@@ -587,7 +584,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         'preferred_date': '${_date!.year}-${_two(_date!.month)}-${_two(_date!.day)}',
         'preferred_time': '${_two(_time!.hour)}:${_two(_time!.minute)}',
         'work_details': _work.text.trim(),
-        'customer_suggested_amount': _suggestedAmount.text.trim().isEmpty ? null : double.parse(_suggestedAmount.text.trim()),
         'payment_method': _paymentMethod,
         'location_lat': _locationLat,
         'location_lng': _locationLng,
@@ -639,11 +635,12 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   Widget _field(TextEditingController controller, String label, {
     String? hint, TextInputType? keyboard, int maxLines = 1, int maxLength = 250,
     String? Function(String?)? validator,
+    bool readOnly = false,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: TextFormField(
       controller: controller, decoration: _decoration(label, hint: hint),
-      keyboardType: keyboard, maxLines: maxLines, maxLength: maxLength,
+      keyboardType: keyboard, maxLines: maxLines, maxLength: maxLength, readOnly: readOnly,
       validator: validator ?? (v) => _required(v, label),
     ),
   );
@@ -663,7 +660,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         Text('ग्राहक की जानकारी', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         _field(_name, 'पूरा नाम', maxLength: 100),
-        _field(_phone, 'OTP verified मोबाइल नंबर', keyboard: TextInputType.phone, maxLength: 10,
+        _field(_phone, 'OTP verified मोबाइल नंबर', keyboard: TextInputType.phone, maxLength: 10, readOnly: true,
           validator: (v) => RegExp(r'^\d{10}$').hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
         const SizedBox(height: 4),
         Text('सेवा का पता', style: Theme.of(context).textTheme.titleMedium),
@@ -690,15 +687,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         const SizedBox(height: 12),
         _field(_work, 'काम की समस्या / अतिरिक्त जानकारी', maxLines: 4, maxLength: 2000,
           validator: (v) => (v?.trim().length ?? 0) < 5 ? 'कम से कम 5 अक्षरों में काम समझाएँ' : null),
-        _field(_suggestedAmount, 'आपकी शुरुआती अनुमानित कीमत (₹) — वैकल्पिक',
-          keyboard: const TextInputType.numberWithOptions(decimal: true), maxLength: 12,
-          validator: (v) {
-            final value = v?.trim() ?? '';
-            if (value.isEmpty) return null;
-            final amount = double.tryParse(value);
-            return amount == null || !amount.isFinite || amount <= 0 || amount > 10000000
-                ? '₹1 से ₹1,00,00,000 के बीच सही राशि भरें' : null;
-          }),
         OutlinedButton.icon(
           onPressed: _pickDate,
           icon: const Icon(Icons.calendar_month),
