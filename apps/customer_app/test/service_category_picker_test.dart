@@ -106,6 +106,46 @@ void main() {
       expect(selected, isNull);
     });
 
+    testWidgets('shows both Expert Electrician wiring options with their own rates', (tester) async {
+      tester.view.physicalSize = const Size(900, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(onSelection: (_) {}),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('इलेक्ट्रीशियन'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('एक्सपर्ट इलेक्ट्रीशियन'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('काम का विकल्प चुनें'), findsOneWidget);
+      await tester.tap(find.text('नॉर्मल वायरिंग (घर / दुकान)'));
+      await tester.pumpAndSettle();
+      expect(find.text('बिना Helper: ₹1,000 / 8 घंटे'), findsOneWidget);
+      expect(
+        find.text('Helper सहित: ₹1,500 / 8 घंटे • ₹62.50 प्रति घंटा अतिरिक्त'),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.text('प्रोजेक्ट वायरिंग (बड़ी फैक्ट्री / कंपनी / औद्योगिक भवन)'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('बिना Helper: ₹400 / प्रति घंटा'), findsOneWidget);
+      expect(
+        find.text('Helper सहित: ₹550 / प्रति घंटा • ₹150 प्रति घंटा अतिरिक्त'),
+        findsOneWidget,
+      );
+      expect(find.text('बिना Helper: ₹1,000 / 8 घंटे'), findsNothing);
+    });
+
     testWidgets('AC and Fridge show separate task lists', (tester) async {
       Map<String, String?>? selected;
       tester.view.physicalSize = const Size(900, 1200);
