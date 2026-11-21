@@ -54,6 +54,6 @@ test('receipt RPC refuses unpaid bookings and scopes receipt lookup to the authe
   assert.match(receiptMigration, /b\.payment_status<>'paid'/);
   assert.match(receiptMigration, /b\.payment_verified_at IS NULL/);
   assert.match(receiptMigration, /ONLY_VERIFIED_PAID_BOOKINGS_HAVE_A_RECEIPT/);
-  assert.match(receiptMigration, /revoke all on function public\.srk_customer_get_payment_receipt\(uuid\) from public,anon/);
-  assert.match(receiptMigration, /grant execute on function public\.srk_customer_get_payment_receipt\(uuid\) to authenticated/);
+  assert.match(receiptMigration, /revoke all on function public\.srk_customer_get_payment_receipt\(uuid\) from public,anon/i);
+  assert.match(receiptMigration, /grant execute on function public\.srk_customer_get_payment_receipt\(uuid\) to authenticated/i);
 });
