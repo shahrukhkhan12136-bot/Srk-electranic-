@@ -261,14 +261,11 @@ BEGIN
   v_after:=CASE WHEN p_action='hide' THEN 'hidden' ELSE 'published' END;
   IF v_rating.moderation_status=v_after THEN RAISE EXCEPTION 'RATING_ALREADY_IN_TARGET_STATE'; END IF;
   UPDATE public.srk_master_booking_ratings
-  SET moderation_status=v_after,moderated_at=clock_timestamp(),moderated_by=auth.uid(),
-      moderation_reason=btrim(p_reason)
+  SET moderation_status=v_after,
+      moderated_at=CASE WHEN v_after='hidden' THEN clock_timestamp() ELSE NULL END,
+      moderated_by=CASE WHEN v_after='hidden' THEN auth.uid() ELSE NULL END,
+      moderation_reason=CASE WHEN v_after='hidden' THEN btrim(p_reason) ELSE NULL END
   WHERE id=p_rating_id;
-  IF v_after='published' THEN
-    UPDATE public.srk_master_booking_ratings
-    SET moderated_at=NULL,moderated_by=NULL,moderation_reason=NULL
-    WHERE id=p_rating_id;
-  END IF;
   INSERT INTO public.srk_master_rating_moderation_events(
     rating_id,admin_user_id,action,reason,before_status,after_status
   ) VALUES(p_rating_id,auth.uid(),p_action,btrim(p_reason),v_rating.moderation_status,v_after);
