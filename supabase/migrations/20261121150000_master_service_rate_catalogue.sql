@@ -44,6 +44,12 @@ CREATE TABLE IF NOT EXISTS public.srk_service_rates (
 CREATE INDEX IF NOT EXISTS srk_service_rates_current_idx
   ON public.srk_service_rates(service_code,status,effective_from DESC)
   WHERE status='active';
+CREATE UNIQUE INDEX IF NOT EXISTS srk_service_rates_one_active_level_uidx
+  ON public.srk_service_rates(service_code,level_code) WHERE status='active';
+
+ALTER TABLE public.srk_service_catalogue_events DROP CONSTRAINT IF EXISTS srk_service_catalogue_events_object_type_check;
+ALTER TABLE public.srk_service_catalogue_events ADD CONSTRAINT srk_service_catalogue_events_object_type_check
+  CHECK (object_type IN ('category','skill','offering'));
 
 CREATE TABLE IF NOT EXISTS public.srk_service_rate_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -68,6 +74,17 @@ BEGIN
   IF TG_OP='DELETE' THEN RAISE EXCEPTION 'SERVICE_RATE_HISTORY_CANNOT_BE_DELETED' USING ERRCODE='55000'; END IF;
   IF TG_OP='UPDATE' THEN
     IF OLD.status='retired' THEN RAISE EXCEPTION 'RETIRED_SERVICE_RATE_IS_IMMUTABLE' USING ERRCODE='55000'; END IF;
+    IF OLD.status='active' AND (NEW.service_code IS DISTINCT FROM OLD.service_code
+       OR NEW.level_code IS DISTINCT FROM OLD.level_code OR NEW.level_label IS DISTINCT FROM OLD.level_label
+       OR NEW.technician_hourly_paise IS DISTINCT FROM OLD.technician_hourly_paise
+       OR NEW.helper_hourly_paise IS DISTINCT FROM OLD.helper_hourly_paise
+       OR NEW.fixed_labour_paise IS DISTINCT FROM OLD.fixed_labour_paise
+       OR NEW.rate_version IS DISTINCT FROM OLD.rate_version OR NEW.effective_from IS DISTINCT FROM OLD.effective_from) THEN
+      RAISE EXCEPTION 'ACTIVE_RATE_VALUES_ARE_IMMUTABLE_CREATE_A_NEW_VERSION' USING ERRCODE='55000';
+    END IF;
+    IF OLD.status='active' AND NEW.status NOT IN ('active','retired') THEN
+      RAISE EXCEPTION 'ACTIVE_RATE_CAN_ONLY_BE_RETIRED' USING ERRCODE='55000';
+    END IF;
     IF NEW.service_code IS DISTINCT FROM OLD.service_code
        OR NEW.level_code IS DISTINCT FROM OLD.level_code
        OR NEW.rate_version IS DISTINCT FROM OLD.rate_version
@@ -231,7 +248,7 @@ BEGIN
     is_active=EXCLUDED.is_active,updated_at=clock_timestamp()
   RETURNING id,to_jsonb(srk_service_offerings) INTO v_id,v_after;
   INSERT INTO public.srk_service_catalogue_events(actor_user_id,object_type,object_id,action,before_data,after_data)
-  VALUES(auth.uid(),'skill',v_id,v_action,v_before,v_after);
+  VALUES(auth.uid(),'offering',v_id,v_action,v_before,v_after);
   RETURN v_id;
 END;
 $function$;
@@ -281,7 +298,7 @@ BEGIN
   RETURN v_id;
 END;
 $function$;
-REVOKE ALL ON FUNCTION public.srk_admin_upsert_service_rate(text,text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz) TO authenticated;
 
 -- Keep legacy booking history but prevent direct client writes to the new commercial snapshot.
