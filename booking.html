@@ -1570,7 +1570,7 @@ async function loadCustomerBookings() {
           ? '<div class="job"><p class="small">रद्द करने का अनुरोध Admin को भेजें। Admin इलेक्ट्रिशियन की स्थिति और प्रमाण जाँचकर निर्णय करेगा। ₹99 केवल ग्राहक के घर पहुँचने का प्रमाण दर्ज होने और Admin की मंज़ूरी पर; घर से नहीं निकला या रास्ते में होने पर ₹0। अनुरोध भेजने से बुकिंग अपने-आप रद्द नहीं होगी।</p><button type="button" class="btn" onclick="customerCancelBooking(\''+customerEsc(row.id)+'\',this)" style="background:#fff0f0;color:#a32121">Admin से रद्द करने का अनुरोध</button></div>'
           : '');
       const refund=refundMap.get(row.id);
-      const completionMarkup=row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
+      const completionMarkup=!isMasterBooking&&row.status==='in_progress'&&row.completion_approval_status==='pending'&&row.completion_requested_at
         ? '<div class="job"><b>इलेक्ट्रिशियन ने काम पूरा होने की सूचना दी है।</b><p class="small">कृपया काम जाँचें। पूरा होने पर स्वीकार करें; अधूरा होने पर अस्वीकार करें या विवाद दर्ज करें।</p>'+
           '<button type="button" onclick="customerRespondWorkCompletion(\''+customerEsc(row.id)+'\',\'approved\')">काम पूरा स्वीकार करें</button> '+
           '<button type="button" onclick="customerRespondWorkCompletion(\''+customerEsc(row.id)+'\',\'rejected\')">काम अभी अधूरा है</button>'+
