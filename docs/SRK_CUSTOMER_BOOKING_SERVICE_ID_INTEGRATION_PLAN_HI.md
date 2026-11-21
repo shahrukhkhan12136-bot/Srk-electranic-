@@ -196,3 +196,15 @@ Backend staging response और API contract मिलने के बाद �
 - Backend-approved schema और staging contract आने तक draft picker को केवल preview ही रखें।
 
 **निष्कर्ष:** मौजूदा submit path और पुराने booking fields को सुरक्षित रखा गया है। कोई runtime code परिवर्तन इस audit में नहीं किया गया।
+
+
+## 13. Booking history, cancellation और complaint compatibility audit (21-11-2026)
+
+- Booking history query authenticated customer's own `customer_user_id` पर scoped है, newest-first है और अधिकतम 50 rows पढ़ती है।
+- Status display में मौजूदा booking और legacy quote states शामिल हैं; unknown status raw fallback है।
+- Cancellation UI केवल `new/confirmed` states में दिखता है। Server RPC को अंतिम ownership/state validation करनी चाहिए; client visibility को authorization न मानें।
+- Complaint create/list RPCs और Technician contact RPC पुराने dashboard flow का हिस्सा हैं; quote-free migration में इन्हें compatibility matrix में सुरक्षित रखें।
+- Complaint/contact list load failure अभी चुपचाप empty/no-contact जैसा दिख सकता है; अलग load/error states UX सुधार के लिए दर्ज हैं।
+- Complaint text line-break rendering और unknown-status fallback की targeted UI जाँच बाकी है।
+- Quote-related approve/reject और status display ऐतिहासिक records के लिए तब तक रखें जब तक नया backend lifecycle और migration/compatibility path deployed तथा tested न हो।
+- कोई runtime या backend बदलाव नहीं किया गया; Flutter tests/analyzer/build execute नहीं हुए।
