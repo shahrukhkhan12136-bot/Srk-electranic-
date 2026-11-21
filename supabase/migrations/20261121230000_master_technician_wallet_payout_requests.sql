@@ -37,8 +37,7 @@ CREATE TABLE IF NOT EXISTS public.srk_master_payout_request_items (
  payable_id uuid NOT NULL REFERENCES public.srk_master_technician_payables(id) ON DELETE RESTRICT,
  amount_paise bigint NOT NULL CHECK(amount_paise>0),
  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
- PRIMARY KEY(payout_request_id,payable_id),
- UNIQUE(payable_id)
+ PRIMARY KEY(payout_request_id,payable_id)
 );
 ALTER TABLE public.srk_master_company_settlements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.srk_master_payout_requests ENABLE ROW LEVEL SECURITY;
@@ -169,7 +168,7 @@ BEGIN
   OR char_length(p_transfer_reference)>120 OR (p_note IS NOT NULL AND char_length(p_note)>500) THEN
   RAISE EXCEPTION 'INVALID_TRANSFER_EVIDENCE' USING ERRCODE='22023'; END IF;
  SELECT * INTO r FROM public.srk_master_payout_requests WHERE id=p_request_id FOR UPDATE;
- IF NOT FOUND OR r.status NOT IN ('requested','approved') THEN RAISE EXCEPTION 'PAYOUT_REQUEST_NOT_OPEN'; END IF;
+ IF NOT FOUND OR r.status<>'approved' THEN RAISE EXCEPTION 'PAYOUT_REQUEST_MUST_BE_APPROVED_FIRST'; END IF;
  SELECT count(*) INTO v_unsettled FROM public.srk_master_payout_request_items i
  JOIN public.srk_master_technician_payables p ON p.id=i.payable_id
  JOIN public.srk_master_booking_payments m ON m.id=p.payment_id
