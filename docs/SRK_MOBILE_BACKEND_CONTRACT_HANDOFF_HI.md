@@ -206,3 +206,14 @@ Please return, in writing:
 - Missing canonical IDs return `unknown`; an exact mismatch returns `notMatched`; exact match returns `matched`.
 - This helper is not wired into offer inbox filtering, accept/decline, assignment or work actions. It is not authorization; backend must independently enforce eligibility.
 - Tests cover exact match, trade/subcategory mismatch, specialist task/tier mismatch and missing canonical IDs.
+
+
+## 13. Assigned-booking lifecycle frontend audit and preview helper (21 Nov 2026)
+
+- Current Technician assigned-booking card reads assigned, inspection, awaiting_quote_approval, quote_approved, quote_rejected, in_progress and completed records.
+- Existing actions are: start inspection from assigned; start work only from quote_approved; complete work only from in_progress; confirm cash only for completed cash bookings whose payment is not paid.
+- Existing card also displays booking location/map action, authorized customer phone, labour/material/quoted total, quote note, payment state, completed earnings and wallet summary. Preserve these until their replacement contracts are verified.
+- Added an isolated read-only presentation mapper for the currently deployed status strings. The three quote-related states are explicitly flagged as legacy. Unknown/missing states remain unknown and do not imply an allowed action.
+- Added unit tests for current-state mapping, legacy-state identification, completed terminal display and unknown/missing states.
+- The helper is not wired into the live dashboard and does not define or authorize transitions. No RPC, database, payment, offer, booking or production behavior changed.
+- Backend must still provide and deploy the quote-free status enum/transition table, customer work-start/completion confirmation, independent materials approval, duplicate-safe payment/cash and historical quote-booking compatibility before the frontend can safely replace current quote-dependent screens/actions.
