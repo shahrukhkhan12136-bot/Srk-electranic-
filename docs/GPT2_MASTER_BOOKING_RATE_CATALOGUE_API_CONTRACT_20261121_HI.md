@@ -90,6 +90,7 @@ Canonical category वाली booking existing legacy Electrician broadcast �
 
 ## Rollout gate और शेष backend integration
 - `create-booking.js` में Master API path बनाया गया है, लेकिन `SRK_MASTER_BOOKING_ENABLED=true` feature flag के बिना वह जानबूझकर 503 लौटाता है।
+- पुरानी hard-coded Electrician booking दरें भी नई बुकिंग के लिए retire हैं; केवल explicit temporary compatibility flag `SRK_LEGACY_ELECTRICIAN_BOOKING_ENABLED=true` उन्हें चालू कर सकता है। इस flag को production में न लगाएँ।
 - इस flag को चालू न करें: मौजूदा authoritative work-timer, multi-Technician completion bill और `create-order.js` / `verify-payment.js` अभी canonical Master hourly/fixed rate snapshots से पूरी तरह जुड़े नहीं हैं।
 - अगले backend चरण में Technician identity-based timer start/stop, daily 8-hour threshold + 1.5x overtime, helper/team billing, immutable multi-Technician labour ledger, और quote-free Razorpay/Cash settlement bridge पूरा करना जरूरी है।
 - जब तक यह पूरा न हो, Master Booking को live/preview में चालू न करें। Existing legacy Electrician booking path और historical quote/payment records को बिना migration plan न हटाएँ।
