@@ -25,12 +25,12 @@
 
 ## 3. Core baseline के लिए अभी तक प्रमाणित बातें
 
-- Branch में 71 SQL migration files हैं।
+- Branch में अब 111 SQL migration files हैं (नए Master follow-up migrations सहित)।
 - शुरुआती migrations core application tables पर `ALTER TABLE`, policies, triggers और functions लगाती हैं; इसलिए migration directory अकेले clean-room baseline नहीं है।
 - `COMPLETE_DATABASE_SETUP.sql` में पाँच core tables दिखती हैं, पर यह नवीनतम migration chain के सभी पुराने columns, constraints, triggers या platform objects की पूर्ण परिभाषा नहीं है। इसे बिना reconciliation के fixture या canonical schema नहीं मानना है।
 - Customer profile/avatar/support migrations `auth.users`, `auth.uid()` और Storage objects का संदर्भ देती हैं।
 - Refund, payout, booking, timer, dispatch और audit migrations कई पहले से मौजूद booking/profile columns तथा helper schemas पर निर्भर हैं।
-- 33 pgTAP SQL test files मौजूद हैं। वर्तमान Node plan-count test केवल `plan()` और assertion-call संख्या मिलाता है; SQL execute नहीं करता।
+- 54 pgTAP SQL test files मौजूद हैं। वर्तमान Node plan-count test केवल `plan()` और assertion-call संख्या मिलाता है; SQL execute नहीं करता।
 
 ## 4. Fixture लिखने से पहले अनिवार्य dependency inventory
 
@@ -73,3 +73,15 @@
 अगला कदम source-only dependency manifest बनाना है—विशेषकर core table columns, Auth/Storage object contracts, extensions और शुरुआती migration prerequisites। उसके बाद CI में disposable PostgreSQL service जोड़ने की feasibility जाँची जाएगी। जब तक clean-room replay और pgTAP वास्तविक रूप से न चलें, SQL runtime को **असत्यापित** ही माना जाएगा।
 
 **वर्तमान GPT-2 checklist:** 27/39 = 69% पूरा; 12/39 बाकी। यह डिज़ाइन/अतिरिक्त hardening checklist item closure नहीं है, इसलिए प्रतिशत नहीं बढ़ाया गया।
+
+## 8. 2026-11-22 Master follow-up — नई dependency evidence
+
+नए follow-up migrations के source audit में ये पूर्व-निर्मित dependencies सामने आईं; इन्हें baseline में तभी जोड़ा जाएगा जब exact columns/constraints का पूरा source reconciliation हो:
+
+- `20261122000000_master_technician_unified_offer_read.sql`: `service_bookings`, `electrician_profiles`, `job_offers`, `srk_booking_technician_assignments`, `srk_technician_dispatch_offers`, `srk_technician_applications`, `srk_technician_presence`, `srk_booking_technician_workdays`।
+- `20261122000100_master_technician_app_and_admin_ops.sql`: Technician application/skill/KYC tables, service taxonomy/rates, dispatch requests/offers/events, booking workdays/customer decisions, final bills, GST snapshots/material items और `service_bookings`।
+- `20261122000200_master_manual_payment_and_cash_refund_tasks.sql`: Master booking payments/payables, refund requests/evidence/reviews, commission dues/events, wallet credits, final bills, GST snapshots और legacy manual refund compatibility ledger।
+
+GitHub-hosted disposable Supabase CLI trial में stack startup ने migration replay से पहले ही `service_bookings` जैसी pre-existing core relation न मिलने पर fail किया। इसलिए वह workflow हटाया गया; कोई pgTAP test execute नहीं हुआ और कोई database migration apply नहीं हुई। यह परिणाम migration-only clean-room baseline की कमी की पुष्टि करता है—इसे SQL runtime success नहीं माना जाएगा।
+
+अगला सुरक्षित काम अभी भी यही है: source से प्रमाणित core schema/Auth/Storage fixture बनाना, migration version collision handling को अलग scratch runner में सत्यापित करना, फिर 54 pgTAP files को disposable database में वास्तव में चलाना।
