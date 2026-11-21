@@ -84,7 +84,7 @@ FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_cash_refund_records();
 -- Include directly-collected cash payables in refund reversal. This does not create a new
 -- Technician payout: the Technician already received and then returned the customer's cash.
 CREATE OR REPLACE FUNCTION public.srk_master_refund_payable_state_sync()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_payment public.srk_master_booking_payments%rowtype;
 BEGIN
  IF NEW.payment_status='refunded' AND OLD.payment_status IS DISTINCT FROM NEW.payment_status THEN
@@ -107,7 +107,7 @@ BEGIN
  END IF;
  RETURN NEW;
 END;
-$;
+$$;
 REVOKE ALL ON FUNCTION public.srk_master_refund_payable_state_sync() FROM PUBLIC,anon,authenticated;
 
 CREATE OR REPLACE FUNCTION public.srk_technician_submit_master_cash_refund_evidence(
