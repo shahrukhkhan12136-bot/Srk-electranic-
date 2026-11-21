@@ -1435,3 +1435,19 @@ Implementation direction:
 - [ ] यह अभी catalogue/presentation स्तर का बदलाव है; booking submit, dispatch eligibility, backend IDs या rates से wiring विकल्पों को जोड़ना बाकी है।
 - [ ] इस बदलाव से Basic / Expert / Master skill-level mapping या मौजूदा चार skill-level entries अपने-आप नहीं बदलतीं; उनका अलग owner confirmation आवश्यक है।
 
+## 2BJ. Owner-approved Electrician — चारों स्तरों की काम सूची (21-11-2026)
+
+Founder ने चारों स्तरों के नमूना कामों को स्वीकार करके सूची में सेव करने को कहा है। Shared catalogue में हर स्तर के `tasks` अलग दर्ज किए गए हैं:
+
+- **Basic:** बल्ब/LED, ट्यूब लाइट, पंखा लगाना/उतारना, स्विच-सॉकेट, होल्डर-बोर्ड, छोटी वायरिंग सुधारना, एक्सटेंशन बोर्ड, डोर बेल, सामान्य खराबी जाँच और छोटे घरेलू इलेक्ट्रिकल काम (10)।
+- **Expert Residential:** घर की नई वायरिंग, पुरानी वायरिंग बदलना, MCB/डिस्ट्रीब्यूशन बोर्ड, इन्वर्टर-बैटरी कनेक्शन, अर्थिंग जाँच, खराबी खोजना, मोटर-पंप कनेक्शन, दुकान/ऑफिस वायरिंग और लोड के अनुसार वायर/MCB चयन (9)।
+- **Factory / Large Project:** फैक्ट्री की पूरी वायरिंग, बड़ी कंपनी की वायरिंग, औद्योगिक भवन वायरिंग, थ्री-फेज सिस्टम, बड़े डिस्ट्रीब्यूशन पैनल, इंडस्ट्रियल मोटर कंट्रोल पैनल, स्टार-डेल्टा स्टार्टर, ऑटोमैटिक कंट्रोल पैनल, बड़े लोड की खराबी जाँच और प्रोजेक्ट टीम का काम (10)।
+- **Master:** बड़े प्रोजेक्ट की योजना/निगरानी, जटिल सिस्टम निरीक्षण, औद्योगिक पैनल की तकनीकी जाँच, बड़े लोड/सप्लाई जाँच, ऑटोमेशन निरीक्षण, इलेक्ट्रिकल ड्राइंग/डिजाइन समझना, सुरक्षा/गुणवत्ता जाँच, टीम प्रबंधन, टेस्टिंग/कमीशनिंग और तकनीकी समस्या समाधान/सुपरविजन (10)।
+
+- [x] चारों मौजूदा skill-level entries को बरकरार रखते हुए प्रत्येक के लिए अलग task list shared catalogue में दर्ज।
+- [x] Electrician → Electrical Wiring के अंदर `normal_wiring` और `factory_large_project_wiring` विकल्प catalogue में मौजूद।
+- [ ] Customer UI में level चुनने के बाद उसी level की task list दिखाना और Wiring चुनने पर उसके दो विकल्प दिखाना — UI implementation/test बाकी।
+- [ ] Technician application में भी चारों स्तरों की अलग task checklist तथा admin द्वारा task-wise verification — secure backend contract/UI implementation बाकी।
+- [ ] यह catalogue presentation data है; booking payload, dispatch eligibility, rates, backend schema या production behavior इस commit से नहीं बदले।
+- [ ] Factory/industrial/high-load कार्यों के लिए उपयुक्त योग्यता, प्रशिक्षण और सुरक्षित कार्य-प्रक्रिया आवश्यक है।
+
