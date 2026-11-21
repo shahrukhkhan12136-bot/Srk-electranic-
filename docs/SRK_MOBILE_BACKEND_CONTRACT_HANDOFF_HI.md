@@ -283,3 +283,10 @@ Frontend added `packages/srk_mobile_core/lib/srk_work_confirmation_contract.dart
 **Backend must confirm before integration:** exact RPC names, request/response/error JSON and nullability; canonical state/action/actor enums; owner/assigned-technician/verified-skill checks; server timestamp semantics; version conflict and transactional idempotency behavior; material approval evidence; bill/tax/fee/rounding/currency rules; authoritative payment eligibility/method; receipt contract; timeout/dispute/Admin override; and compatibility for historical quote bookings.
 
 Tests were added in `packages/srk_mobile_core/test/srk_work_confirmation_contract_test.dart`. They have not yet been executed; analyzer/formatter/Android builds/device tests also remain unverified.
+
+
+## 18. Mobile API inventory and cross-app implementation map (21 Nov 2026)
+
+See `docs/SRK_MOBILE_API_INVENTORY_AND_CROSS_APP_MAP_HI.md` for the source-audited current Customer and Technician API/RPC inventory, quote-dependent legacy lifecycle, proposed quote-free endpoint capabilities, shared DTO fields and ordered backend rollout/acceptance gates.
+
+This inventory is a frontend source audit, not proof that every migration is deployed in production. Proposed API names are illustrative only. Backend owner must publish exact deployed routes, request/response/error schemas, authorization, idempotency, server-time and amount/ledger semantics before frontend wiring. No backend/database/payment/production changes were made.
