@@ -157,7 +157,7 @@ end;
 $$;
 
 CREATE OR REPLACE FUNCTION public.srk_master_refund_payable_state_sync()
-RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 DECLARE v_payment public.srk_master_booking_payments%rowtype;
 BEGIN
  IF NEW.payment_status='refunded' AND OLD.payment_status IS DISTINCT FROM NEW.payment_status THEN
@@ -172,7 +172,7 @@ BEGIN
    END IF;
  END IF;
  RETURN NEW;
-END; $;
+END; $$;
 REVOKE ALL ON FUNCTION public.srk_master_refund_payable_state_sync() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS srk_master_refund_payable_state_sync ON public.service_bookings;
 CREATE TRIGGER srk_master_refund_payable_state_sync
