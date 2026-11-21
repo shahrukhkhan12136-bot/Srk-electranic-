@@ -45,6 +45,7 @@ test('Razorpay order creation uses Master final bill subtotal, not quote fields'
  assert.match(createOrder,/srk_booking_final_bills\?select=subtotal_paise,labour_amount_paise,materials_amount_paise/);
  assert.match(createOrder,/booking\.srk_service_category_code/);
  assert.match(createOrder,/selected_category,srk_service_category_code/);
+ assert.match(createOrder,/status,quote_status,selected_category,srk_service_category_code&id=eq/);
 });
 
 test('Customer payment verification records captured Master payment through service-only RPC',()=>{
