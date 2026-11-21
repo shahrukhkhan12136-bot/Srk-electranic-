@@ -319,6 +319,7 @@ BEGIN
   OR (p_invoice_reference IS NOT NULL AND char_length(p_invoice_reference)>120) THEN RAISE EXCEPTION 'INVALID_GATEWAY_FEE_TAX_EVIDENCE'; END IF;
  v_expected:=round(p_fee_before_tax_paise::numeric*p_gst_rate_basis_points/10000)::bigint;
  IF p_gst_amount_paise<>v_expected THEN RAISE EXCEPTION 'GATEWAY_FEE_GST_AMOUNT_MISMATCH'; END IF;
+ IF p_input_tax_credit_eligible AND NOT EXISTS(SELECT 1 FROM public.srk_gst_company_profiles WHERE id=1 AND registration_status='registered') THEN RAISE EXCEPTION 'GST_REGISTRATION_REQUIRED_FOR_INPUT_CREDIT'; END IF;
  IF NOT EXISTS(SELECT 1 FROM public.srk_master_booking_payments WHERE id=p_payment_id AND payment_status='paid') THEN RAISE EXCEPTION 'VERIFIED_MASTER_PAYMENT_REQUIRED'; END IF;
  INSERT INTO public.srk_master_gateway_fee_tax_entries(payment_id,provider,provider_fee_reference,fee_before_tax_paise,gst_rate_basis_points,gst_amount_paise,total_fee_paise,input_tax_credit_eligible,invoice_reference,reconciliation_note,recorded_by)
  VALUES(p_payment_id,p_provider,btrim(p_provider_fee_reference),p_fee_before_tax_paise,p_gst_rate_basis_points,p_gst_amount_paise,p_fee_before_tax_paise+p_gst_amount_paise,p_input_tax_credit_eligible,p_invoice_reference,nullif(btrim(coalesce(p_note,'')),''),auth.uid())
