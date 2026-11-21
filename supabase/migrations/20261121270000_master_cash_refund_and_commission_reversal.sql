@@ -62,10 +62,7 @@ CREATE TRIGGER srk_master_cash_refund_evidence_immutable
 BEFORE UPDATE OR DELETE ON public.srk_master_cash_refund_evidence
 FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_cash_refund_records();
 -- Review decisions are represented by a separate append-only review event rather than editing evidence.
-DROP TRIGGER IF EXISTS srk_master_wallet_credits_immutable ON public.srk_master_technician_wallet_credits;
-CREATE TRIGGER srk_master_wallet_credits_immutable
-BEFORE UPDATE OR DELETE ON public.srk_master_technician_wallet_credits
-FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_cash_refund_records();
+-- Wallet-credit source rows are created once; payout lifecycle metadata may be updated by the payout RPC.
 
 CREATE TABLE IF NOT EXISTS public.srk_master_cash_refund_reviews (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -150,8 +147,8 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,public,auth,pg_temp
 AS $$
 DECLARE v_booking public.service_bookings%rowtype; v_payment public.srk_master_booking_payments%rowtype;
-        v_request public.srk_booking_refund_requests%rowtype; v_total bigint; v_count integer;
-        v_reference text; d record; v_credited bigint:=0; v_credit_count integer:=0;
+        v_request public.srk_booking_refund_requests%rowtype; v_final_bill public.srk_booking_final_bills%rowtype;
+        v_total bigint; v_count integer; v_reference text; d record; v_credited bigint:=0; v_credit_count integer:=0;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ONLY' USING ERRCODE='42501'; END IF;
   IF p_booking_id IS NULL OR (p_admin_note IS NOT NULL AND char_length(p_admin_note)>500) THEN
@@ -165,10 +162,15 @@ BEGIN
      OR v_payment.amount_paise<>round(v_booking.amount_paid*100)::bigint THEN
     RAISE EXCEPTION 'VERIFIED_MASTER_CASH_PAYMENT_REQUIRED';
   END IF;
+  SELECT * INTO v_final_bill FROM public.srk_booking_final_bills WHERE id=v_payment.final_bill_id FOR SHARE;
+  IF NOT FOUND OR v_final_bill.subtotal_paise<>v_payment.amount_paise THEN
+    RAISE EXCEPTION 'MASTER_FINAL_BILL_AMOUNT_MISMATCH';
+  END IF;
   SELECT * INTO v_request FROM public.srk_booking_refund_requests
    WHERE booking_id=p_booking_id FOR UPDATE;
-  IF NOT FOUND OR v_request.status<>'approved' OR v_request.customer_user_id<>v_booking.customer_user_id THEN
-    RAISE EXCEPTION 'MAIN_ADMIN_APPROVED_CUSTOMER_REFUND_REQUEST_REQUIRED';
+  IF NOT FOUND OR v_request.status<>'approved' OR v_request.customer_user_id<>v_booking.customer_user_id
+     OR round(v_request.amount*100)::bigint<>v_payment.amount_paise THEN
+    RAISE EXCEPTION 'MAIN_ADMIN_APPROVED_FULL_CUSTOMER_REFUND_REQUEST_REQUIRED';
   END IF;
   IF EXISTS (SELECT 1 FROM public.srk_manual_refund_entries WHERE booking_id=p_booking_id)
      OR EXISTS (SELECT 1 FROM public.srk_razorpay_refunds WHERE booking_id=p_booking_id) THEN
@@ -228,10 +230,7 @@ BEGIN
   INSERT INTO public.srk_master_cash_refund_reviews(evidence_id,decision,admin_user_id,note)
   SELECT e.id,'approved',auth.uid(),nullif(btrim(coalesce(p_admin_note,'')),'')
     FROM public.srk_master_cash_refund_evidence e WHERE e.booking_id=p_booking_id;
-  UPDATE public.srk_master_cash_refund_evidence
-     SET status='approved',reviewed_by=auth.uid(),reviewed_at=clock_timestamp(),
-         review_note=nullif(btrim(coalesce(p_admin_note,'')),'')
-   WHERE booking_id=p_booking_id AND status='submitted';
+-- Submitted evidence remains immutable; the separate review rows carry Admin decisions.
 
   UPDATE public.service_bookings SET payment_status='refunded'
    WHERE id=p_booking_id AND payment_status='paid';
@@ -263,7 +262,7 @@ BEGIN
       'technician_evidence',(SELECT jsonb_agg(jsonb_build_object(
         'evidence_id',e.id,'technician_id',e.technician_id,'amount_paise',e.amount_paise,
         'refund_reference',e.refund_reference,'evidence_uri',e.evidence_uri,
-        'evidence_note',e.evidence_note,'status',e.status,'submitted_at',e.submitted_at
+        'evidence_note',e.evidence_note,'status',coalesce((SELECT rv.decision FROM public.srk_master_cash_refund_reviews rv WHERE rv.evidence_id=e.id),'submitted'),'submitted_at',e.submitted_at
       ) ORDER BY e.submitted_at) FROM public.srk_master_cash_refund_evidence e WHERE e.booking_id=b.id)
     ) ORDER BY b.created_at DESC)
     FROM public.service_bookings b
