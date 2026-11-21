@@ -591,3 +591,13 @@ Production introspection में commission trigger `UPDATE OF status, payment
 - यह केवल 1 row का snapshot है; historical/future bookings की population-wide correctness का प्रमाण नहीं है।
 - Required safe fix: `service_charge` को commission calculation trigger dependency में शामिल करें, लेकिन paid/settled financial snapshot को स्वतः rewrite न करें। Paid row में service/material amount edit को block या Admin-audited reconciliation queue में डालने का contract तय हो; pending/unpaid state के लिए ही safe recalculation की अनुमति हो। `materials_amount` अकेले commission trigger को fire न करे।
 - TEST project अभी baseline-incomplete है (देखें §35); इसलिए इस Production source finding पर अभी migration apply नहीं हुई। No Production DDL/DML or payment/payout mutation.
+
+
+## 37. TEST migration history बनाम approved branch — version mismatch (21-11-2026)
+
+- Approved feature branch `feature/playstore-mobile-apps-gpt1-20261121` की `supabase/migrations` directory में 21 SQL migration files मिलीं।
+- TEST project `dvzmarekhstaubyuoeeh` की `supabase_migrations.schema_migrations` history में 7 versions मिले: `20261110201406`, `20261110212412`, `20261111044944`, `20261111051234`, `20261111054608`, `20261111060036`, `20261111071759`।
+- इन 7 TEST version IDs में से कोई भी approved branch की 21 migration filenames के version prefix से exact match नहीं करता। इसलिए TEST history को इस branch की migration chain का प्रमाण नहीं माना जा सकता।
+- यह mismatch, और §35 में मिले केवल 3 public tables, यह दिखाते हैं कि TEST baseline को migration history तथा वास्तविक schema दोनों से reconcile करना आवश्यक है।
+- अभी कोई migration apply/repair नहीं की गई। TEST या Production पर कोई DDL/DML, payment या payout बदलाव नहीं हुआ।
+- अगला सुरक्षित कदम: repository terminal में Supabase CLI उपलब्ध कराकर approved branch की migration files और TEST migration history का migration-by-migration reconciliation करें; missing baseline की समीक्षा और backup/restore plan के बिना reset या blind re-apply न करें।
