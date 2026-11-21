@@ -34,9 +34,11 @@ if(booking.srk_service_category_code){
   if(booking.razorpay_payment_id===payId)return json(200,{success:true,message:"यह भुगतान पहले ही सत्यापित हो चुका है।"});
   return json(409,{success:false,error:"इस बुकिंग पर दूसरा भुगतान पहले से दर्ज है। Admin से जाँच कराएँ।"});
  }
- const bills=await db("srk_booking_final_bills?select=id,subtotal_paise&id=eq."+encodeURIComponent(booking.id)+"&limit=1");
- const bill=bills?.[0],expectedAmount=Number(bill?.subtotal_paise);
- if(!bill||!Number.isSafeInteger(expectedAmount)||expectedAmount<100)return json(409,{success:false,error:"Master Final Bill उपलब्ध नहीं है।"});
+ const bills=await db("srk_booking_final_bills?select=id,subtotal_paise&booking_id=eq."+encodeURIComponent(booking.id)+"&limit=1");
+ const bill=bills?.[0];
+ const taxes=await db("srk_booking_tax_snapshots?select=total_due_paise,total_tax_paise&booking_id=eq."+encodeURIComponent(booking.id)+"&limit=1");
+ const tax=taxes?.[0],expectedAmount=Number(tax?.total_due_paise);
+ if(!bill||!tax||!Number.isSafeInteger(expectedAmount)||expectedAmount<100||expectedAmount!==Number(bill.subtotal_paise)+Number(tax.total_tax_paise))return json(409,{success:false,error:"Master Final Bill और GST snapshot उपलब्ध/संगत नहीं हैं।"});
  const p=await payment(payId);
  if(p.order_id!==orderId||p.status!=="captured"||p.currency!=="INR"||p.amount!==expectedAmount)return json(409,{success:false,error:"भुगतान captured नहीं है या Final Bill की राशि मेल नहीं खाती।"});
  const settled=await db("rpc/srk_service_role_record_master_online_payment",{method:"POST",body:JSON.stringify({
