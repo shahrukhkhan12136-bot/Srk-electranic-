@@ -8,7 +8,7 @@ const booking = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
 const migration = fs.readFileSync(path.join(root, 'supabase/migrations/20261115100000_customer_refund_request_contract.sql'), 'utf8');
 
 test('categorized customer refund UI is available only after completed work', () => {
-  assert.match(booking, /const refundLifecycleEligible=row\.selected_category==null\|\|row\.status==='completed';/);
+  assert.match(booking, /const refundLifecycleEligible=!isMasterBooking\|\|row\.status==='completed';/);
   assert.match(booking, /const canRequestRefund=refundLifecycleEligible\s+&& String\(row\.payment_status\|\|''\)\.toLowerCase\(\)==='paid'/);
 });
 
