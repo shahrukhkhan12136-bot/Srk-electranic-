@@ -73,3 +73,31 @@ Migration: `supabase/migrations/20261121260000_master_cash_commission_due_and_on
 - The report is read-only; it cannot waive, edit, or manually mark commission as recovered. Actual recovery remains transactionally tied to future company-collected Technician payables.
 - Tests added: `tests/master-admin-cash-commission-report.test.js` and `supabase/tests/database/master_admin_cash_commission_report.test.sql`.
 - Cash booking refund remains a separate gap: the existing Master refund RPC is specifically for verified Razorpay payments; no cash-refund reversal RPC is being claimed as complete.
+
+
+## Current consolidated source checkpoint — 21-Nov-2026
+
+यह section ऊपर के पुराने “अभी शेष” snapshots को supersede करता है। पुराने paragraphs ऐतिहासिक audit trail हैं; नीचे latest staging state है।
+
+- Current staging branch: tmp/master-final-ui-20261121; base feature branch: feature/master-rating-ui-followup-v2-20261121.
+- Latest exact-head GitHub Node CI: **573 passed, 0 failed**, run 44906291585, commit 4cfdc869b3b69e3875e89fdf989ed215fcc351ab.
+- Repository में 112 SQL migrations और 55 pgTAP database test files हैं। Node CI source/contract tests चलाता है; इससे PostgreSQL/pgTAP runtime pass प्रमाणित नहीं होता।
+- Shared Technician App source अब OTP-first application, multiple categories/skills, private KYC, Admin skill/KYC review/approval, approved-skill 85% rate list, Master dispatch inbox, GPS presence, two-way ratings और Admin moderation UI तक जुड़ा है।
+- Customer source अब assigned Technician team/name, booking-scoped GPS, daily workday start approval, तीन day-end decisions, final bill/GST breakdown और GST invoice/credit-note view दिखाता है। Stopped workday पर normal/overtime breakdown भी दिखता है।
+- Admin source में Master dispatch retry queue, Technician applications/KYC/skill review, service/rate catalogue, GST accounting, completed cash/manual payment verification, cash refund review और payout integration है।
+- Master cash/manual payment verification queue केवल completed unpaid cash/UPI/bank bookings दिखाती है; Razorpay order/payment ID वाले booking को queue से बाहर रखती है। Admin RPC GST-inclusive total due पर payment record करती है।
+- Technician cash refund inbox केवल उसी Technician की assigned, completed, paid cash booking और Admin-approved Customer refund request दिखाता है। Admin finalization अब tax snapshot के total_due_paise को verify करती है; previously used subtotal-only comparison को ठीक किया गया है। Recovered commission का wallet credit payout workflow और Technician wallet UI में available/requested/paid/history रूप में दिखता है।
+- Confirmed service rate seed: **36 active rate levels** — Electrician, Plumber, Painter, Fridge, Motor Winding, Cooler Repair और Cooler Motor Winding. **6 pending Admin rows** — AC Installation/Repair ₹437/hour team split, Basic Electrician Helper, Pump Repair और Motor/Cooler winding above 20 HP. Pending rows customer-bookable नहीं हैं।
+- New Master booking flow में quotation approval नहीं है। Historical quote columns/records सुरक्षित हैं; पुराने historical-only accounting compatibility को बिना dependency audit नहीं हटाया जाएगा।
+
+### अभी वास्तविक शेष gates
+
+1. **Road-distance travel fee source अभी नहीं बना:** 3 km free, फिर ₹4/km one-way के लिए GPS straight-line को road distance नहीं मानेंगे। Approved Google Routes/Maps या अन्य routing provider और server-side credential/configuration चाहिए; इसके बिना fee को सही रूप में calculate/charge करने का दावा नहीं।
+2. **Rate owner inputs:** AC ₹437 combined team rate का Technician/Helper split, Basic Electrician Helper, Pump Repair और 20 HP से ऊपर की rates Admin/owner approval तक pending।
+3. **Founder photo:** actual approved original photo अभी upload नहीं हुआ; Customer और shared Technician App में लगाना बाकी है। कोई generated/alternate portrait नहीं।
+4. **Database runtime:** Supabase Development Branch Pro Plan पर निर्भर है और current plan में unavailable रही। GitHub-hosted disposable Supabase CLI trial migration replay से पहले fail हुआ क्योंकि repository migration chain में authoritative pre-existing core schema (जैसे service_bookings) baseline मौजूद नहीं है। उस premature local workflow को हटाया; no database migration applied, no pgTAP executed। 55 pgTAP files source में हैं, runtime NOT RUN।
+5. **Baseline/lineage:** authoritative core schema/Auth/Storage fixture, duplicate legacy migration-version evidence और dependency order reconcile करना; उसके बाद disposable PostgreSQL/Supabase पर पूरी migration replay और pgTAP execution।
+6. **Runtime/E2E:** hosted schema/role parity, OTP/SMS, KYC Storage, dispatch concurrency, timer, Customer/Technician/Admin actor ACL, payment/refund/payout ledger reconciliation, Push provider delivery और browser end-to-end tests।
+7. **Operations/QA:** backup/restore integrity test, Vercel Preview (पूर्व build-rate-limit issue), Netlify Deploy Preview, desktop/mobile consolidated QA और owner visual acceptance।
+8. **Release gate:** Main Branch PR अभी नहीं खोला; कोई Main merge, Production migration, live payment/payout, provider action या deployment नहीं किया।
+
