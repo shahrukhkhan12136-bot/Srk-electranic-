@@ -51,13 +51,14 @@ function event(body = bookingBody(), key = REQUEST_KEY) {
   };
 }
 
-function mockSupabase({ existingRows = [], insertResponse, insertStatus = 201 } = {}) {
+function mockSupabase({ existingRows = [], insertResponse, insertStatus = 201, masterRateRows = [] } = {}) {
   const calls = [];
   let lookupCount = 0;
   global.fetch = async (url, options = {}) => {
     const target = String(url);
     calls.push({ target, method: options.method || 'GET', body: options.body });
     if (target.endsWith('/rest/v1/rpc/srk_check_public_rate_limit')) return response(true);
+    if (target.endsWith('/rest/v1/rpc/srk_customer_get_service_rate')) return response(masterRateRows);
     if (target.endsWith('/auth/v1/user')) {
       return response({
         id: USER_ID,
@@ -74,6 +75,7 @@ function mockSupabase({ existingRows = [], insertResponse, insertStatus = 201 } 
       return response(insertResponse, insertStatus);
     }
     if (target.includes('/rest/v1/job_offers?select=id,match_level')) return response([]);
+    if (target.includes('/rest/v1/srk_technician_dispatch_offers?select=id,match_level')) return response([]);
     throw new Error('Unexpected Supabase request: ' + target);
   };
   return calls;
@@ -152,6 +154,63 @@ test('booking phone is derived from OTP-verified Auth and ignores forged or miss
   const insertedWithoutPhone = callsWithoutPhone.find(call => call.method === 'POST' && call.target.endsWith('/service_bookings'));
   assert.ok(insertedWithoutPhone);
   assert.equal(JSON.parse(insertedWithoutPhone.body)[0].phone, '9876543210');
+});
+
+test('Master booking calculates hourly labour from Admin rate and stores canonical category/skill snapshots', async () => {
+  const calls = mockSupabase({
+    masterRateRows: [{
+      category_code: 'plumber', skill_code: 'residential_plumbing',
+      service_code: 'residential_plumbing', service_name: 'Residential Plumbing',
+      billing_model: 'hourly', unit_label: 'घंटा', level_code: 'basic', level_label: 'Basic',
+      technician_hourly_paise: 10000, helper_hourly_paise: 5000,
+      fixed_labour_paise: null, rate_version: 'SRK-PLUMBER-2026-11-21-V1'
+    }],
+    insertResponse: [{ id: BOOKING_ID }]
+  });
+  const result = await handler(event(bookingBody({
+    service_type: '',
+    selected_category: undefined,
+    selected_rate_tier: undefined,
+    selected_duration_hours: undefined,
+    srk_service_code: 'residential_plumbing',
+    srk_rate_level_code: 'basic',
+    srk_duration_minutes: 120,
+    srk_service_quantity: 1,
+    srk_required_technician_count: 1
+  })));
+  assert.equal(result.statusCode, 200);
+  const body = JSON.parse(result.body);
+  assert.equal(body.estimate.amount_paise, 30000);
+  assert.equal(body.estimate.technician_8h_paise, 80000);
+  assert.equal(body.estimate.helper_8h_paise, 40000);
+  assert.equal(body.estimate.combined_8h_paise, 120000);
+  const inserted = calls.find(call => call.method === 'POST' && call.target.endsWith('/service_bookings'));
+  assert.ok(inserted);
+  const row = JSON.parse(inserted.body)[0];
+  assert.equal(row.srk_service_category_code, 'plumber');
+  assert.equal(row.srk_service_skill_code, 'residential_plumbing');
+  assert.equal(row.srk_service_code, 'residential_plumbing');
+  assert.equal(row.srk_rate_level_code, 'basic');
+  assert.equal(row.srk_estimated_labour_paise, 30000);
+  assert.equal(row.srk_duration_minutes, 120);
+  assert.equal(row.srk_service_quantity, 1);
+  assert.equal(row.selected_category, null);
+  assert.equal(row.selected_rate_tier, null);
+  assert.equal(row.estimated_labour_paise, null);
+  assert.ok(calls.some(call => call.target.endsWith('/rest/v1/rpc/srk_customer_get_service_rate')));
+  assert.ok(calls.some(call => call.target.includes('/rest/v1/srk_technician_dispatch_offers?select=id,match_level')));
+});
+
+test('Master booking refuses a service without an active Admin rate and never inserts it', async () => {
+  const calls = mockSupabase({ masterRateRows: [] });
+  const result = await handler(event(bookingBody({
+    srk_service_code: 'ac_installation',
+    srk_rate_level_code: 'expert',
+    srk_duration_minutes: 60
+  })));
+  assert.equal(result.statusCode, 409);
+  assert.equal(JSON.parse(result.body).code, 'SERVICE_RATE_NOT_AVAILABLE');
+  assert.equal(calls.some(call => call.method === 'POST' && call.target.endsWith('/service_bookings')), false);
 });
 
 test('concurrent duplicate insert resolves to the winning booking after unique-key conflict', async () => {
