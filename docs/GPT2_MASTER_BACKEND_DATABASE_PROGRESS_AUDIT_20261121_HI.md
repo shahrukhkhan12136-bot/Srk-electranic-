@@ -80,7 +80,7 @@ Migration: `supabase/migrations/20261121260000_master_cash_commission_due_and_on
 यह section ऊपर के पुराने “अभी शेष” snapshots को supersede करता है। पुराने paragraphs ऐतिहासिक audit trail हैं; नीचे latest staging state है।
 
 - Current staging branch: tmp/master-final-ui-20261121; base feature branch: feature/master-rating-ui-followup-v2-20261121.
-- Latest exact-head GitHub Node CI: **573 passed, 0 failed**, run 44906291585, commit 4cfdc869b3b69e3875e89fdf989ed215fcc351ab.
+- Latest exact-head GitHub Node CI: **573 passed, 0 failed**, run 44907394337, commit 1478a4ae221d969ae39ec2d707064f124876842b. This includes the actual-photo placeholder changes and updated Admin progress-card tests.
 - Repository में 112 SQL migrations और 55 pgTAP database test files हैं। Node CI source/contract tests चलाता है; इससे PostgreSQL/pgTAP runtime pass प्रमाणित नहीं होता।
 - Shared Technician App source अब OTP-first application, multiple categories/skills, private KYC, Admin skill/KYC review/approval, approved-skill 85% rate list, Master dispatch inbox, GPS presence, two-way ratings और Admin moderation UI तक जुड़ा है।
 - Customer source अब assigned Technician team/name, booking-scoped GPS, daily workday start approval, तीन day-end decisions, final bill/GST breakdown और GST invoice/credit-note view दिखाता है। Stopped workday पर normal/overtime breakdown भी दिखता है।
