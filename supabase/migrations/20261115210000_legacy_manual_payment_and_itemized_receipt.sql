@@ -1,5 +1,39 @@
--- Restore the legacy Admin manual-payment RPC and reconcile labour/materials separately.
--- Feature-branch source only. Do not apply to Production without explicit approval.
+-- Preserve old booking-price data only as read-only historical financial evidence.
+-- This archive is never used to create, send, approve, dispatch, bill or settle new bookings.
+CREATE TABLE IF NOT EXISTS srk_private.legacy_booking_financial_evidence (
+  booking_id uuid PRIMARY KEY REFERENCES public.service_bookings(id) ON DELETE RESTRICT,
+  quoted_amount numeric(12,2),
+  service_charge numeric(12,2),
+  materials_amount numeric(12,2),
+  quote_status text,
+  quote_note text,
+  quote_submitted_at timestamptz,
+  quote_responded_at timestamptz,
+  customer_suggested_amount numeric(12,2),
+  electrician_quote_kind text,
+  archived_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+ALTER TABLE srk_private.legacy_booking_financial_evidence ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON srk_private.legacy_booking_financial_evidence FROM PUBLIC,anon,authenticated;
+GRANT SELECT ON srk_private.legacy_booking_financial_evidence TO service_role;
+COMMENT ON TABLE srk_private.legacy_booking_financial_evidence IS
+'Read-only archive of legacy booking price fields for historical receipt, refund and accounting evidence only. Never used by the new booking workflow.';
+
+INSERT INTO srk_private.legacy_booking_financial_evidence
+  (booking_id,quoted_amount,service_charge,materials_amount,quote_status,quote_note,
+   quote_submitted_at,quote_responded_at,customer_suggested_amount,electrician_quote_kind)
+SELECT id,quoted_amount,service_charge,materials_amount,quote_status,quote_note,
+       quote_submitted_at,quote_responded_at,customer_suggested_amount,electrician_quote_kind
+FROM public.service_bookings
+WHERE quoted_amount IS NOT NULL OR service_charge IS NOT NULL OR materials_amount IS DISTINCT FROM 0
+   OR quote_status IS DISTINCT FROM 'not_submitted' OR quote_note IS NOT NULL
+   OR quote_submitted_at IS NOT NULL OR quote_responded_at IS NOT NULL
+   OR customer_suggested_amount IS NOT NULL OR electrician_quote_kind IS NOT NULL
+ON CONFLICT (booking_id) DO NOTHING;
+
+-- No new legacy/manual payment can be recorded through the retired quote flow.
+DROP FUNCTION IF EXISTS public.srk_admin_record_manual_payment(uuid,text,text,text);
+
 
 create or replace function public.srk_admin_record_manual_payment(
   p_booking_id uuid,
@@ -157,8 +191,7 @@ $function$;
 revoke all on function public.srk_admin_record_manual_payment(uuid,text,text,text) from public,anon;
 grant execute on function public.srk_admin_record_manual_payment(uuid,text,text,text) to authenticated;
 
--- Correct the legacy receipt contract: approved labour and itemized materials
--- form the total; platform commission is calculated only on labour.
+-- Historical receipts use the read-only archive; new receipts use the immutable labour bill.
 create or replace function public.srk_customer_get_payment_receipt(p_booking_id uuid)
 returns jsonb
 language plpgsql
@@ -170,6 +203,7 @@ declare
   v_uid uuid:=auth.uid();
   v_booking public.service_bookings%rowtype;
   v_bill public.srk_booking_labour_bills%rowtype;
+  v_legacy srk_private.legacy_booking_financial_evidence%rowtype;
   v_fee_paise bigint:=0;
   v_fee_items jsonb:='[]'::jsonb;
   v_total_paise bigint;
@@ -220,13 +254,20 @@ begin
     );
   end if;
 
-  v_labour_paise:=round(coalesce(v_booking.service_charge,0)*100)::bigint;
-  v_materials_paise:=round(coalesce(v_booking.materials_amount,0)*100)::bigint;
+  select * into v_legacy
+    from srk_private.legacy_booking_financial_evidence
+   where booking_id=p_booking_id;
+  if not found then
+    raise exception 'Historical payment evidence is unavailable' using errcode='55000';
+  end if;
+  v_labour_paise:=round(coalesce(v_legacy.service_charge,0)*100)::bigint;
+  v_materials_paise:=round(coalesce(v_legacy.materials_amount,0)*100)::bigint;
   v_total_paise:=v_labour_paise+v_materials_paise;
   if v_labour_paise<=0
      or round(v_booking.amount_paid*100)::bigint<>v_total_paise
-     or round(coalesce(v_booking.quoted_amount,0)*100)::bigint<>v_total_paise then
-    raise exception 'Payment receipt does not reconcile to approved labour and materials' using errcode='55000';
+     or (v_legacy.quoted_amount is not null
+         and round(v_legacy.quoted_amount*100)::bigint<>v_total_paise) then
+    raise exception 'Historical payment does not match archived labour and materials evidence' using errcode='55000';
   end if;
 
   return jsonb_build_object(
@@ -244,7 +285,7 @@ begin
     'cancellation_fee_amount',0,
     'cancellation_fee_items','[]'::jsonb,
     'total_amount',v_total_paise/100.0,
-    'description','सत्यापित भुगतान रसीद — मेहनताना और सामग्री अलग-अलग',
+    'description','ऐतिहासिक सत्यापित भुगतान रसीद — मेहनताना और सामग्री अलग-अलग',
     'document_type','payment_receipt'
   );
 end;
