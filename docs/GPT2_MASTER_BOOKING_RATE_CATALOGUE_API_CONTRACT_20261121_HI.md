@@ -88,6 +88,12 @@ Response में `fixed_labour_paise` और `unit_label` आएँगे। F
 
 Canonical category वाली booking existing legacy Electrician broadcast को skip करके उसी transaction में shared category-neutral dispatch शुरू करती है। पुरानी legacy bookings existing Electrician flow में रहती हैं।
 
+## Rollout gate और शेष backend integration
+- `create-booking.js` में Master API path बनाया गया है, लेकिन `SRK_MASTER_BOOKING_ENABLED=true` feature flag के बिना वह जानबूझकर 503 लौटाता है।
+- इस flag को चालू न करें: मौजूदा authoritative work-timer, multi-Technician completion bill और `create-order.js` / `verify-payment.js` अभी canonical Master hourly/fixed rate snapshots से पूरी तरह जुड़े नहीं हैं।
+- अगले backend चरण में Technician identity-based timer start/stop, daily 8-hour threshold + 1.5x overtime, helper/team billing, immutable multi-Technician labour ledger, और quote-free Razorpay/Cash settlement bridge पूरा करना जरूरी है।
+- जब तक यह पूरा न हो, Master Booking को live/preview में चालू न करें। Existing legacy Electrician booking path और historical quote/payment records को बिना migration plan न हटाएँ।
+
 ## सुरक्षित सीमाएँ
 - Migration केवल Feature Branch में source है; अभी किसी Database पर apply नहीं की गई।
 - Main Branch, Production DB, live payments, payouts और deployment न बदलें।
