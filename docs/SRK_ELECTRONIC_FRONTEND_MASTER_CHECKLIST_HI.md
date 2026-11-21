@@ -1546,6 +1546,16 @@ Founder ने बाजार-दर तुलना के बाद नीच
 - [x] Widget test जोड़ा: Electrician के चार मौजूदा levels/tasks दिखना और category बदलने पर पुराना task हटना।
 - [x] बदलाव केवल Customer picker preview में है; पुराना booking form, API payload, payment, dispatch और backend contract नहीं बदले।
 - [ ] Skill-level ID को shared Customer → booking → Technician selection contract में जोड़ना और backend owner से canonical IDs/version की पुष्टि लेना बाकी है। इसलिए skill-level चुनने पर अभी booking selection callback जानबूझकर `null` रहता है; इसे live booking या dispatch न मानें।
-- [ ] Electrician के `Expert Electrician` parent के अंदर `Normal Wiring` और `Project Wiring` nested विकल्प तथा उनकी अलग-अलग rates picker में दिखाना अभी बाकी है।
+- [x] Electrician के `Expert Electrician` parent के अंदर `Normal Wiring` और `Project Wiring` nested विकल्प तथा उनकी अलग-अलग catalogue rates preview में दिखती हैं; दोनों के rate variants अलग रखे गए हैं।
 - [ ] Flutter format, analyzer, widget test execution और Android build अभी नहीं चले; source commit/test addition को passing test/build न बताएं।
 - Commit: `b746ccf897af2f54c610f3bbc0785b84c2b6f151` (picker), `209fc0abd154383527c730a3729e5df8120d47b5` (test), `6d829bd3156fe7a7ecccd5fc2b8a67c1f8dca45c` (test type correction).
+
+## 2BQ. Customer picker — Expert Electrician के nested Wiring विकल्प (21-11-2026)
+
+- [x] Shared catalogue के `Expert Electrician` parent के nested `Normal Wiring` और `Project Wiring` विकल्प अब picker में अलग दिखते हैं।
+- [x] चुने हुए child option की अपनी rates और helper विवरण दिखते हैं; Normal Wiring का 8-hour rate Project Wiring के hourly rate से नहीं मिलाया जाता।
+- [x] Widget test दोनों wiring options के rate text को अलग-अलग verify करने के लिए जोड़ा।
+- [x] Skill-level वाली category पर category-only selection callback गलती से emit न हो, इसके लिए guard सुधारा; मौजूदा selection contract में skill-level field नहीं है इसलिए ऐसे चयन preview-only रहते हैं।
+- [ ] Booking submit/dispatch में nested option ID, skill level, task और rate version का इस्तेमाल GPT-2 के versioned API contract मिलने के बाद ही होगा।
+- [ ] Flutter format, analyzer, widget test execution और Android build अभी बाकी हैं; tests source में जोड़े गए हैं, चलाए नहीं गए।
+- संबंधित commits: `d1c362608147881ab7a40364fdf7627dc2d1085e`, `57faacbe519a6b0d0f4bd888752c2f9039a4b194`, `177ec27baef38dbaf11e2d25a60185231cca36ef`.
