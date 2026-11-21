@@ -202,3 +202,91 @@ COMMENT ON TABLE public.srk_master_technician_commission_dues IS
   '15 percent SRK company commission owed when Technician directly collects a cash booking; future company-collected online/manual UPI/bank earnings offset this due.';
 COMMENT ON TABLE public.srk_master_technician_commission_events IS
   'Append-only audit of cash commission dues and future online commission recovery.';
+
+
+-- Main Admin company-side report for outstanding cash-collected 15% commission.
+-- Read-only: it does not mark dues paid or alter any Technician wallet.
+CREATE OR REPLACE FUNCTION public.srk_admin_list_master_commission_dues()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=pg_catalog,public,auth,pg_temp
+AS $function$
+DECLARE
+  v_summary jsonb;
+  v_technicians jsonb;
+  v_dues jsonb;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN
+    RAISE EXCEPTION 'ADMIN_ONLY' USING ERRCODE='42501';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'outstanding_paise',coalesce(sum(d.commission_due_paise-d.commission_recovered_paise),0),
+    'original_due_paise',coalesce(sum(d.commission_due_paise),0),
+    'recovered_paise',coalesce(sum(d.commission_recovered_paise),0),
+    'open_due_count',count(*) FILTER (WHERE d.status IN ('open','partially_recovered')),
+    'technician_count',count(DISTINCT d.technician_id) FILTER (WHERE d.status IN ('open','partially_recovered'))
+  )
+  INTO v_summary
+  FROM public.srk_master_technician_commission_dues d;
+
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'technician_id',x.technician_id,
+    'technician_name',x.technician_name,
+    'original_due_paise',x.original_due_paise,
+    'recovered_paise',x.recovered_paise,
+    'outstanding_paise',x.outstanding_paise,
+    'open_booking_count',x.open_booking_count,
+    'last_due_at',x.last_due_at
+  ) ORDER BY x.outstanding_paise DESC,x.technician_name),'[]'::jsonb)
+  INTO v_technicians
+  FROM (
+    SELECT d.technician_id,
+      coalesce((SELECT ep.display_name
+        FROM public.srk_technician_profile_links l
+        JOIN public.electrician_profiles ep ON ep.id=l.electrician_profile_id
+        WHERE l.technician_id=t.id
+        ORDER BY l.linked_at LIMIT 1),t.primary_phone,'Technician') AS technician_name,
+      sum(d.commission_due_paise) AS original_due_paise,
+      sum(d.commission_recovered_paise) AS recovered_paise,
+      sum(d.commission_due_paise-d.commission_recovered_paise) AS outstanding_paise,
+      count(*) FILTER (WHERE d.status IN ('open','partially_recovered')) AS open_booking_count,
+      max(d.created_at) AS last_due_at
+    FROM public.srk_master_technician_commission_dues d
+    JOIN public.srk_technicians t ON t.id=d.technician_id
+    GROUP BY d.technician_id,t.id,t.primary_phone
+  ) x;
+
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'due_id',d.id,'booking_id',d.booking_id,'payment_id',d.payment_id,
+    'technician_id',d.technician_id,
+    'technician_name',coalesce((SELECT ep.display_name
+      FROM public.srk_technician_profile_links l
+      JOIN public.electrician_profiles ep ON ep.id=l.electrician_profile_id
+      WHERE l.technician_id=t.id ORDER BY l.linked_at LIMIT 1),t.primary_phone,'Technician'),
+    'due_paise',d.commission_due_paise,'recovered_paise',d.commission_recovered_paise,
+    'outstanding_paise',d.commission_due_paise-d.commission_recovered_paise,
+    'status',d.status,'created_at',d.created_at,
+    'events',(SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'event_type',e.event_type,'amount_paise',e.amount_paise,'created_at',e.created_at,
+      'event_data',e.event_data
+    ) ORDER BY e.created_at,e.id),'[]'::jsonb)
+      FROM public.srk_master_technician_commission_events e
+      WHERE e.source_due_id=d.id)
+  ) ORDER BY d.created_at DESC),'[]'::jsonb)
+  INTO v_dues
+  FROM public.srk_master_technician_commission_dues d
+  JOIN public.srk_technicians t ON t.id=d.technician_id;
+
+  RETURN jsonb_build_object(
+    'summary',coalesce(v_summary,'{}'::jsonb),
+    'technicians',coalesce(v_technicians,'[]'::jsonb),
+    'dues',coalesce(v_dues,'[]'::jsonb)
+  );
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_list_master_commission_dues() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_list_master_commission_dues() TO authenticated;
+COMMENT ON FUNCTION public.srk_admin_list_master_commission_dues() IS
+  'Main Admin read-only report of SRK 15 percent commission due from cash-collected Master bookings, with recoveries and append-only events.';
