@@ -1,0 +1,17 @@
+BEGIN;
+SELECT plan(13);
+SELECT has_table('public','srk_gst_company_profiles','GST company profile table exists');
+SELECT has_table('public','srk_gst_service_rate_rules','service GST rate rules exist');
+SELECT has_table('public','srk_booking_tax_snapshots','immutable booking tax snapshots exist');
+SELECT has_table('public','srk_master_tax_invoices','Master tax invoice table exists');
+SELECT has_table('public','srk_master_tax_credit_notes','Master credit note table exists');
+SELECT has_table('public','srk_master_gateway_fee_tax_entries','gateway fee GST register exists');
+SELECT has_function('public','srk_admin_configure_gst_company',ARRAY['text','text','text','text','text','date'],'Admin GST company config RPC exists');
+SELECT has_function('public','srk_admin_upsert_gst_service_rule',ARRAY['text','text','text','boolean','integer','date'],'Admin service GST rule RPC exists');
+SELECT has_function('public','srk_admin_record_master_gateway_fee_tax',ARRAY['uuid','text','text','bigint','integer','bigint','boolean','text','text'],'Admin gateway fee tax RPC exists');
+SELECT has_function('public','srk_admin_get_master_gst_summary',ARRAY['date','date'],'Admin GST summary RPC exists');
+SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_booking_tax_snapshots'::regclass),'tax snapshots have RLS enabled');
+SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_master_tax_invoices'::regclass),'tax invoices have RLS enabled');
+SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_master_tax_credit_notes'::regclass),'credit notes have RLS enabled');
+SELECT * FROM finish();
+ROLLBACK;
