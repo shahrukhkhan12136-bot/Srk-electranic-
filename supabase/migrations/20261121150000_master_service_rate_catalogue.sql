@@ -283,7 +283,8 @@ BEGIN
     OR p_level_label IS NULL OR length(btrim(p_level_label)) NOT BETWEEN 2 AND 100
     OR p_rate_version IS NULL OR length(btrim(p_rate_version)) NOT BETWEEN 3 AND 100
     OR p_status NOT IN ('pending_admin_configuration','active')
-    OR p_effective_from IS NULL OR (p_effective_to IS NOT NULL AND p_effective_to<=p_effective_from)
+    OR p_effective_from IS NULL OR (p_status='active' AND p_effective_from>clock_timestamp())
+    OR (p_effective_to IS NOT NULL AND p_effective_to<=p_effective_from)
     OR coalesce(p_helper_hourly_paise,0)<0
     OR (p_technician_hourly_paise IS NOT NULL AND p_technician_hourly_paise<0)
     OR (p_fixed_labour_paise IS NOT NULL AND p_fixed_labour_paise<=0) THEN
@@ -297,7 +298,7 @@ BEGIN
     RAISE EXCEPTION 'RATE_FIELDS_DO_NOT_MATCH_BILLING_MODEL' USING ERRCODE='22023';
   END IF;
 
-  PERFORM pg_advisory_xact_lock(pg_catalog.hashtextextended(p_service_code||':'||p_level_code,0));
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_service_code||':'||p_level_code,0));
   SELECT * INTO v_existing FROM public.srk_service_rates
     WHERE service_code=p_service_code AND level_code=p_level_code AND rate_version=p_rate_version FOR UPDATE;
   IF FOUND THEN
