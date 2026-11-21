@@ -656,3 +656,112 @@ $function$;
 REVOKE ALL ON FUNCTION public.srk_admin_list_technician_applications(text,integer) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_list_technician_applications(text,integer) TO authenticated;
 
+
+
+-- Append-only Admin audit for category and skill catalogue changes.
+CREATE TABLE IF NOT EXISTS public.srk_service_catalogue_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  object_type text NOT NULL CHECK (object_type IN ('category','skill')),
+  object_id uuid NOT NULL,
+  action text NOT NULL CHECK (action IN ('created','updated')),
+  before_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  after_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+ALTER TABLE public.srk_service_catalogue_events ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.srk_service_catalogue_events FROM PUBLIC,anon,authenticated;
+GRANT ALL ON TABLE public.srk_service_catalogue_events TO service_role;
+DROP TRIGGER IF EXISTS srk_service_catalogue_events_append_only ON public.srk_service_catalogue_events;
+CREATE TRIGGER srk_service_catalogue_events_append_only
+BEFORE UPDATE OR DELETE ON public.srk_service_catalogue_events
+FOR EACH ROW EXECUTE FUNCTION public.srk_guard_technician_history_append_only();
+
+CREATE OR REPLACE FUNCTION public.srk_admin_upsert_service_category(
+  p_category_code text,p_display_name text,p_is_active boolean DEFAULT true,p_sort_order integer DEFAULT 0
+)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+DECLARE v_id uuid; v_before jsonb:='{}'::jsonb; v_after jsonb; v_action text:='created';
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
+  IF p_category_code IS NULL OR p_category_code !~ '^[a-z][a-z0-9_]{1,59}$'
+     OR p_display_name IS NULL OR length(btrim(p_display_name)) NOT BETWEEN 2 AND 100
+     OR p_is_active IS NULL OR p_sort_order IS NULL THEN
+    RAISE EXCEPTION 'INVALID_SERVICE_CATEGORY' USING ERRCODE='22023';
+  END IF;
+  SELECT c.id,to_jsonb(c) INTO v_id,v_before FROM public.srk_service_categories c
+    WHERE c.category_code=p_category_code FOR UPDATE;
+  IF v_id IS NOT NULL THEN v_action:='updated'; END IF;
+  INSERT INTO public.srk_service_categories(category_code,display_name,is_active,sort_order,created_by)
+  VALUES(p_category_code,btrim(p_display_name),p_is_active,p_sort_order,auth.uid())
+  ON CONFLICT(category_code) DO UPDATE SET display_name=EXCLUDED.display_name,
+    is_active=EXCLUDED.is_active,sort_order=EXCLUDED.sort_order
+  RETURNING id,to_jsonb(public.srk_service_categories) INTO v_id,v_after;
+  INSERT INTO public.srk_service_catalogue_events(actor_user_id,object_type,object_id,action,before_data,after_data)
+  VALUES(auth.uid(),'category',v_id,v_action,v_before,v_after);
+  RETURN v_id;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_upsert_service_skill(
+  p_category_code text,p_skill_code text,p_display_name text,
+  p_is_active boolean DEFAULT true,p_requires_separate_assessment boolean DEFAULT false
+)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+DECLARE v_category_id uuid; v_id uuid; v_before jsonb:='{}'::jsonb; v_after jsonb; v_action text:='created';
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
+  IF p_category_code IS NULL OR p_skill_code IS NULL OR p_skill_code !~ '^[a-z][a-z0-9_]{1,79}$'
+     OR p_display_name IS NULL OR length(btrim(p_display_name)) NOT BETWEEN 2 AND 100
+     OR p_is_active IS NULL OR p_requires_separate_assessment IS NULL THEN
+    RAISE EXCEPTION 'INVALID_SERVICE_SKILL' USING ERRCODE='22023';
+  END IF;
+  SELECT id INTO v_category_id FROM public.srk_service_categories
+    WHERE category_code=p_category_code AND is_active;
+  IF v_category_id IS NULL THEN RAISE EXCEPTION 'ACTIVE_SERVICE_CATEGORY_REQUIRED' USING ERRCODE='22023'; END IF;
+  SELECT s.id,to_jsonb(s) INTO v_id,v_before FROM public.srk_service_skills s
+    WHERE s.skill_code=p_skill_code FOR UPDATE;
+  IF v_id IS NOT NULL THEN v_action:='updated'; END IF;
+  INSERT INTO public.srk_service_skills(category_id,skill_code,display_name,is_active,requires_separate_assessment,created_by)
+  VALUES(v_category_id,p_skill_code,btrim(p_display_name),p_is_active,p_requires_separate_assessment,auth.uid())
+  ON CONFLICT(skill_code) DO UPDATE SET category_id=EXCLUDED.category_id,
+    display_name=EXCLUDED.display_name,is_active=EXCLUDED.is_active,
+    requires_separate_assessment=EXCLUDED.requires_separate_assessment
+  RETURNING id,to_jsonb(public.srk_service_skills) INTO v_id,v_after;
+  INSERT INTO public.srk_service_catalogue_events(actor_user_id,object_type,object_id,action,before_data,after_data)
+  VALUES(auth.uid(),'skill',v_id,v_action,v_before,v_after);
+  RETURN v_id;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_upsert_service_category(text,text,boolean,integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_upsert_service_category(text,text,boolean,integer) TO authenticated;
+REVOKE ALL ON FUNCTION public.srk_admin_upsert_service_skill(text,text,text,boolean,boolean) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_upsert_service_skill(text,text,text,boolean,boolean) TO authenticated;
+
+-- A rejected or resubmission-required skill can be reviewed again after new evidence.
+CREATE OR REPLACE FUNCTION public.srk_admin_review_technician_skill(
+  p_application_skill_id uuid,p_review_status text,p_admin_note text DEFAULT NULL
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+DECLARE v_skill public.srk_technician_application_skills%rowtype; v_note text:=nullif(btrim(coalesce(p_admin_note,'')),'');
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
+  IF p_application_skill_id IS NULL OR p_review_status NOT IN ('approved','rejected','needs_resubmission')
+     OR (p_review_status<>'approved' AND length(v_note) NOT BETWEEN 5 AND 1000)
+     OR length(v_note)>1000 THEN RAISE EXCEPTION 'INVALID_TECHNICIAN_SKILL_REVIEW' USING ERRCODE='22023'; END IF;
+  SELECT * INTO v_skill FROM public.srk_technician_application_skills
+    WHERE id=p_application_skill_id FOR UPDATE;
+  IF NOT FOUND OR v_skill.review_status='approved' THEN RAISE EXCEPTION 'UNAPPROVED_TECHNICIAN_SKILL_REVIEW_REQUIRED' USING ERRCODE='55000'; END IF;
+  UPDATE public.srk_technician_application_skills SET review_status=p_review_status,
+    admin_note=v_note,reviewed_at=clock_timestamp(),reviewed_by=auth.uid()
+  WHERE id=v_skill.id;
+  INSERT INTO public.srk_technician_application_events
+    (application_id,technician_id,actor_user_id,actor_role,event_type,note,snapshot)
+  SELECT v_skill.application_id,a.technician_id,auth.uid(),'admin','skill_reviewed',v_note,
+    jsonb_build_object('application_skill_id',v_skill.id,'review_status',p_review_status)
+  FROM public.srk_technician_applications a WHERE a.id=v_skill.application_id;
+  RETURN jsonb_build_object('success',true,'application_skill_id',v_skill.id,'review_status',p_review_status);
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_review_technician_skill(uuid,text,text) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_review_technician_skill(uuid,text,text) TO authenticated;
