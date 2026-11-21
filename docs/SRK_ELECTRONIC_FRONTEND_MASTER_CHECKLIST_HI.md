@@ -1286,3 +1286,18 @@
 - [ ] Test idempotency/duplicate-submit behavior end-to-end; this handler's source does not itself show an Idempotency-Key check, so do not claim API-level idempotency until verified in the database/API path.
 
 **Audit conclusion:** The existing endpoint is secure-session-aware and already creates legacy bookings/offers, but it is not compatible with the newly requested structured category/task + team size + duration + automatic pricing payload. A frontend-only switch would either fail validation or create incomplete legacy bookings. Therefore the next safe implementation stage is to design the integrated customer UI against an explicit API contract, while keeping submit disabled/not connected until the backend contract is approved. No API, database, payment, or app source code was changed in this audit.
+
+
+## 2BB. Owner clarification — skill-matched technician selection (21-11-2026)
+
+**नवीनतम Founder निर्देश:** ग्राहक पहले service category और उसके बाद उसी category का काम/task चुनेगा। इसके बाद केवल उस काम के लिए योग्य और उपलब्ध Electrician/Technician विकल्प दिखाए जाएँ।
+
+- [ ] Category → task चयन के बाद eligible technician list दिखाएँ; unrelated category या task के technician को सूची में न दिखाएँ।
+- [ ] Technician profile/card में पहले से निर्धारित सभी विशेषताएँ, verified skills, वह कौन-कौन से काम कर सकता है, अनुभव और अन्य मौजूदा approved profile details सुरक्षित रखें और दिखाएँ।
+- [ ] मौजूदा technician skills/verification fields या profile attributes को हटाएँ, rename करें या संकुचित न करें; पहले source/data mapping audit करें।
+- [ ] Eligibility केवल verified/admin-approved skills और चुने हुए task की mapping पर आधारित हो; केवल profile text या self-declared skill से qualification न मानें।
+- [ ] यदि किसी task के लिए कोई योग्य/उपलब्ध technician नहीं है, तो स्पष्ट unavailable state दिखाएँ; गलत व्यक्ति को विकल्प के रूप में न दिखाएँ।
+- [ ] Customer द्वारा technician चुनने का विकल्प केवल तभी लागू करें जब dispatch/backend contract इसे सुरक्षित रूप से support करे; अन्यथा मौजूदा eligible dispatch behavior बनाए रखें।
+- [ ] Existing booking history, profile, skill verification, availability, dispatch and assignment behavior का regression test करें।
+
+**सीमा:** यह requirement frontend checklist में दर्ज है। मौजूदा API/dispatch contract और technician skill data की जाँच के बिना backend eligibility logic या assignment behavior न बदलें।
