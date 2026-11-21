@@ -858,7 +858,7 @@ async function saveBookingInternal(id){
   if(!confirm('क्या यह भुगतान वास्तव में प्राप्त हुआ है? Cash/UPI/Bank Transfer का सही तरीका चुनकर ही पुष्टि करें।'))return;
   let data,error;
   if(!booking.selected_category){
-   alert('पुरानी quotation-based booking पर नया payment दर्ज करना बंद है। पहले से दर्ज भुगतान और रसीद सुरक्षित रहेंगे।');
+   alert('पुरानी booking पर नया payment दर्ज करना बंद है। पहले से दर्ज भुगतान और रसीद सुरक्षित रहेंगे।');
    return;
   }
   if(manual_method!=='cash'){
