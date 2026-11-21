@@ -4,6 +4,11 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const sql=fs.readFileSync('supabase/migrations/20261121240000_master_gst_invoice_credit_note_gateway_tax.sql','utf8');
+const createOrder=fs.readFileSync('create-order.js','utf8');
+const verify=fs.readFileSync('verify-payment.js','utf8');
+const webhook=fs.readFileSync('razorpay-webhook.js','utf8');
+const receipt=fs.readFileSync('supabase/migrations/20261121210000_master_customer_payment_receipt.sql','utf8');
+const admin=fs.readFileSync('admin.html','utf8');
 test('GST company profile is explicit and never assumes registration or rate',()=>{
  assert.match(sql,/registration_status IN \('registered','unregistered'\)/);
  assert.match(sql,/VALID_GSTIN_AND_MATCHING_STATE_REQUIRED/);
@@ -35,4 +40,22 @@ test('GST snapshot is required before payment invoice creation',()=>{
 });
 test('Migration SQL delimiters balance',()=>{
  assert.equal((sql.match(/\$\$/g)||[]).length%2,0);
+});
+
+test('Razorpay and manual payment paths use tax-inclusive immutable totals',()=>{
+ assert.match(sql,/t\.total_due_paise<>p_amount_paise/);
+ assert.match(sql,/VALUES\(p_booking_id,p_method,t\.total_due_paise\/100\.0/);
+ assert.match(createOrder,/srk_booking_tax_snapshots/);
+ assert.match(verify,/srk_booking_tax_snapshots/);
+ assert.match(webhook,/srk_booking_tax_snapshots/);
+});
+test('Customer receipt and Admin GST reporting expose invoice and tax details',()=>{
+ assert.match(receipt,/invoice_number/);assert.match(receipt,/total_tax_paise/);
+ assert.match(sql,/srk_customer_get_master_tax_invoice/);
+ assert.match(admin,/srk_admin_get_master_gst_summary/);
+});
+test('GST migration and Admin inline JavaScript parse',()=>{
+ assert.equal((sql.match(/\$\$/g)||[]).length%2,0);
+ const scripts=[...admin.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(x=>x[1]).filter(x=>x.trim());
+ assert.ok(scripts.length>0);scripts.forEach((s,i)=>assert.doesNotThrow(()=>new vm.Script(s,{filename:'admin.html#'+i})));
 });
