@@ -1425,3 +1425,13 @@ Implementation direction:
 - The current legacy application API cannot safely accept mandatory Aadhaar KYC or structured verified skills. Do not send Aadhaar images/numbers through WhatsApp or the legacy API, and do not display an application as submitted/verified unless the secure server workflow confirms it.
 - The shared Dart catalogue is currently documented as presentation-only; it is not automatically available to the legacy HTML pages. A tested shared web-compatible catalogue adapter or an approved API response is required before wiring the full dynamic selection flow. Do not manually duplicate partial lists into HTML.
 - No source code, database, production settings, booking, payment, or KYC behavior was changed by this audit.
+
+## 2BI. Electrician — Wiring के अंदर दो विकल्प
+
+- [ ] Customer flow में Electrician → Electrical Wiring चुनने पर दो विकल्प दिखें:
+  1. **नॉर्मल वायरिंग** — घर / दुकान की सामान्य वायरिंग।
+  2. **बड़े प्रोजेक्ट की वायरिंग** — बड़ी फैक्ट्री, कंपनी और औद्योगिक भवनों की वायरिंग।
+- [ ] Shared service catalogue में दोनों विकल्पों के अलग local task IDs दर्ज हैं: `normal_wiring` और `factory_large_project_wiring`।
+- [ ] यह अभी catalogue/presentation स्तर का बदलाव है; booking submit, dispatch eligibility, backend IDs या rates से wiring विकल्पों को जोड़ना बाकी है।
+- [ ] इस बदलाव से Basic / Expert / Master skill-level mapping या मौजूदा चार skill-level entries अपने-आप नहीं बदलतीं; उनका अलग owner confirmation आवश्यक है।
+
