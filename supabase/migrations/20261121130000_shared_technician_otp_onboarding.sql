@@ -254,6 +254,7 @@ DECLARE
   v_count integer;
   v_categories uuid[];
   v_skills uuid[];
+  v_has_rejected boolean:=false;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'TECHNICIAN_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
   SELECT u.phone,u.phone_confirmed_at INTO v_auth_phone,v_verified_at
@@ -292,6 +293,21 @@ BEGIN
   IF v_count<>cardinality(p_skill_codes) THEN
     RAISE EXCEPTION 'UNKNOWN_DUPLICATE_OR_UNSELECTED_TECHNICIAN_SKILL' USING ERRCODE='22023';
   END IF;
+  IF EXISTS (
+    SELECT 1 FROM unnest(p_category_codes) AS selected(category_code)
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.srk_service_skills s
+      JOIN public.srk_service_categories c ON c.id=s.category_id
+      WHERE c.category_code=selected.category_code AND s.is_active
+        AND s.skill_code=ANY(p_skill_codes)
+    )
+  ) THEN
+    RAISE EXCEPTION 'EACH_SELECTED_CATEGORY_REQUIRES_AT_LEAST_ONE_SKILL' USING ERRCODE='22023';
+  END IF;
+
+  SELECT EXISTS (SELECT 1 FROM public.srk_technician_applications a
+    WHERE a.technician_id=(SELECT t.id FROM public.srk_technicians t WHERE t.auth_user_id=v_uid)
+      AND a.status='rejected') INTO v_has_rejected;
 
   INSERT INTO public.srk_technicians(auth_user_id,primary_phone,verified_phone,phone_verified_at,account_status)
   VALUES(v_uid,v_phone,v_phone,v_verified_at,'pending')
@@ -326,8 +342,7 @@ BEGIN
   INSERT INTO public.srk_technician_application_events
     (application_id,technician_id,actor_user_id,actor_role,event_type,snapshot)
   VALUES(v_application_id,v_technician_id,v_uid,'technician',
-    CASE WHEN EXISTS (SELECT 1 FROM public.srk_technician_applications a
-      WHERE a.technician_id=v_technician_id AND a.status='rejected') THEN 'resubmitted' ELSE 'submitted' END,
+    CASE WHEN v_has_rejected THEN 'resubmitted' ELSE 'submitted' END,
     jsonb_build_object('category_codes',p_category_codes,'skill_codes',p_skill_codes,
       'experience_years',p_experience_years,'verified_phone',v_phone));
 
@@ -532,3 +547,112 @@ COMMENT ON TABLE public.srk_technician_kyc_documents IS
   'Private category-neutral Technician KYC metadata. File bytes live in the private srk-technician-verification Storage bucket.';
 COMMENT ON FUNCTION public.srk_technician_submit_application(text,text,text,text,text,integer,text,text[],text[]) IS
   'Creates a pending application only for the authenticated user with a confirmed Auth phone; stores normalized phone server-side and rejects duplicate verified-phone identities.';
+
+
+-- Read-only catalogue projection for the shared Technician App.
+CREATE OR REPLACE FUNCTION public.srk_technician_list_service_catalogue()
+RETURNS TABLE(category_code text,category_name text,category_sort_order integer,
+  skill_code text,skill_name text,requires_separate_assessment boolean)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $function$
+  SELECT c.category_code,c.display_name,c.sort_order,s.skill_code,s.display_name,s.requires_separate_assessment
+  FROM public.srk_service_categories c
+  LEFT JOIN public.srk_service_skills s ON s.category_id=c.id AND s.is_active
+  WHERE c.is_active
+  ORDER BY c.sort_order,c.category_code,s.skill_code;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_technician_list_service_catalogue() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_technician_list_service_catalogue() TO authenticated;
+
+-- Admin-controlled, additive catalogue management. Deactivation preserves old applications.
+CREATE OR REPLACE FUNCTION public.srk_admin_upsert_service_category(
+  p_category_code text,p_display_name text,p_is_active boolean DEFAULT true,p_sort_order integer DEFAULT 0
+)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+DECLARE v_id uuid;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
+  IF p_category_code IS NULL OR p_category_code !~ '^[a-z][a-z0-9_]{1,59}$'
+     OR p_display_name IS NULL OR length(btrim(p_display_name)) NOT BETWEEN 2 AND 100
+     OR p_is_active IS NULL OR p_sort_order IS NULL THEN
+    RAISE EXCEPTION 'INVALID_SERVICE_CATEGORY' USING ERRCODE='22023';
+  END IF;
+  INSERT INTO public.srk_service_categories(category_code,display_name,is_active,sort_order,created_by)
+  VALUES(p_category_code,btrim(p_display_name),p_is_active,p_sort_order,auth.uid())
+  ON CONFLICT(category_code) DO UPDATE SET display_name=EXCLUDED.display_name,
+    is_active=EXCLUDED.is_active,sort_order=EXCLUDED.sort_order
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_upsert_service_category(text,text,boolean,integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_upsert_service_category(text,text,boolean,integer) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_upsert_service_skill(
+  p_category_code text,p_skill_code text,p_display_name text,
+  p_is_active boolean DEFAULT true,p_requires_separate_assessment boolean DEFAULT false
+)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+DECLARE v_category_id uuid; v_id uuid;
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
+  IF p_category_code IS NULL OR p_skill_code IS NULL OR p_skill_code !~ '^[a-z][a-z0-9_]{1,79}$'
+     OR p_display_name IS NULL OR length(btrim(p_display_name)) NOT BETWEEN 2 AND 100
+     OR p_is_active IS NULL OR p_requires_separate_assessment IS NULL THEN
+    RAISE EXCEPTION 'INVALID_SERVICE_SKILL' USING ERRCODE='22023';
+  END IF;
+  SELECT id INTO v_category_id FROM public.srk_service_categories
+    WHERE category_code=p_category_code AND is_active;
+  IF v_category_id IS NULL THEN RAISE EXCEPTION 'ACTIVE_SERVICE_CATEGORY_REQUIRED' USING ERRCODE='22023'; END IF;
+  INSERT INTO public.srk_service_skills(category_id,skill_code,display_name,is_active,requires_separate_assessment,created_by)
+  VALUES(v_category_id,p_skill_code,btrim(p_display_name),p_is_active,p_requires_separate_assessment,auth.uid())
+  ON CONFLICT(skill_code) DO UPDATE SET category_id=EXCLUDED.category_id,
+    display_name=EXCLUDED.display_name,is_active=EXCLUDED.is_active,
+    requires_separate_assessment=EXCLUDED.requires_separate_assessment
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_upsert_service_skill(text,text,text,boolean,boolean) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_upsert_service_skill(text,text,text,boolean,boolean) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_list_technician_applications(
+  p_status text DEFAULT NULL,p_limit integer DEFAULT 100
+)
+RETURNS TABLE(application_id uuid,technician_id uuid,verified_phone text,full_name text,
+  address text,district text,state text,pincode text,experience_years integer,
+  status text,rejection_reason text,submitted_at timestamptz,
+  categories jsonb,skills jsonb,kyc_documents jsonb)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $function$
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
+  IF p_status IS NOT NULL AND p_status NOT IN ('pending','under_review','approved','rejected') THEN
+    RAISE EXCEPTION 'INVALID_APPLICATION_FILTER' USING ERRCODE='22023';
+  END IF;
+  RETURN QUERY
+  SELECT a.id,t.id,t.verified_phone,a.full_name,a.address,a.district,a.state,a.pincode,
+    a.experience_years,a.status,a.rejection_reason,a.submitted_at,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('code',c.category_code,'name',c.display_name)
+      ORDER BY c.sort_order,c.category_code)
+      FROM public.srk_technician_application_categories ac
+      JOIN public.srk_service_categories c ON c.id=ac.category_id WHERE ac.application_id=a.id),'[]'::jsonb),
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('application_skill_id',aps.id,'code',s.skill_code,
+      'name',s.display_name,'review_status',aps.review_status,'admin_note',aps.admin_note,
+      'requires_separate_assessment',s.requires_separate_assessment) ORDER BY s.skill_code)
+      FROM public.srk_technician_application_skills aps
+      JOIN public.srk_service_skills s ON s.id=aps.skill_id WHERE aps.application_id=a.id),'[]'::jsonb),
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('id',d.id,'document_type',d.document_type,
+      'application_skill_id',d.application_skill_id,'storage_path',d.storage_path,
+      'file_name',d.file_name,'mime_type',d.mime_type,'file_size_bytes',d.file_size_bytes,
+      'review_status',d.review_status,'admin_note',d.admin_note,'uploaded_at',d.uploaded_at)
+      ORDER BY d.uploaded_at DESC,d.id DESC)
+      FROM public.srk_technician_kyc_documents d WHERE d.application_id=a.id),'[]'::jsonb)
+  FROM public.srk_technician_applications a
+  JOIN public.srk_technicians t ON t.id=a.technician_id
+  WHERE p_status IS NULL OR a.status=p_status
+  ORDER BY a.submitted_at DESC
+  LIMIT GREATEST(1,LEAST(COALESCE(p_limit,100),300));
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_list_technician_applications(text,integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_list_technician_applications(text,integer) TO authenticated;
+
