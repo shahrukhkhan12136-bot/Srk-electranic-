@@ -106,8 +106,8 @@ BEGIN
  WHERE b.id=p_booking_id AND b.customer_user_id=v_uid AND b.srk_service_category_code IS NOT NULL;
  IF NOT FOUND THEN RAISE EXCEPTION 'OWN_MASTER_BOOKING_REQUIRED' USING ERRCODE='42501';END IF;
  SELECT COALESCE(jsonb_agg(jsonb_build_object(
-  'technician_id',t.id,'name',app.full_name,
-  'phone',CASE WHEN v_status IN ('assigned','awaiting_work_start_approval','in_progress') THEN t.verified_phone ELSE NULL END,
+  'technician_id',t.id,'name',COALESCE(app.full_name,ep.display_name,'Technician'),
+  'phone',CASE WHEN v_status IN ('assigned','awaiting_work_start_approval','in_progress') THEN t.primary_phone ELSE NULL END,
   'assignment_status',a.assignment_status,
   'last_latitude',CASE WHEN v_status IN ('assigned','awaiting_work_start_approval','in_progress')
     AND p.active_booking_id=p_booking_id AND p.last_location_at>=clock_timestamp()-interval '5 minutes' THEN p.last_latitude ELSE NULL END,
@@ -121,6 +121,8 @@ BEGIN
  JOIN public.srk_technicians t ON t.id=a.technician_id
  LEFT JOIN LATERAL(SELECT ap.full_name FROM public.srk_technician_applications ap
   WHERE ap.technician_id=t.id AND ap.status='approved' ORDER BY ap.submitted_at DESC LIMIT 1)app ON true
+ LEFT JOIN public.srk_technician_profile_links pl ON pl.technician_id=t.id
+ LEFT JOIN public.electrician_profiles ep ON ep.id=pl.electrician_profile_id
  LEFT JOIN public.srk_technician_presence p ON p.technician_id=t.id
  WHERE a.booking_id=p_booking_id AND a.assignment_status IN ('accepted','active','completed');
  RETURN v_result;
