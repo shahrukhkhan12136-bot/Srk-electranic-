@@ -49,7 +49,7 @@ Status: **Partially implemented — source only; not deployed**
 - No Production SQL, Main Branch, live payment, payout, or deployment action was performed.
 
 
-## 22 November 2026 — Category-neutral integration source audit
+## 21 November 2026 — Category-neutral integration source audit
 
 The next integration audit inspected the feature-branch source for booking creation, application intake, the current technician portal, and sequential offer dispatch.
 
@@ -90,3 +90,19 @@ Do not add a thin category-name switch to the old Electrician API and call it co
 ### Scope and safety
 
 This is a source-code audit plus read-only Production schema metadata inspection. No database rows were changed, no DDL or migration was applied, and no Main Branch, live payment, payout or deployment action was performed.
+
+
+### Follow-up source verification — 21 November 2026
+
+The feature-branch files were fetched directly to verify the earlier source-audit statements:
+
+- `electrician.html` (blob `0588cfe716e1e5c47690e826bbe2bb09a0c57bed`) is explicitly titled “Electrician Partner” and its portal controls call Electrician-specific workflows.
+- Root-level `apply-electrician.js` (blob `ab9cfff5f135d456df63a87623746b74a3917f3f`) accepts `full_name`, a client-submitted 10-digit `phone`, location, skills and experience, then inserts into `electrician_applications`. The handler performs IP rate limiting and input validation, but does not verify a Bearer Supabase Auth access token, call the Auth user endpoint, or bind the submitted phone to `user.phone` / `phone_confirmed_at`. This endpoint therefore must not be reused as the shared OTP-first Technician application endpoint.
+- Root-level `create-booking.js` (blob `8fdc202c2451a63696ec7a42efc8559bbbbe2526`) is the canonical Netlify booking function according to the repository README. The earlier path label “create-booking.js” refers to this root-level file, not `api/create-booking.js`.
+- The README confirms the current portal and application route are Electrician-specific and that `/api/create-booking` is a Netlify adapter to the root-level function.
+
+### Safe implementation gate
+
+No generic Technician application migration or endpoint was added in this follow-up. The shared application schema must be designed against the complete authoritative migration chain and current category/service/rate model first; otherwise it could create duplicate identity records or conflict with existing Admin review, KYC storage, and category configuration. The next implementation must use the verified Auth user as the identity source, never trust a submitted phone as OTP proof, and keep application status pending until Admin approval.
+
+This follow-up is source inspection only. It does not change any Database, Production, Main Branch, payment, payout, or deployment state.
