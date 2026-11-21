@@ -264,3 +264,22 @@ The Customer app now has an isolated read-only presentation model and tests. All
 **Backend must define:** exact field names/types and nullability; INR/currency and paise rounding rules; labour/material/other-charge and tax/fee semantics; proof of customer material approval; authoritative total; payment-method/status and eligibility rules; receipt identity/content; confirmation request ownership, idempotency, dispute/timeout/Admin override and historical quote compatibility.
 
 Do not connect this model to the live Customer booking card, confirmation buttons, receipt or Razorpay flow until backend contract is deployed and verified. Existing booking, quote, cancel, complaint, contact privacy and cash/online payment paths remain untouched.
+
+
+## 17. Shared Customer + Technician confirmation and final-bill DTO (21 Nov 2026)
+
+Frontend added `packages/srk_mobile_core/lib/srk_work_confirmation_contract.dart` and exports it from the shared core barrel. Both mobile apps can consume the same proposed field model instead of maintaining separate local definitions. This is a preview DTO only, not a deployed API contract.
+
+**Proposed confirmation fields:** `booking_id`, `request_id`, `requester_role`, `requested_action`, `state`, `version`, `idempotency_key`, `server_requested_at`, `server_confirmed_at`, `server_started_at`, `server_completed_at`.
+
+**Proposed bill fields:** `labour_amount_paise`, `approved_materials_amount_paise`, `other_charges_amount_paise`, `total_amount_paise`, `currency`, `payment_status`, `payment_method`, `payment_eligibility`, `receipt_id`. Amounts are integer paise; frontend validation requires non-negative integer components and exact equality to the server-provided total.
+
+**Frontend safety rules:**
+- Unknown enum values and missing version parse to unknown/-1; they must not enable actions.
+- Timer presentation may be active only for proposed `start_confirmed` when server confirmation and server start timestamps both exist and server completion timestamp is absent. Device time is not used to create/start the timer.
+- Payment eligibility is display-only; backend must revalidate owner, status, amount, method, idempotency and eligibility on every payment/order request.
+- DTO is shared code only; no live Customer/Technician UI, Supabase query, RPC, booking state, payment, quote, cancellation, complaint or production behavior changed.
+
+**Backend must confirm before integration:** exact RPC names, request/response/error JSON and nullability; canonical state/action/actor enums; owner/assigned-technician/verified-skill checks; server timestamp semantics; version conflict and transactional idempotency behavior; material approval evidence; bill/tax/fee/rounding/currency rules; authoritative payment eligibility/method; receipt contract; timeout/dispute/Admin override; and compatibility for historical quote bookings.
+
+Tests were added in `packages/srk_mobile_core/test/srk_work_confirmation_contract_test.dart`. They have not yet been executed; analyzer/formatter/Android builds/device tests also remain unverified.
