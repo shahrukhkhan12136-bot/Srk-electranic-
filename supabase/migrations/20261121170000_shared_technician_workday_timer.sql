@@ -486,3 +486,63 @@ COMMENT ON TABLE public.srk_booking_technician_workdays IS
   'One independently customer-approved daily timer per assigned canonical Technician. First four active hours precede an automatic one-hour lunch pause; timer resumes automatically after lunch. Daily first eight actual hours are normal and further time is 1.5x.';
 COMMENT ON TABLE public.srk_booking_technician_labour_ledger IS
   'Immutable per-Technician daily labour ledger. Helper charges and final customer bill are separate integration steps.';
+
+
+-- A replaced Technician who completed billable workdays still contributed to
+-- the completed booking and must receive their own completion ordinal.
+CREATE OR REPLACE FUNCTION public.srk_record_customer_confirmed_technician_completions()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+DECLARE v_assignment record; v_ordinal bigint; v_online boolean;
+BEGIN
+  IF NEW.status IS DISTINCT FROM 'completed'
+     OR NEW.completion_approval_status IS DISTINCT FROM 'approved'
+     OR NEW.customer_completed_at IS NULL THEN RETURN NEW; END IF;
+  IF OLD.status='completed' AND OLD.completion_approval_status='approved'
+     AND OLD.customer_completed_at IS NOT NULL THEN RETURN NEW; END IF;
+  v_online:=lower(btrim(COALESCE(NEW.payment_method,''))) LIKE '%razorpay%'
+    OR lower(btrim(COALESCE(NEW.payment_method,''))) LIKE '%online%'
+    OR lower(btrim(COALESCE(NEW.payment_method,''))) LIKE '%ऑनलाइन%';
+  FOR v_assignment IN
+    SELECT a.technician_id FROM public.srk_booking_technician_assignments a
+    WHERE a.booking_id=NEW.id AND a.assignment_status<>'cancelled'
+      AND (a.assignment_status<>'replaced' OR EXISTS(
+        SELECT 1 FROM public.srk_booking_technician_labour_ledger l
+        WHERE l.booking_id=NEW.id AND l.technician_id=a.technician_id
+      ))
+    ORDER BY a.technician_id
+  LOOP
+    IF EXISTS(SELECT 1 FROM public.srk_technician_completed_booking_events e
+      WHERE e.technician_id=v_assignment.technician_id AND e.booking_id=NEW.id) THEN CONTINUE; END IF;
+    INSERT INTO public.srk_technician_booking_counters(technician_id,completed_booking_count)
+    VALUES(v_assignment.technician_id,0) ON CONFLICT(technician_id) DO NOTHING;
+    UPDATE public.srk_technician_booking_counters
+      SET completed_booking_count=completed_booking_count+1,updated_at=clock_timestamp()
+      WHERE technician_id=v_assignment.technician_id
+      RETURNING completed_booking_count INTO v_ordinal;
+    IF mod(v_ordinal,3)=0 AND NOT v_online THEN
+      RAISE EXCEPTION 'TECHNICIAN_EVERY_THIRD_COMPLETED_BOOKING_REQUIRES_ONLINE_PAYMENT'
+        USING ERRCODE='23514';
+    END IF;
+    INSERT INTO public.srk_technician_completed_booking_events(
+      technician_id,booking_id,completion_ordinal,customer_confirmed_at
+    ) VALUES(v_assignment.technician_id,NEW.id,v_ordinal,NEW.customer_completed_at)
+    ON CONFLICT(technician_id,booking_id) DO NOTHING;
+    UPDATE public.srk_booking_technician_assignments
+      SET assignment_status='completed',completed_at=NEW.customer_completed_at
+      WHERE booking_id=NEW.id AND technician_id=v_assignment.technician_id
+        AND assignment_status IN ('accepted','active');
+  END LOOP;
+  IF NOT EXISTS(SELECT 1 FROM public.srk_booking_technician_assignments a
+    WHERE a.booking_id=NEW.id AND a.assignment_status<>'cancelled'
+      AND (a.assignment_status<>'replaced' OR EXISTS(
+        SELECT 1 FROM public.srk_booking_technician_labour_ledger l
+        WHERE l.booking_id=NEW.id AND l.technician_id=a.technician_id
+      ))) THEN
+    RAISE EXCEPTION 'COMPLETED_BOOKING_REQUIRES_AT_LEAST_ONE_CONTRIBUTING_TECHNICIAN'
+      USING ERRCODE='23514';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_record_customer_confirmed_technician_completions()
+  FROM PUBLIC,anon,authenticated;
