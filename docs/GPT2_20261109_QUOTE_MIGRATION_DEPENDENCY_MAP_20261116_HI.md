@@ -117,3 +117,32 @@ Do not delete `quote_status`, `service_charge`, `materials_amount`, `quoted_amou
 - Existing pgTAP source files include 18 checks for legacy manual payment/itemized receipt and 15 checks for the new-category labour-bill/accounting bridge. These files have **not** been executed against isolated PostgreSQL/Supabase in this step; source assertions are not runtime proof.
 
 Verification boundary: current Feature Branch source only. No SQL replay, DB connection, Production query/write, DDL, deployment, merge, or payment/refund action.
+
+
+## 10. 21 Nov 2026 — Owner instruction: retire the quotation system completely
+
+यह section 16 Nov के पुराने “Safe retirement rule” को supersede करता है। Owner का नया स्पष्ट निर्देश है कि quotation/inspection-quote workflow नए सिस्टम में बिल्कुल नहीं रहना चाहिए। Historical records मिटाने के बजाय उनका वित्तीय और status evidence private archive में सुरक्षित रखा जाएगा।
+
+### Feature Branch में किए गए source changes
+
+Current branch: `feature/master-technician-payment-cycle-20261121`
+
+- Customer booking API से quote amount input/validation और quote-field write हटाए।
+- Razorpay order, payment verification और webhook में quote-era fallback हटाया। नए भुगतान के लिए immutable labour bill अनिवार्य है; बिना bill वाली पुरानी unpaid booking नए payment cycle में स्वीकार नहीं होगी।
+- Admin booking list से quote display और legacy customer manual-payment controls हटाए; ऐतिहासिक archived booking read-only रहेगी।
+- Legacy manual quote-payment RPC और Admin quote-edit RPC retire किए।
+- Commission/payout calculation को immutable labour bill पर सीमित किया; historical payout, receipt, refund और reconciliation archive evidence से ही पढ़ेंगे।
+- पुराने `inspection`, `awaiting_quote_approval`, `quote_approved`, `quote_rejected` statuses को `legacy_archived` में बदलने का migration path जोड़ा। Exact पुराना status archive में सुरक्षित है; archived bookings dispatch या normal booking-edit flow में वापस नहीं आएँगी।
+- Final migration `20261121250000_retire_quote_system_and_drop_live_quote_columns.sql` live `service_bookings` से `quoted_amount`, `quote_status`, `quote_note`, quote timestamps, customer suggested amount, electrician quote kind, `service_charge`, `materials_amount` हटाती है और quote-era status values को live status check से निकालती है।
+
+### Historical data protection
+
+Private table `srk_private.legacy_booking_financial_evidence` केवल पुराने रिकॉर्ड की receipt/refund/payout/accounting reconciliation के लिए है। यह नया quotation workflow नहीं है। पुराने booking rows, verified payments, refund evidence और payout ledger delete नहीं किए गए। Archive को सामान्य client roles के लिए बंद रखा गया है।
+
+### Verification और सीमा
+
+- Feature Branch source edits किए गए; Main/Production Database में कोई DDL/DML नहीं चला।
+- कोई migration replay, merge, deployment, refund या payout action नहीं किया।
+- GitHub Actions run `44917164248` में quote-retirement/payment/Admin tests पास हुए; पूरी Node suite अभी भी पाँच unrelated Electrician earnings/wallet contract assertions पर fail है।
+- PostgreSQL/pgTAP runtime replay अभी नहीं हुआ। इसलिए final migration को runtime-verified या Production-applied नहीं कहा जा सकता।
+- Main/Production में अलग explicit approval के बिना कोई परिवर्तन नहीं होगा।
