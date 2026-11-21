@@ -162,3 +162,11 @@ Backend staging response और API contract मिलने के बाद �
 - इससे AC से Fridge, Cooler से AC या किसी अन्य parent choice पर जाने पर form में पुरानी service ID/label गलती से selected नहीं रहती।
 - नया reset व्यवहार UI state तक सीमित है; booking submit payload में कोई बदलाव नहीं।
 - Widget regression test जोड़ा गया है; अभी execute नहीं किया गया।
+
+## 11. Task selection visual state (21-11-2026)
+
+- Task chips अब selected task को स्पष्ट highlight करते हैं।
+- AC/Fridge या अन्य subcategory बदलने पर task highlight reset होता है।
+- Parent category बदलने पर subcategory और task दोनों state reset होते हैं।
+- Widget regression test में selected highlight और subcategory reset assertions जोड़े गए हैं; tests अभी execute नहीं हुए।
+- यह UI-only सुधार है; booking payload, API और backend flow नहीं बदले।
