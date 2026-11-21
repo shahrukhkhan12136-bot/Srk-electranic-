@@ -521,3 +521,9 @@
 - [ ] Before any live category booking: end-to-end test every category/subcategory against an approved matching Technician account and verify no cross-category offer.
 
 **Validation boundary:** GitHub file creation was confirmed. Flutter SDK analysis/build and runtime rendering have not yet been run; this file must not be described as build-tested.
+
+
+### Catalogue model structure refinement
+- [x] Service task options और Technician skill/rate tiers को अलग-अलग fields में रखा गया है: `options` बनाम `skillLevels`। इससे Basic/Expert/Master को गलती से अलग service category या repair task नहीं दिखाया जाएगा।
+- [x] Painter Helper rates में प्रति घंटा इकाई स्पष्ट की गई।
+- [x] Source re-fetch में छह top-level category names, balanced braces/parentheses और intended fields की जाँच हुई। यह textual inspection है, Dart analyzer या build का विकल्प नहीं।
