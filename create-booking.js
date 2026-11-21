@@ -295,7 +295,8 @@ const work_details = clean(body.work_details, 2000);
             srk_helper_hourly_paise_snapshot: masterRate.billing_model === "hourly" ? Number(masterRate.helper_hourly_paise) : null,
             srk_fixed_labour_paise_snapshot: masterRate.billing_model === "fixed_per_unit" ? Number(masterRate.fixed_labour_paise) : null,
             srk_estimated_labour_paise: estimatedLabourPaise,
-            srk_duration_minutes: masterRate.billing_model === "hourly" ? masterDurationMinutes : null
+            srk_duration_minutes: masterRate.billing_model === "hourly" ? masterDurationMinutes : null,
+            srk_service_quantity: masterServiceQuantity
           } : {}),
           status: "new", payment_status: "unpaid",
           ...(customer_user_id ? { customer_user_id } : {})
@@ -306,7 +307,11 @@ const work_details = clean(body.work_details, 2000);
       const racedRows = await findByRequestKey();
       const raced = Array.isArray(racedRows) ? racedRows[0] : null;
       if (!raced || raced.customer_user_id !== customer_user_id || raced.customer_request_fingerprint !== requestFingerprint) throw insertError;
-      const racedOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(raced.id));
+      const racedOffers = await supabase(
+        isMasterBooking
+          ? "srk_technician_dispatch_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(raced.id)
+          : "job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(raced.id)
+      );
       const racedOfferRows = Array.isArray(racedOffers) ? racedOffers : [];
       return json(200, { success: true, booking_id: raced.id, replayed: true,
         estimate: { amount_paise: estimatedLabourPaise, amount_rupees: (estimatedLabourPaise / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: rateCardVersion,
