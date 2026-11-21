@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(15);
+SELECT plan(16);
 
 SELECT has_table('public','srk_booking_technician_workdays',
   'each assigned Technician has an independent daily work record');
@@ -15,6 +15,7 @@ SELECT has_function('public','srk_technician_pause_workday',ARRAY['uuid']::text[
 SELECT has_function('public','srk_technician_resume_workday',ARRAY['uuid']::text[]);
 SELECT has_function('public','srk_technician_stop_workday',ARRAY['uuid']::text[]);
 SELECT has_function('public','srk_customer_get_technician_workdays',ARRAY['uuid']::text[]);
+SELECT has_function('public','srk_technician_get_workday',ARRAY['uuid']::text[]);
 SELECT has_function('public','srk_customer_decide_workday',ARRAY['uuid','date','text','uuid']::text[]);
 SELECT has_trigger('public','srk_booking_technician_work_events','srk_booking_technician_work_events_append_only');
 SELECT has_trigger('public','srk_booking_technician_labour_ledger','srk_booking_technician_labour_ledger_immutable');
