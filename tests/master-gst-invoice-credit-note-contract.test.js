@@ -14,8 +14,8 @@ test('GST company profile is explicit and never assumes registration or rate',()
  assert.match(sql,/VALID_GSTIN_AND_MATCHING_STATE_REQUIRED/);
  assert.match(sql,/GST_LABOUR_RATE_RULE_NOT_CONFIGURED/);
  assert.match(sql,/GST_MATERIAL_RATE_RULE_NOT_CONFIGURED/);
- assert.match(sql,/c\\.registration_status:='unregistered'/);
- assert.match(sql,/c\\.version:=0/);
+ assert.match(sql,/registration_status:='unregistered'/);
+ assert.match(sql,/version:=0/);
  assert.doesNotMatch(sql,/DEFAULT\s+18\s*\)/i);
 });
 test('Tax snapshots preserve taxable base and split CGST SGST IGST',()=>{
@@ -36,7 +36,15 @@ test('Admin configuration and GST reporting are authorization-gated',()=>{
  assert.match(sql,/public\.is_srk_admin\(\)/);
  assert.match(sql,/srk_admin_get_master_gst_summary/);
 });
-test('GST snapshot is required before payment invoice creation',()=>{
+test('Unregistered Master billing proceeds without GST and does not issue a GST tax invoice',()=>{
+ assert.match(sql,/registration_status:='unregistered'/);
+ assert.match(sql,/version:=0/);
+ assert.match(sql,/v_due:=NEW\.subtotal_paise\+v_cgst\+v_sgst\+v_igst/);
+ assert.match(sql,/IF t\.registration_status<>'registered' THEN RETURN NEW; END IF/);
+ assert.doesNotMatch(sql,/GST_COMPANY_PROFILE_NOT_CONFIGURED/);
+ assert.match(sql,/GST_REGISTRATION_REQUIRED_FOR_INPUT_CREDIT/);
+});
+test('GST snapshot is required before payment reconciliation',()=>{
  assert.match(sql,/BOOKING_TAX_SNAPSHOT_REQUIRED/);
  assert.match(sql,/AFTER INSERT ON public\.srk_booking_final_bills/);
 });
