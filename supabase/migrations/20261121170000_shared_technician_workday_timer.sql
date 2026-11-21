@@ -446,14 +446,25 @@ BEGIN
     WHERE booking_id=p_booking_id AND work_date=p_work_date AND status='stopped'
     ORDER BY technician_id FOR UPDATE
   LOOP
-    v_normal_amount:=floor(v_w.technician_hourly_paise_snapshot*v_w.normal_work_seconds/3600+0.5)::bigint;
-    v_overtime_amount:=floor(v_w.technician_hourly_paise_snapshot*v_w.overtime_work_seconds*1.5/3600+0.5)::bigint;
-    v_total:=v_normal_amount+v_overtime_amount;
+    v_tech_normal_amount:=floor(v_w.technician_hourly_paise_snapshot*v_w.normal_work_seconds/3600+0.5)::bigint;
+    v_tech_overtime_amount:=floor(v_w.technician_hourly_paise_snapshot*v_w.overtime_work_seconds*1.5/3600+0.5)::bigint;
+    v_helper_normal_amount:=CASE WHEN v_w.helper_included_snapshot THEN
+      floor(v_w.helper_hourly_paise_snapshot*v_w.normal_work_seconds/3600+0.5)::bigint ELSE 0 END;
+    v_helper_overtime_amount:=CASE WHEN v_w.helper_included_snapshot THEN
+      floor(v_w.helper_hourly_paise_snapshot*v_w.overtime_work_seconds*1.5/3600+0.5)::bigint ELSE 0 END;
+    v_tech_total:=v_tech_normal_amount+v_tech_overtime_amount;
+    v_helper_total:=v_helper_normal_amount+v_helper_overtime_amount;
+    v_total:=v_tech_total+v_helper_total;
     INSERT INTO public.srk_booking_technician_labour_ledger(
       booking_id,workday_id,technician_id,work_date,technician_hourly_paise_snapshot,
-      normal_work_seconds,overtime_work_seconds,normal_amount_paise,overtime_amount_paise,total_labour_paise
+      helper_hourly_paise_snapshot,helper_included_snapshot,normal_work_seconds,overtime_work_seconds,
+      technician_normal_amount_paise,technician_overtime_amount_paise,
+      helper_normal_amount_paise,helper_overtime_amount_paise,technician_total_paise,
+      helper_total_paise,total_labour_paise
     ) VALUES(p_booking_id,v_w.id,v_w.technician_id,p_work_date,v_w.technician_hourly_paise_snapshot,
-      v_w.normal_work_seconds,v_w.overtime_work_seconds,v_normal_amount,v_overtime_amount,v_total)
+      v_w.helper_hourly_paise_snapshot,v_w.helper_included_snapshot,v_w.normal_work_seconds,v_w.overtime_work_seconds,
+      v_tech_normal_amount,v_tech_overtime_amount,v_helper_normal_amount,v_helper_overtime_amount,
+      v_tech_total,v_helper_total,v_total)
     ON CONFLICT(workday_id) DO NOTHING;
   END LOOP;
 
