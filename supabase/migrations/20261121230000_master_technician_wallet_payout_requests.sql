@@ -71,7 +71,7 @@ END; $$;
 
 CREATE OR REPLACE FUNCTION public.srk_technician_request_master_payout(
  p_destination_type text,p_destination_reference text,p_idempotency_key text
-) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public,auth,pg_temp AS $$$
 DECLARE v_uid uuid:=auth.uid(); v_tid uuid; v_req uuid; v_total bigint;
 BEGIN
  IF v_uid IS NULL THEN RAISE EXCEPTION 'AUTH_REQUIRED' USING ERRCODE='42501'; END IF;
@@ -153,7 +153,7 @@ BEGIN
   FROM public.srk_master_payout_request_items i WHERE i.payout_request_id=r.id AND p.id=i.payable_id AND p.payout_status='requested';
  END IF;
  RETURN jsonb_build_object('success',true,'request_id',r.id,'status',p_decision);
-END; $;
+END; $$;
 
 CREATE OR REPLACE FUNCTION public.srk_admin_mark_master_payout_paid(
  p_request_id uuid,p_method text,p_transfer_reference text,p_note text DEFAULT NULL
