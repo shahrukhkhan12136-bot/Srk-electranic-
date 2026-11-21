@@ -53,7 +53,7 @@ test('new booking schema stores canonical category, service, duration and immuta
     'srk_service_code','srk_rate_level_code','srk_rate_level_label_snapshot',
     'srk_rate_version_snapshot','srk_billing_model_snapshot',
     'srk_technician_hourly_paise_snapshot','srk_helper_hourly_paise_snapshot',
-    'srk_fixed_labour_paise_snapshot','srk_estimated_labour_paise','srk_duration_minutes'
+    'srk_fixed_labour_paise_snapshot','srk_estimated_labour_paise','srk_duration_minutes','srk_service_quantity'
   ]) assert.match(migration, new RegExp('ADD COLUMN IF NOT EXISTS ' + field));
   assert.match(migration, /service_bookings_srk_rate_snapshot_complete/);
   assert.match(migration, /DROP CONSTRAINT IF EXISTS service_bookings_estimate_matches_rate_card/);
