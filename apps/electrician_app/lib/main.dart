@@ -313,7 +313,6 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
             if (offerPriceDetails.isEmpty)
               const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('अभी कीमत की जानकारी वाला कोई ऑफर उपलब्ध नहीं है।')))
             else ...offerPriceDetails.map((detail) {
-              final suggested = (detail['customer_suggested_amount'] as num?)?.toDouble();
               final service = (detail['service_charge'] as num?)?.toDouble();
               final materials = (detail['materials_amount'] as num?)?.toDouble();
               final kind = detail['electrician_quote_kind']?.toString() ?? 'electrician_quote';
@@ -321,7 +320,6 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('बुकिंग ' + (detail['booking_id']?.toString() ?? '—'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                  if (suggested != null) Text('ग्राहक की शुरुआती कीमत: ₹' + suggested.toStringAsFixed(2)),
                   if (service != null && materials != null) ...[
                     const Divider(),
                     Text(kind == 'counter_offer' ? 'आपका Counter Offer' : kind == 'matches_suggestion' ? 'ग्राहक की कीमत के अनुसार कोटेशन' : 'आपका कोटेशन'),
