@@ -381,6 +381,3 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_admin_list_service_rates() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_list_service_rates() TO authenticated;
-
--- Keep legacy booking history but prevent direct client writes to the new commercial snapshot.
-COMMENT ON TABLE public.srk_service_rates IS 'Versioned Admin-controlled labour rate catalogue. New bookings snapshot the active rate; historical booking snapshots never change.';
