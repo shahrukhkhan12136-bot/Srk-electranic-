@@ -34,6 +34,7 @@ BEGIN
      OR NEW.srk_billing_model_snapshot IS DISTINCT FROM OLD.srk_billing_model_snapshot
      OR NEW.srk_technician_hourly_paise_snapshot IS DISTINCT FROM OLD.srk_technician_hourly_paise_snapshot
      OR NEW.srk_helper_hourly_paise_snapshot IS DISTINCT FROM OLD.srk_helper_hourly_paise_snapshot
+     OR NEW.srk_helper_included_snapshot IS DISTINCT FROM OLD.srk_helper_included_snapshot
      OR NEW.srk_fixed_labour_paise_snapshot IS DISTINCT FROM OLD.srk_fixed_labour_paise_snapshot
      OR NEW.srk_estimated_labour_paise IS DISTINCT FROM OLD.srk_estimated_labour_paise
      OR NEW.srk_duration_minutes IS DISTINCT FROM OLD.srk_duration_minutes
@@ -106,7 +107,7 @@ CREATE TRIGGER srk_guard_master_booking_status_transition
   BEFORE UPDATE OF status,srk_service_category_code,srk_service_skill_code,
     srk_service_code,srk_rate_level_code,srk_rate_version_snapshot,
     srk_billing_model_snapshot,srk_technician_hourly_paise_snapshot,
-    srk_helper_hourly_paise_snapshot,srk_fixed_labour_paise_snapshot,
+    srk_helper_hourly_paise_snapshot,srk_helper_included_snapshot,srk_fixed_labour_paise_snapshot,
     srk_estimated_labour_paise,srk_duration_minutes,srk_service_quantity
   ON public.service_bookings
   FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_booking_status_transition();
