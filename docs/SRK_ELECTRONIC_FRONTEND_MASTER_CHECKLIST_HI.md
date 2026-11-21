@@ -1455,6 +1455,19 @@ Founder ने चारों स्तरों के नमूना का�
 - [ ] यह catalogue presentation data है; booking payload, dispatch eligibility, rates, backend schema या production behavior इस commit से नहीं बदले।
 - [ ] Factory/industrial/high-load कार्यों के लिए उपयुक्त योग्यता, प्रशिक्षण और सुरक्षित कार्य-प्रक्रिया आवश्यक है।
 
+## 2BM. Customer Booking — अवधि चुनकर पहले कुल रकम दिखाना (21-11-2026)
+
+Founder के निर्देश के अनुसार ग्राहक को बुकिंग करने से पहले प्रति घंटे का रेट, अवधि चुनने का विकल्प और उसी अवधि का स्वतः निकला कुल अनुमान दिखेगा:
+
+- [ ] ग्राहक को चुने गए कारीगर/सेवा का hourly rate साफ दिखे; उदाहरण: ₹100 प्रति घंटा।
+- [ ] ग्राहक अवधि चुने: 8 घंटे, 10 घंटे या लागू सीमा के भीतर 50 दिन तक।
+- [ ] चुनी गई अवधि के अनुसार कुल रकम अपने आप calculate हो और BOOK NOW से पहले ग्राहक को दिखाई जाए।
+- [ ] ग्राहक रकम और अवधि देखकर ही BOOK NOW दबाकर बुकिंग submit करे।
+- [ ] Hour-based duration का हिसाब: लागू प्रति घंटा दर × चुने गए billable घंटे; minute-based actual timer billing और पहले से तय Lunch नियम final actual work accounting में लागू रहें।
+- [ ] 50 दिन जैसी day-based अवधि को billable working hours में बदलने का नियम (प्रतिदिन कितने काम के घंटे, daily schedule/holidays) Founder से स्पष्ट कराना बाकी; पुष्टि से पहले दिन को मनमाने ढंग से 8 घंटे मानकर final amount न निकालें।
+- [ ] Customer के सामने booking से पहले दिखी रकम को स्पष्ट रूप से अवधि-आधारित अनुमान/बुकिंग राशि के रूप में label करें; final bill actual verified working minutes और approved overtime rules के अनुसार server-authoritative होगा।
+- [ ] वास्तविक Customer booking UI, live rate calculation, duration selector और tests अभी implementation के लिए बाकी हैं।
+
 ## 2BL. Timer — मिनट के हिसाब से बिल और Lunch Auto-Resume (21-11-2026)
 
 Founder के नवीनतम निर्देश; पुराने Pause/Resume या timer व्यवहार के उल्लेख से टकराव होने पर यही नियम लागू होंगे:
