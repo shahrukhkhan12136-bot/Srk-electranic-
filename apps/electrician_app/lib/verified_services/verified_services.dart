@@ -1,2 +1,3 @@
 export 'src/srk_verified_service_skill.dart';
 export 'src/srk_verified_services_panel.dart';
+export 'srk_offer_skill_match_preview.dart';
