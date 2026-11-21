@@ -110,7 +110,7 @@ BEGIN
   END IF;
   SELECT id INTO v_tid FROM public.srk_technicians WHERE auth_user_id=v_uid;
   IF v_tid IS NULL OR NOT EXISTS(SELECT 1 FROM public.srk_booking_technician_assignments
-    WHERE booking_id=p_booking_id AND technician_id=v_tid AND assignment_status IN ('accepted','active')) THEN
+    WHERE booking_id=p_booking_id AND technician_id=v_tid AND assignment_status IN ('accepted','active','completed')) THEN
     RAISE EXCEPTION 'ACTIVE_BOOKING_TECHNICIAN_REQUIRED' USING ERRCODE='42501';
   END IF;
   IF NOT EXISTS(SELECT 1 FROM public.service_bookings
@@ -209,7 +209,10 @@ BEGIN
   ) ON CONFLICT(booking_id) DO NOTHING;
   SELECT * INTO v_bill FROM public.srk_booking_final_bills WHERE booking_id=p_booking_id;
   IF v_bill.labour_amount_paise<>v_labour OR v_bill.materials_amount_paise<>v_materials
-     OR v_bill.labour_ledger_rows<>v_rows THEN RAISE EXCEPTION 'FINAL_BILL_REPLAY_MISMATCH'; END IF;
+     OR v_bill.labour_ledger_rows<>v_rows OR v_bill.commission_rate_snapshot<>v_rate
+     OR v_bill.material_request_id IS DISTINCT FROM CASE WHEN v_has_req THEN v_req.id ELSE NULL END
+     OR v_bill.material_decision IS DISTINCT FROM CASE WHEN NOT v_has_req THEN 'not_requested' ELSE v_req.status END
+     OR v_bill.subtotal_paise<>v_labour+v_materials THEN RAISE EXCEPTION 'FINAL_BILL_REPLAY_MISMATCH'; END IF;
   RETURN jsonb_build_object('success',true,'bill_id',v_bill.id,'booking_id',p_booking_id,
     'labour_amount_paise',v_bill.labour_amount_paise,'materials_amount_paise',v_bill.materials_amount_paise,
     'subtotal_paise',v_bill.subtotal_paise,'company_commission_paise',v_bill.company_commission_paise,
