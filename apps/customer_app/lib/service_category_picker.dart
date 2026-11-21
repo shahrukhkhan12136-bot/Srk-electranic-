@@ -215,6 +215,11 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 )),
+            if (selectedSkillLevel.rates.any((rate) => rate.helperAmount != null))
+              const Text(
+                'Helper वैकल्पिक है; चुनने पर ही अतिरिक्त शुल्क लगेगा।',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
           ],
           if (selectedSkillLevel != null &&
               selectedSkillLevel.tasks.isNotEmpty) ...[
