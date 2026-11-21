@@ -3,7 +3,7 @@
 **अंतिम सत्यापित अपडेट:** 21 नवम्बर 2026  
 **वर्तमान staging branch:** tmp/master-final-ui-20261121  
 **Feature base:** feature/master-rating-ui-followup-v2-20261121  
-**सत्यापित source HEAD:** 4cfdc869b3b69e3875e89fdf989ed215fcc351ab
+**सत्यापित source HEAD:** 1478a4ae221d969ae39ec2d707064f124876842b
 
 > Source implementation, Node CI, PostgreSQL/pgTAP runtime, Browser E2E, Preview, Production migration और Owner approval अलग-अलग gates हैं। किसी एक का PASS दूसरे का प्रमाण नहीं है।
 
@@ -12,7 +12,7 @@
 | चरण | स्थिति | विवरण |
 |---|---|---|
 | Source implementation | जारी, काफी विस्तारित | Shared Technician onboarding/KYC/Admin approval, Master dispatch, Customer workday decisions/team GPS, GST final bill/invoice, cash payment/refund और wallet credits UI source में मौजूद। |
-| Node CI | **PASS** | Exact HEAD 4cfdc869 पर GitHub Actions run 44906291585: **573 passed / 0 failed**। |
+| Node CI | **PASS** | Exact HEAD 1478a4ae पर GitHub Actions run 44907394337: **573 passed / 0 failed**। |
 | Database runtime | अवरुद्ध / NOT RUN | Supabase Pro Development Branch सुविधा उपलब्ध नहीं। Local replay attempt में authoritative core baseline missing होने से migration replay शुरू नहीं हो सका। कोई pgTAP test execute नहीं हुआ। |
 | Browser E2E | बाकी | OTP/SMS, KYC Storage, dispatch, timer, bill, payment/refund, payout, actor isolation और browser workflows runtime verify करने हैं। |
 | Preview / Visual QA | वर्तमान staging HEAD पर नहीं चला | Netlify/Vercel Preview और desktop/mobile visual acceptance को current staging PR पर अलग verify करना होगा। पुराने Preview statuses current HEAD पर लागू नहीं। |
