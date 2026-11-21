@@ -556,3 +556,14 @@ Production introspection में commission trigger `UPDATE OF status, payment
 - [ ] Review migration and test evidence.
 - [ ] Production application requires separate explicit approval.
 - No source SQL migration was created here because Supabase CLI migration generator was not available in this workflow. No production changes made.
+
+
+## 34. Commission trigger fix — TEST environment readiness (21-11-2026)
+
+- Supabase project list में अलग `SRK ELECTRONIC TEST` project ACTIVE_HEALTHY मिला; Production project से अलग है।
+- Supabase CLI documentation के अनुसार migration file `supabase migration new <name>` से generate होनी चाहिए। इस कार्य-सत्र में repository terminal/Supabase CLI command चलाने का साधन उपलब्ध नहीं है।
+- इसलिए कोई timestamped migration file manually invent/create नहीं की गई और TEST database पर भी कोई DDL/migration apply नहीं की गई।
+- प्रस्तावित बदलाव सीमित है: active commission trigger को `service_charge` UPDATE पर भी fire कराना; commission formula और validations यथावत रखना; `materials_amount` को trigger dependency न बनाना।
+- अगला आवश्यक कदम approved repository working environment में CLI से migration file generate करना, SQL review करना, फिर केवल `SRK ELECTRONIC TEST` पर apply और regression-test करना है।
+- Production पर apply/merge/deploy के लिए अलग स्पष्ट अनुमति आवश्यक है।
+- इस चरण में कोई database, migration history, payment, payout या app runtime परिवर्तन नहीं हुआ।
