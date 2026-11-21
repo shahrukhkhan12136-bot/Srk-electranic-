@@ -1173,3 +1173,13 @@
 - [ ] इस सत्र में uploaded binary images को Git repository में सीधे transfer/commit करने का supported path उपलब्ध नहीं हुआ। इसलिए नई images को assets के रूप में जोड़ने या मौजूदा `founder.webp` को बदलने का दावा नहीं किया गया; current asset को बिना पुष्टि overwrite नहीं किया।
 - [ ] अगला asset step: uploaded Founder portrait और logo को repository में `packages/srk_mobile_core/assets/` में क्रमशः `founder.webp` और `srk_logo.webp` के रूप में जोड़ें; उसके बाद pubspec/header में logo wire-up और visual QA करें।
 - [ ] Third image is a visual reference/mockup, not a production screen asset; use it to guide layout, not as a full-screen screenshot.
+
+
+## 2AX. Owner brand image files prepared (21-11-2026)
+
+- [x] User-provided Founder portrait optimized as WebP at 1200×1108.
+- [x] User-provided SRK ELECTRONIC logo and Hindi tagline optimized as WebP at 1400×933.
+- [x] Prepared ZIP bundle with repository target paths: `packages/srk_mobile_core/assets/founder.webp` and `packages/srk_mobile_core/assets/srk_logo.webp`.
+- [ ] Binary ZIP/image upload into GitHub repository is not supported by the connected repository file-write action in this session; files have not yet been committed to the branch.
+- [ ] After adding assets to branch, verify Founder portrait displays in existing banner, add logo to shared welcome header and dashboard brand area, then run Flutter tests/build and device visual QA.
+- [ ] Existing app currently references `packages/srk_mobile_core/assets/founder.webp`; do not replace/assume the checked-in file changed until the prepared asset is committed and visually checked.
