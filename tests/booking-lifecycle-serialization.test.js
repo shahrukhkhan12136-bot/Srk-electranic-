@@ -201,8 +201,8 @@ test('Customer and Electrician SOS require explicit reason selection and separat
 
 
 test('customer and electrician timer and SOS panels are restricted to active in-progress work', () => {
-  assert.match(customer, /const timerMarkup=row\.selected_category&&row\.status==='in_progress'/);
-  assert.match(customer, /const sosMarkup=row\.selected_category&&row\.status==='in_progress'/);
+  assert.match(customer, /const timerMarkup=isMasterBooking&&row\.srk_billing_model_snapshot==='hourly'/);
+  assert.match(customer, /const sosMarkup=\(isMasterBooking\|\|row\.selected_category\)&&row\.status==='in_progress'/);
   assert.match(electrician, /o\.selected_category&&o\.booking_status==='in_progress'&&o\.completion_approval_status==='pending'/);
   assert.match(electrician, /o\.selected_category&&o\.booking_status==='in_progress'&&o\.completion_approval_status!=='pending'&&o\.completion_approval_status!=='disputed'/);
   assert.match(electrician, /o\.selected_category&&o\.booking_status==='in_progress'\?'<div class="job" id="electricianSosPanel_/);
