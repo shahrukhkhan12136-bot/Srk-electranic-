@@ -46,3 +46,8 @@ Supabase table inspection returned a critical RLS advisory:
 - No DDL, DML, Storage, policy, API, payment, payout, Main Branch or deployment changes were made.
 - The TEST project is not a full Production clone; do not treat it as a valid Production migration replay baseline.
 - Before any migration, inspect complete function/trigger dependencies for `srk_private.work_transition_authorizations`, Admin application review, KYC storage, dispatch and booking/payment paths.
+
+
+### Follow-up ACL inspection
+
+A read-only ACL query was run after the RLS advisory. The observed table grants and schema ACL for `srk_private.work_transition_authorizations` showed only the `postgres` role; no direct table privileges or schema USAGE grants for `anon` or `authenticated` were returned. The table remains flagged by Supabase because RLS is disabled, but the ACL snapshot did **not** show direct client-role grants. This narrows the immediate exposure evidence; it does not replace fixing the RLS posture or reviewing all owner/definer paths. The table is accessed by SECURITY DEFINER work-approval functions and a booking trigger, so any remediation must preserve that internal transactional workflow. Do not apply the advisory SQL without that review.
