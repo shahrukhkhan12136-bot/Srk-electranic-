@@ -335,3 +335,31 @@ Preview result semantics:
 - `unknown`: missing/old catalogue version or task taxonomy not yet defined.
 
 This helper is not connected to live offer filtering/hiding, acceptance, dispatch, work status, material approval, payment or payouts. It must not be used as authorization. Backend remains authoritative and must independently validate active approved skill, current catalogue version, offer eligibility, assignment, ownership, expiry/revocation and state version atomically at each protected action. No live API/Supabase/backend/database/payment/production behavior changed. Tests, formatter, analyzer and Android build have not been executed.
+
+## 22. Shared Customer → Booking → Technician service identity DTO (21 Nov 2026)
+
+Frontend added `packages/srk_mobile_core/lib/srk_service_selection_contract.dart` with `SrkServiceSelection`, exported from `srk_mobile_core.dart`.
+
+The Customer Dashboard picker emits this DTO as a preview selection. The Technician preview matcher consumes the same versioned identifier shape when comparing an offer with a verified skill. This gives both apps one frontend contract rather than separate label-based representations.
+
+Proposed payload shape:
+```json
+{
+  "catalogue_version": "draft-2026-11-21.1",
+  "category_id": "ac_fridge",
+  "subcategory_id": "ac",
+  "task_id": "gas_charging"
+}
+```
+
+Rules:
+- `category_id` is required; `subcategory_id` and `task_id` are conditional.
+- `task_id` must belong to the exact selected subcategory; AC task IDs cannot be used for Fridge and vice versa.
+- The frontend factory rejects unknown or mismatched hierarchy IDs.
+- Labels are display-only; backend resolves authoritative labels and active state from its own catalogue.
+- The current version and IDs are frontend draft identifiers only. Backend must explicitly approve/map a canonical version before production accepts them.
+- Backend booking creation must validate the version and every ID, snapshot the resolved service identity on the booking, and return the normalized identity.
+- Dispatch must copy the exact booking identity into the offer. Technician verified skills and offer must use the same backend-approved version and IDs.
+- The server must independently re-check approved/active/unexpired skill, assignment, booking ownership, current state/version and idempotency on accept and every protected work/material/payment transition.
+
+**Not integrated:** Customer Dashboard picker still previews only. Existing `POST /api/create-booking` payload and booking form remain unchanged; no new Supabase query/RPC, offer filtering, dispatch, payment or production behavior was added. Do not send this draft version to production until backend approval and coordinated rollout.
