@@ -76,7 +76,7 @@ class SrkServiceCategory {
 
 /// Approved catalogue revision. IDs remain local keys, not deployed backend IDs.
 /// Keep the legacy constant name to avoid breaking existing app references.
-const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.10';
+const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.11';
 
 /// Six approved top-level categories, in the owner's requested order.
 ///
@@ -214,10 +214,10 @@ const List<SrkServiceCategory> srkServiceCatalog = [
         SrkServiceRate(label: 'मजदूरी', amount: '₹100', unit: 'प्रति घंटा', helperAmount: 'Helper ₹50 प्रति घंटा; कुल ₹150 प्रति घंटा'),
       ]),
       SrkServiceOption(name: 'Expert', rates: [
-        SrkServiceRate(label: 'मजदूरी', amount: '₹150', unit: 'प्रति घंटा', helperAmount: 'Helper ₹75 प्रति घंटा; कुल ₹225 प्रति घंटा'),
+        SrkServiceRate(label: 'मजदूरी', amount: '₹125', unit: 'प्रति घंटा', helperAmount: 'Helper ₹60 प्रति घंटा; कुल ₹185 प्रति घंटा'),
       ]),
       SrkServiceOption(name: 'Master / Industrial', rates: [
-        SrkServiceRate(label: 'मजदूरी', amount: '₹225', unit: 'प्रति घंटा', helperAmount: 'Helper ₹100 प्रति घंटा; कुल ₹325 प्रति घंटा'),
+        SrkServiceRate(label: 'मजदूरी', amount: '₹175', unit: 'प्रति घंटा', helperAmount: 'Helper ₹75 प्रति घंटा; कुल ₹250 प्रति घंटा'),
       ]),
     ],
   ),
@@ -233,10 +233,10 @@ const List<SrkServiceCategory> srkServiceCatalog = [
         SrkServiceRate(label: 'मजदूरी', amount: '₹700', unit: '8 घंटे'),
       ]),
       SrkServiceOption(name: 'Expert', rates: [
-        SrkServiceRate(label: 'मजदूरी', amount: '₹900', unit: '8 घंटे', helperAmount: 'Helper ₹75 प्रति घंटा अतिरिक्त'),
+        SrkServiceRate(label: 'मजदूरी', amount: '₹900', unit: '8 घंटे', helperAmount: 'Helper ₹60 प्रति घंटा अतिरिक्त'),
       ]),
       SrkServiceOption(name: 'Master / Commercial', rates: [
-        SrkServiceRate(label: 'मजदूरी', amount: '₹1,200', unit: '8 घंटे', helperAmount: 'Helper ₹100 प्रति घंटा अतिरिक्त'),
+        SrkServiceRate(label: 'मजदूरी', amount: '₹1,200', unit: '8 घंटे', helperAmount: 'Helper ₹75 प्रति घंटा अतिरिक्त'),
       ]),
     ],
   ),
