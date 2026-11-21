@@ -36,7 +36,7 @@ test('Historical amounts are archived privately and quote/manual-payment write R
  assert.match(archiveMigration,/legacy_booking_financial_evidence/);
  assert.match(adminMigration,/DROP FUNCTION IF EXISTS public\.srk_admin_update_legacy_booking_quote/);
  for(const rpc of ['srk_submit_booking_quote','srk_customer_respond_booking_quote','srk_update_booking_work_status']){
-  assert.match(quoteRetirement,new RegExp('DROP FUNCTION IF EXISTS public\\.'+rpc));
+  assert.match(quoteRetirement,new RegExp('DROP FUNCTION IF EXISTS public\.'+rpc));
  }
 });
 
@@ -47,7 +47,7 @@ test('Final migration removes quote-era columns from live bookings but preserves
  assert.match(finalRetirement,/DROP COLUMN IF EXISTS service_charge/);
  assert.match(finalRetirement,/DROP COLUMN IF EXISTS materials_amount/);
  assert.match(finalRetirement,/legacy_booking_financial_evidence/);
- assert.match(finalRetirement,/DROP FUNCTION IF EXISTS public\\.srk_admin_record_manual_payment/);
- assert.doesNotMatch(finalRetirement,/DROP TABLE public\\.service_bookings/i);
+ assert.match(finalRetirement,/DROP FUNCTION IF EXISTS public\.srk_admin_record_manual_payment/);
+ assert.doesNotMatch(finalRetirement,/DROP TABLE public\.service_bookings/i);
  assert.match(finalRetirement,/NOTIFY pgrst/);
 });
