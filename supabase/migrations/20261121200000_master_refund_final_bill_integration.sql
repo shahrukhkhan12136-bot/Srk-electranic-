@@ -56,9 +56,9 @@ begin
 
   if v_booking.srk_service_category_code is not null then
     if v_booking.status is distinct from 'completed' then raise exception 'BOOKING_NOT_COMPLETED'; end if;
-    select f.subtotal_paise into v_total_paise
-      from public.srk_booking_final_bills f
-     where f.booking_id=p_booking_id;
+    select t.total_due_paise into v_total_paise
+      from public.srk_booking_tax_snapshots t
+     where t.booking_id=p_booking_id;
     if not found or v_total_paise is null or v_total_paise<=0
        or v_total_paise<>round(v_booking.amount_paid*100)::bigint then
       raise exception 'PAID_AMOUNT_DOES_NOT_MATCH_MASTER_FINAL_BILL';
