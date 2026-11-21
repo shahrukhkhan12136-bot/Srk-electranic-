@@ -155,15 +155,24 @@ BEGIN
   IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='service_bookings_srk_rate_snapshot_complete') THEN
     ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_srk_rate_snapshot_complete
       CHECK(
-        (srk_service_code IS NULL AND srk_rate_level_code IS NULL AND srk_rate_version_snapshot IS NULL
-          AND srk_billing_model_snapshot IS NULL AND srk_estimated_labour_paise IS NULL)
+        (srk_service_code IS NULL AND srk_service_category_code IS NULL AND srk_service_skill_code IS NULL
+          AND srk_rate_level_code IS NULL AND srk_rate_level_label_snapshot IS NULL
+          AND srk_rate_version_snapshot IS NULL AND srk_billing_model_snapshot IS NULL
+          AND srk_technician_hourly_paise_snapshot IS NULL AND srk_helper_hourly_paise_snapshot IS NULL
+          AND srk_fixed_labour_paise_snapshot IS NULL AND srk_estimated_labour_paise IS NULL
+          AND srk_duration_minutes IS NULL)
         OR
-        (srk_service_code IS NOT NULL AND srk_rate_level_code IS NOT NULL
-          AND srk_rate_level_label_snapshot IS NOT NULL AND srk_rate_version_snapshot IS NOT NULL
-          AND srk_billing_model_snapshot IN ('hourly','fixed_per_unit')
-          AND srk_estimated_labour_paise>0)
-      );
-  END IF;
+        (srk_service_code IS NOT NULL AND srk_service_category_code IS NOT NULL AND srk_service_skill_code IS NOT NULL
+          AND srk_rate_level_code IS NOT NULL AND srk_rate_level_label_snapshot IS NOT NULL
+          AND srk_rate_version_snapshot IS NOT NULL AND srk_billing_model_snapshot IN ('hourly','fixed_per_unit')
+          AND srk_estimated_labour_paise>0
+          AND ((srk_billing_model_snapshot='hourly' AND srk_technician_hourly_paise_snapshot IS NOT NULL
+                AND srk_helper_hourly_paise_snapshot IS NOT NULL AND srk_fixed_labour_paise_snapshot IS NULL
+                AND srk_duration_minutes BETWEEN 1 AND 72000)
+            OR (srk_billing_model_snapshot='fixed_per_unit' AND srk_fixed_labour_paise_snapshot IS NOT NULL
+                AND srk_technician_hourly_paise_snapshot IS NULL AND srk_helper_hourly_paise_snapshot IS NULL
+                AND srk_duration_minutes IS NULL)))
+      );  END IF;
 END;
 $booking$;
 
