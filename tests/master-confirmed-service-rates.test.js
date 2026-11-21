@@ -20,8 +20,8 @@ test('Only confirmed SRK service rates are activated with exact Technician and H
  assert.match(booking,/Combined 8h/);
 });
 test('Motor and Cooler winding include all ten approved HP fixed rates',()=>{
- assert.equal((migration.match(/'motor_winding','hp_/g)||[]).length,10);
- assert.equal((migration.match(/'cooler_motor_winding','hp_/g)||[]).length,10);
+ assert.equal((migration.match(/\\('motor_winding','hp_[^']+',[^\\n]+,'active'\\)/g)||[]).length,10);
+ assert.equal((migration.match(/\\('cooler_motor_winding','hp_[^']+',[^\\n]+,'active'\\)/g)||[]).length,10);
  for(const amount of [50000,60000,70000,80000,90000,100000,110000,120000,130000,140000])assert.ok(migration.includes(String(amount)));
 });
 test('AC team rate and Pump Repair remain pending instead of guessing a pay split',()=>{
