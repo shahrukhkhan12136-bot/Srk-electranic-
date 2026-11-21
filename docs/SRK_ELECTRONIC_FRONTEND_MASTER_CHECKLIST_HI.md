@@ -1409,3 +1409,19 @@ Implementation rules:
 - Where task-to-level mapping is not explicitly present in the catalogue or approved contract, do not guess it. Keep the existing customer/service selection data intact while recording the mapping gap for later approved work.
 - Any new example supplied by the owner explains the intended interaction only; it does not override existing catalogue data unless the owner explicitly requests a catalogue change.
 - This correction is a source-of-truth clarification; it does not modify rates, database schema, dispatch rules, payment behavior or production data.
+
+
+## 2BH. Existing web frontend integration audit — retain catalogue-driven counts (21-11-2026)
+
+Source files inspected on the feature branch:
+- `packages/srk_mobile_core/lib/srk_service_catalog.dart`: contains the service categories and each category's own `skillLevels` list. This remains the source of truth for level count, names, rates and helper notes.
+- `index.html`: current customer page still has a short legacy service dropdown (घर की वायरिंग, इलेक्ट्रिकल रिपेयर, लाइट / फैन फिटिंग, होम रिपेयरिंग, अन्य) rather than the complete catalogue-driven flow. The current electrician registration form has one generic skills dropdown and sends the application through the legacy WhatsApp flow.
+- `electrician.html`: current partner page provides OTP login, dashboard, earnings, wallet summary, job offers and work-status actions; the inspected page does not yet provide the new in-app application/profile skill checklist.
+- `netlify/functions/apply-electrician.js`: legacy application API accepts a single free-text `skills` field and stores pending/inactive applications. It has no structured per-category/per-level/per-task selection or Aadhaar verification contract.
+
+Implementation direction:
+- Customer and partner UIs must render each category's existing levels from the shared catalogue, not hardcode a common number of levels.
+- Preserve the existing OTP, customer booking, electrician offer, quote approval, work-status, earnings and payment paths while replacing only the obsolete selection/application presentation in a staged, tested manner.
+- The current legacy application API cannot safely accept mandatory Aadhaar KYC or structured verified skills. Do not send Aadhaar images/numbers through WhatsApp or the legacy API, and do not display an application as submitted/verified unless the secure server workflow confirms it.
+- The shared Dart catalogue is currently documented as presentation-only; it is not automatically available to the legacy HTML pages. A tested shared web-compatible catalogue adapter or an approved API response is required before wiring the full dynamic selection flow. Do not manually duplicate partial lists into HTML.
+- No source code, database, production settings, booking, payment, or KYC behavior was changed by this audit.
