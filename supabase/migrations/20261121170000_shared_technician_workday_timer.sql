@@ -189,6 +189,10 @@ BEGIN
       AND a.assignment_status IN ('accepted','active')) THEN
     RAISE EXCEPTION 'TECHNICIAN_ACCEPTED_ASSIGNMENT_REQUIRED' USING ERRCODE='42501';
   END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.srk_technician_presence p
+      WHERE p.technician_id=v_technician AND p.active_booking_id=p_booking_id) THEN
+    RAISE EXCEPTION 'TECHNICIAN_ACTIVE_BOOKING_PRESENCE_REQUIRED' USING ERRCODE='42501';
+  END IF;
   IF b.srk_technician_hourly_paise_snapshot IS NULL OR b.srk_technician_hourly_paise_snapshot<=0
      OR b.srk_rate_version_snapshot IS NULL THEN
     RAISE EXCEPTION 'BOOKING_TECHNICIAN_RATE_SNAPSHOT_REQUIRED' USING ERRCODE='55000';
@@ -220,7 +224,12 @@ BEGIN
   SELECT * INTO w FROM public.srk_booking_technician_workdays WHERE id=p_workday_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'WORKDAY_NOT_FOUND' USING ERRCODE='P0002'; END IF;
   SELECT * INTO b FROM public.service_bookings WHERE id=w.booking_id AND customer_user_id=v_uid FOR UPDATE;
-  IF NOT FOUND OR w.status<>'start_pending' THEN RAISE EXCEPTION 'CUSTOMER_PENDING_WORKDAY_APPROVAL_REQUIRED' USING ERRCODE='42501'; END IF;
+  IF NOT FOUND OR w.status<>'start_pending' OR NOT EXISTS(
+    SELECT 1 FROM public.srk_booking_technician_assignments a
+    WHERE a.booking_id=w.booking_id AND a.technician_id=w.technician_id
+      AND a.assignment_status IN ('accepted','active')) THEN
+    RAISE EXCEPTION 'CUSTOMER_PENDING_WORKDAY_APPROVAL_REQUIRED' USING ERRCODE='42501';
+  END IF;
   IF p_response='rejected' THEN
     UPDATE public.srk_booking_technician_workdays SET status='start_rejected',updated_at=clock_timestamp()
     WHERE id=w.id;
@@ -335,15 +344,18 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.srk_customer_get_technician_workdays(p_booking_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
-DECLARE v_uid uuid:=auth.uid(); v_result jsonb;
+DECLARE v_uid uuid:=auth.uid(); v_result jsonb; v_workday_id uuid;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'CUSTOMER_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
   IF NOT EXISTS(SELECT 1 FROM public.service_bookings WHERE id=p_booking_id AND customer_user_id=v_uid) THEN
     RAISE EXCEPTION 'OWN_CUSTOMER_BOOKING_REQUIRED' USING ERRCODE='42501';
   END IF;
-  PERFORM w.id FROM public.srk_booking_technician_workdays w
-  WHERE w.booking_id=p_booking_id AND w.status IN ('running','lunch_paused')
-  ORDER BY w.id;
+  FOR v_workday_id IN SELECT w.id FROM public.srk_booking_technician_workdays w
+    WHERE w.booking_id=p_booking_id AND w.status IN ('running','lunch_paused')
+    ORDER BY w.id
+  LOOP
+    PERFORM srk_private.srk_normalize_technician_workday_lunch(v_workday_id);
+  END LOOP;
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'workday_id',w.id,'technician_id',w.technician_id,'work_date',w.work_date,
     'status',w.status,'start_requested_at',w.start_requested_at,
@@ -438,12 +450,8 @@ BEGIN
     FROM public.srk_booking_technician_workdays WHERE booking_id=p_booking_id AND work_date=p_work_date AND status='stopped';
     RETURN jsonb_build_object('success',true,'decision','replace_technician','dispatch',v_dispatch);
   ELSE
-    IF EXISTS(SELECT 1 FROM public.srk_booking_technician_assignments
-      WHERE booking_id=p_booking_id AND assignment_status IN ('accepted','active')) THEN
-      RAISE EXCEPTION 'ALL_ASSIGNED_TECHNICIANS_MUST_BE_REPLACED_OR_STOPPED_BEFORE_COMPLETION' USING ERRCODE='55000';
-    END IF;
     UPDATE public.srk_booking_technician_assignments SET assignment_status='completed',completed_at=clock_timestamp()
-    WHERE booking_id=p_booking_id AND assignment_status='active';
+    WHERE booking_id=p_booking_id AND assignment_status IN ('accepted','active');
     INSERT INTO srk_private.work_transition_authorizations(transaction_id,booking_id,target_status)
     VALUES(pg_catalog.txid_current(),p_booking_id,'completed') ON CONFLICT DO NOTHING;
     UPDATE public.service_bookings SET status='completed',
