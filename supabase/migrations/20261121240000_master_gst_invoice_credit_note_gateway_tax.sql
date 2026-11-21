@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS public.srk_booking_tax_snapshots(
  supplier_gstin text,
  supplier_state_code char(2),
  place_of_supply_state_code char(2) NOT NULL REFERENCES public.srk_gst_indian_state_codes(state_code),
+ labour_amount_paise bigint NOT NULL CHECK(labour_amount_paise>0),
+ materials_amount_paise bigint NOT NULL CHECK(materials_amount_paise>=0),
  labour_taxable boolean NOT NULL,
  labour_rate_basis_points integer NOT NULL CHECK(labour_rate_basis_points BETWEEN 0 AND 2800),
  labour_taxable_value_paise bigint NOT NULL CHECK(labour_taxable_value_paise>=0),
@@ -230,11 +232,11 @@ BEGIN
  v_due:=NEW.subtotal_paise+v_cgst+v_sgst+v_igst;
  INSERT INTO public.srk_booking_tax_snapshots(
   booking_id,final_bill_id,company_profile_version,registration_status,supplier_gstin,supplier_state_code,place_of_supply_state_code,
-  labour_taxable,labour_rate_basis_points,labour_taxable_value_paise,labour_cgst_paise,labour_sgst_paise,labour_igst_paise,
+  labour_amount_paise,materials_amount_paise,labour_taxable,labour_rate_basis_points,labour_taxable_value_paise,labour_cgst_paise,labour_sgst_paise,labour_igst_paise,
   materials_taxable,materials_rate_basis_points,materials_taxable_value_paise,materials_cgst_paise,materials_sgst_paise,materials_igst_paise,
   total_cgst_paise,total_sgst_paise,total_igst_paise,total_tax_paise,taxable_value_paise,gross_before_tax_paise,total_due_paise,tax_treatment
  ) VALUES(NEW.booking_id,NEW.id,c.version,c.registration_status,c.gstin,c.supplier_state_code,v_state,
-  coalesce(lr.taxable,false),coalesce(lr.gst_rate_basis_points,0),CASE WHEN coalesce(lr.taxable,false) THEN NEW.labour_amount_paise ELSE 0 END,v_lc,v_ls,v_li,
+  NEW.labour_amount_paise,NEW.materials_amount_paise,coalesce(lr.taxable,false),coalesce(lr.gst_rate_basis_points,0),CASE WHEN coalesce(lr.taxable,false) THEN NEW.labour_amount_paise ELSE 0 END,v_lc,v_ls,v_li,
   coalesce(mr.taxable,false),coalesce(mr.gst_rate_basis_points,0),CASE WHEN coalesce(mr.taxable,false) THEN NEW.materials_amount_paise ELSE 0 END,v_mc,v_ms,v_mi,
   v_cgst,v_sgst,v_igst,v_cgst+v_sgst+v_igst,v_taxable,NEW.subtotal_paise,v_due,v_treatment);
  RETURN NEW;
@@ -253,11 +255,11 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION 'BOOKING_TAX_SNAPSHOT_REQUIRED'; END IF;
  SELECT * INTO c FROM public.srk_gst_company_profiles WHERE id=1;
  SELECT * INTO b FROM public.service_bookings WHERE id=NEW.booking_id;
- v_number:=c.invoice_prefix||'-'||to_char(clock_timestamp() AT TIME ZONE 'Asia/Kolkata','YYYY')||'-'||upper(left(replace(NEW.id::text,'-',''),12));
+ v_number:=c.invoice_prefix||'-'||to_char(clock_timestamp() AT TIME ZONE 'Asia/Kolkata','YYYY')||'-'||lpad(nextval('public.srk_master_tax_invoice_number_seq')::text,8,'0');
  v_snapshot:=jsonb_build_object('invoice_number',v_number,'booking_id',NEW.booking_id,'payment_id',NEW.id,
   'legal_name',c.legal_name,'gstin',t.supplier_gstin,'registration_status',t.registration_status,
   'place_of_supply_state_code',t.place_of_supply_state_code,'tax_treatment',t.tax_treatment,
-  'labour_amount_paise',t.gross_before_tax_paise,'labour_taxable_value_paise',t.labour_taxable_value_paise,
+  'labour_amount_paise',t.labour_amount_paise,'materials_amount_paise',t.materials_amount_paise,'labour_taxable_value_paise',t.labour_taxable_value_paise,
   'labour_rate_basis_points',t.labour_rate_basis_points,'labour_cgst_paise',t.labour_cgst_paise,'labour_sgst_paise',t.labour_sgst_paise,'labour_igst_paise',t.labour_igst_paise,
   'materials_taxable_value_paise',t.materials_taxable_value_paise,'materials_rate_basis_points',t.materials_rate_basis_points,
   'materials_cgst_paise',t.materials_cgst_paise,'materials_sgst_paise',t.materials_sgst_paise,'materials_igst_paise',t.materials_igst_paise,
@@ -285,7 +287,6 @@ BEGIN
    VALUES(i.id,NEW.id,'CN-'||upper(left(replace(NEW.id::text,'-',''),16)),v_reason,t.total_due_paise,
     jsonb_build_object('taxable_value_paise',t.taxable_value_paise,'cgst_paise',t.total_cgst_paise,'sgst_paise',t.total_sgst_paise,'igst_paise',t.total_igst_paise,'total_tax_paise',t.total_tax_paise),NULL)
    ON CONFLICT(invoice_id) DO NOTHING;
-   UPDATE public.srk_master_tax_invoices SET document_status='credited_full' WHERE id=i.id;
   END IF;
  END IF;
  RETURN NEW;
