@@ -1183,3 +1183,23 @@
 - [ ] Binary ZIP/image upload into GitHub repository is not supported by the connected repository file-write action in this session; files have not yet been committed to the branch.
 - [ ] After adding assets to branch, verify Founder portrait displays in existing banner, add logo to shared welcome header and dashboard brand area, then run Flutter tests/build and device visual QA.
 - [ ] Existing app currently references `packages/srk_mobile_core/assets/founder.webp`; do not replace/assume the checked-in file changed until the prepared asset is committed and visually checked.
+
+## 2AY. Owner clarification — Customer booking sequence (21-11-2026)
+
+**यह Founder का नवीनतम स्पष्ट निर्देश है।** पहले से मौजूद सही booking system को आधार बनाकर इसी क्रम में booking UI व्यवस्थित करें; मौजूदा booking lifecycle, API/backend, payment और पुराने records को बिना अलग review/approval बदले नहीं।
+
+- [ ] Login पर ग्राहक मोबाइल नंबर दर्ज करके OTP verify करे।
+- [ ] पहली सफल verification के बाद ग्राहक का नाम लेकर सुरक्षित करें; नाम पहले से उपलब्ध हो तो दोबारा अनावश्यक रूप से न पूछें।
+- [ ] नाम save होने के बाद Customer Home खोलें; Home पर छह service categories दिखाई दें।
+- [ ] ग्राहक category चुने; चुनी category के अनुसार उसके task/service विकल्प खुलें (उदाहरण: Electrician → Wiring या Repairing)।
+- [ ] Task चुनने के बाद लागू होने पर कितने Electrician और कितने Helper चाहिए, उनकी संख्या चुनने दें।
+- [ ] लागू service के लिए duration चुनने दें: घंटे से लेकर अधिकतम 50 दिन तक। Fixed-price tasks में लागू न होने पर duration control न दिखाएँ।
+- [ ] चुने गए task, technician/helper संख्या और duration के आधार पर उपलब्ध Admin-approved rate से amount अपने-आप calculate करके ग्राहक को दिखाएँ।
+- [ ] Amount summary के बाद work address का चरण आए; GPS से address auto-fill वैकल्पिक सुविधा हो और manual address entry भी उपलब्ध रहे।
+- [ ] OTP से verified mobile number booking में login session से स्वतः आए; booking form में ग्राहक से वही phone number दोबारा न भरवाएँ।
+- [ ] Address और बाकी आवश्यक विवरण पूरे होने के बाद ग्राहक BOOK NOW/booking submit करे; success केवल backend-confirmed booking ID/status मिलने पर दिखे।
+- [ ] Existing booking form, dispatch और lifecycle का regression test करें; यह क्रम लागू करते समय पहले से काम कर रही booking functionality न टूटे।
+- [ ] Rates/worker limits/task applicability backend/Admin-approved contract से verify करें; कोई rate, helper fee या operational capacity अनुमान से न जोड़ें।
+
+**Scope clarification:** इस तारीख के Founder निर्देश से category → task → electrician/helper count → duration (जहाँ लागू) → automatic amount → address → booking submission वाला customer flow वर्तमान frontend checklist में शामिल है। पहले के “future-only” नोट को इस स्पष्ट booking-flow निर्देश के विरुद्ध लागू न करें; फिर भी इस दस्तावेज़ी बदलाव से कोई backend/database/payment implementation स्वतः अधिकृत नहीं होती।
+
