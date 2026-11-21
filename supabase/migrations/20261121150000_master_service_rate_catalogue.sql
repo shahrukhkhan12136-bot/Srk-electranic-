@@ -148,6 +148,7 @@ ALTER TABLE public.service_bookings
   ADD COLUMN IF NOT EXISTS srk_billing_model_snapshot text,
   ADD COLUMN IF NOT EXISTS srk_technician_hourly_paise_snapshot bigint,
   ADD COLUMN IF NOT EXISTS srk_helper_hourly_paise_snapshot bigint,
+  ADD COLUMN IF NOT EXISTS srk_helper_included_snapshot boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS srk_fixed_labour_paise_snapshot bigint,
   ADD COLUMN IF NOT EXISTS srk_estimated_labour_paise bigint,
   ADD COLUMN IF NOT EXISTS srk_duration_minutes integer,
@@ -181,7 +182,7 @@ BEGIN
                 AND srk_duration_minutes BETWEEN 1 AND 72000)
             OR (srk_billing_model_snapshot='fixed_per_unit' AND srk_fixed_labour_paise_snapshot IS NOT NULL
                 AND srk_technician_hourly_paise_snapshot IS NULL AND srk_helper_hourly_paise_snapshot IS NULL
-                AND srk_duration_minutes IS NULL)))
+                AND srk_helper_included_snapshot=false AND srk_duration_minutes IS NULL)))
       );  END IF;
 END;
 $booking$;
