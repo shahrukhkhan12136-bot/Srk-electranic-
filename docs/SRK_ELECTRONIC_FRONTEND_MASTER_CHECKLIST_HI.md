@@ -1151,3 +1151,13 @@
 - [x] इसे TEST baseline reconciliation blocker के रूप में दर्ज किया; कोई migration apply/repair नहीं की।
 - [ ] Supabase CLI वाले approved repository environment में migration-by-migration reconciliation और सुरक्षित baseline योजना बनानी है।
 - [ ] Reset या blind re-apply नहीं करना; Production untouched।
+
+
+## 2AV. Android CI build readiness (21-11-2026)
+
+- [x] CI workflow reviewed: `.github/workflows/flutter-android-ci.yml`.
+- [x] Workflow is configured for manual `workflow_dispatch` only; it checks backend configuration, analyzes/tests shared core and both apps, then builds debug APKs.
+- [x] Required GitHub Actions configuration names verified from workflow: Variables `SUPABASE_URL`, `SRK_API_BASE_URL`; Secret `SUPABASE_ANON_KEY`. Values are not read or exposed here.
+- [ ] No workflow run/build artifact is available as verification for the latest app commits. Current connected GitHub actions do not provide a workflow-dispatch operation, so CI was not triggered from this session.
+- [ ] User/repository maintainer must manually run the workflow on approved feature branch and review analyzer, tests and both APK outputs before any Play Store release claim.
+- [ ] Debug APK build is not a Play Store release build; signing, release configuration, privacy/data safety review and device QA remain separate release gates.
