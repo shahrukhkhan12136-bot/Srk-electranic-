@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:srk_customer_app/service_category_picker.dart';
 import 'package:srk_mobile_core/srk_service_catalog.dart' as catalog;
+import 'package:srk_mobile_core/srk_service_selection_contract.dart';
 
 void main() {
   group('SRK service category picker', () {
@@ -78,17 +79,11 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             child: SrkServiceCategoryPicker(
-              onSelection: ({
-                required String categoryId,
-                required String categoryTitle,
-                String? subcategoryId,
-                String? subcategoryTitle,
-                String? taskTitle,
-              }) {
+              onSelection: (selection) {
                 selected = {
-                  'category': categoryId,
-                  'subcategory': subcategoryId,
-                  'task': taskTitle,
+                  'category': selection.categoryId,
+                  'subcategory': selection.subcategoryId,
+                  'task': selection.taskId,
                 };
               },
             ),
@@ -113,7 +108,7 @@ void main() {
       expect(selected, {
         'category': 'ac_fridge',
         'subcategory': 'fridge',
-        'task': 'फ्रिज रिपेयर',
+        'task': 'fridge_repair',
       });
     });
 
@@ -128,17 +123,11 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             child: SrkServiceCategoryPicker(
-              onSelection: ({
-                required String categoryId,
-                required String categoryTitle,
-                String? subcategoryId,
-                String? subcategoryTitle,
-                String? taskTitle,
-              }) {
+              onSelection: (selection) {
                 selected = {
-                  'category': categoryId,
-                  'subcategory': subcategoryId,
-                  'task': taskTitle,
+                  'category': selection.categoryId,
+                  'subcategory': selection.subcategoryId,
+                  'task': selection.taskId,
                 };
               },
             ),
