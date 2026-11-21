@@ -292,3 +292,32 @@
 6. कोई backend migration, production change, Main merge या deployment इस mobile frontend authorization के अंतर्गत नहीं है।
 
 **स्थिति:** विकल्प audit recorded; कोई Dart source change नहीं किया गया। Quote lifecycle, payment mode eligibility और material approval अभी backend contract पर Blocked हैं।
+
+## 2C. Backend lifecycle dependency audit और आवश्यक API contract (2026-11-21)
+
+**अतिरिक्त source evidence (उसी approved mobile branch से):**
+
+- [x] Root `create-booking.js` (`346e4dcefb3aa27d64cc917039a81ad986cf7798`) booking को authenticated/verified customer phone के साथ insert करता है; इसमें rate-limit check, server-side session verification और booking insert के बाद database trigger से offer queue बनने की अपेक्षा है।
+- [x] इस endpoint में `quoted_amount` अभी optional है, पर वह `service_bookings` insert payload में भेजा जाता है। इसलिए Flutter से field छिपा देना और API payload/DB compatibility को बिना contract जाँचे बदल देना एक ही बात नहीं है।
+- [x] Endpoint `customer_suggested_amount` भी स्वीकार करता है और booking record में लिखता है। इसे Customer UI से हटाने के बाद server/API/legacy data पर असर अलग से तय होना चाहिए; इस frontend scope में backend file नहीं बदलेगी।
+- [x] Endpoint की आवश्यक fields में नाम, 10 अंकों का verified phone, state, district, 6 अंकों का PIN, address, service, preferred date/time शामिल हैं। GPS latitude/longitude दोनों साथ हों या दोनों null हों। नई locality/category/helper/duration fields के लिए backend contract चाहिए।
+- [x] Booking insert का प्रारंभिक status `new`, payment status `unpaid` है; offer queue database trigger बनाता है। Endpoint response में booking ID, offers count, match level और message आते हैं।
+- [x] 2026-11-09 migration (`014699d3190e45aacde4022ac7e7fa9ca4fec006`) में `srk_update_booking_work_status` केवल `inspection`, `in_progress`, `completed` स्वीकार करता है। `assigned → inspection` अनुमत है; `inspection → in_progress` नहीं। `in_progress` केवल `quote_approved` + `quote_status='approved'` से शुरू हो सकता है।
+- [x] उसी migration में `service_bookings` status constraint quote-specific states को शामिल करता है और assignment-required constraint post-assignment states पर लागू है। इसीलिए UI labels हटाना lifecycle transition को स्वतः quote-free नहीं बनाता।
+- [x] उसी migration में `srk_get_my_offer_details()` quote fields (`quoted_amount`, `service_charge`, `materials_amount`, `quote_status`, `quote_note`) return करता है। Technician app के offer/assigned details के लिए नया response contract या backward-compatible mapping जरूरी है।
+- [ ] Current approved branch की सभी migrations/functions में Technician app द्वारा उपयोग किए जा रहे `srk_get_my_offer_price_details`, `srk_get_my_assigned_booking_quote_details`, cash confirmation और earnings/wallet RPC की exact definitions व authorization rules का पूर्ण inventory अभी बाकी है। GitHub code search के कुछ results default branch के थे; उन्हें इस branch का प्रमाण नहीं माना जाएगा।
+- [ ] Backend owner/GPT-2 से नीचे दिया गया contract लिखित रूप में प्राप्त करें; तब तक quote-dependent start/payment UI change **Blocked** रहेगा।
+
+### Backend owner/GPT-2 को माँगा जाने वाला contract
+
+1. **Booking lifecycle:** assigned job को quotation के बिना inspect/start/pause/resume/complete करने के exact allowed states, RPC/API names, parameters, return JSON, authorization, duplicate/retry behavior और error codes।
+2. **Legacy compatibility:** पहले से मौजूद quote bookings किस तरह read-only रहेंगी; पुराने records को नए lifecycle में migrate/convert करना है या नहीं, यह backend owner स्पष्ट करे। Frontend स्वयं पुराने records/statuses rewrite नहीं करेगा।
+3. **Materials:** technician द्वारा parts/material line items जोड़ने का API, हर item का name/quantity/unit price/tax/total, customer approval/rejection/partial change flow, approval timestamp और final bill calculation। इसे quotation/counter-offer workflow न कहा जाए।
+4. **Final amount/payment:** backend-authoritative labour/rate snapshot + customer-approved materials + valid travel/other charges से final total; Customer app को payable amount और payment status किस API/RPC से मिलेगा।
+5. **Cash/online eligibility:** technician-ID के verified completed-booking count पर 1st/2nd cash-or-online, 3rd online-only और फिर repeat होने वाले cycle का server-authoritative response; client-side counter नहीं।
+6. **Razorpay:** order create, payment verify, webhook-confirmed status, failure/pending/refund response schema और idempotency key; केवल verified server result पर success UI।
+7. **Technician money:** cash collection confirmation, 85% technician / 15% company ledger, cash due, online settlement/payout request, payout status और UTR के RPC/API contracts। मौजूदा wallet को वास्तविक bank payout न समझें।
+8. **Dispatch/booking extensions:** six-category catalog, rate snapshots, technician skill/online/GPS/30 km matching, multi-day/helper/technician count और locality fields के exact accepted payload/response fields।
+9. **Ownership/security:** प्रत्येक endpoint की customer/technician ownership checks, approved-active technician rules, RLS/RPC grants, rate limits और audit trail।
+
+**इस चरण का निष्कर्ष:** Existing booking create/offer flow उपयोगी है और सुरक्षित रखना है। Quote UI को बाद में हटाया जा सकता है, लेकिन work-start और final payment का रास्ता backend contract के बिना सुरक्षित रूप से बदलना संभव नहीं। इस audit में कोई app Dart source, backend function, migration, database या production setting नहीं बदली गई।
