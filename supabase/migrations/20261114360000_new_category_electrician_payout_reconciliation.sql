@@ -144,6 +144,9 @@ declare
   v_expected_service numeric(12,2);
   v_expected_materials numeric(12,2);
   v_expected_commission numeric(12,2);
+  v_legacy_service numeric(12,2);
+  v_legacy_materials numeric(12,2);
+  v_legacy_quoted numeric(12,2);
 begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'Admin access required' using errcode = '42501';
@@ -231,40 +234,38 @@ begin
       raise exception 'Booking payment, labour bill or payout ledger does not match verified records; payout blocked';
     end if;
   else
-    -- Legacy approved-quote reconciliation remains unchanged.
-    if not exists (
-      select 1
-        from public.service_bookings b
-       where b.id = v_row.booking_id
-         and b.status = 'completed'
-         and b.quote_status = 'approved'
-         and b.payment_status = 'paid'
-         and b.payment_verified_at is not null
-         and (
-           (v_row.razorpay_payment_id is not null and b.razorpay_payment_id = v_row.razorpay_payment_id)
-           or (
-             v_row.razorpay_payment_id is null
-             and b.razorpay_payment_id is null
-             and exists (
-               select 1 from public.srk_manual_payment_entries e
-                where e.booking_id = b.id
-                  and round(coalesce(e.amount,0),2) = round(coalesce(b.amount_paid,0),2)
-             )
-           )
-         )
-         and b.assigned_electrician_id = v_row.electrician_profile_id
-         and round(coalesce(b.amount_paid,0),2) =
-             round(coalesce(b.service_charge,0) + coalesce(b.materials_amount,0),2)
-         and round(coalesce(v_row.gross_service_amount,0),2) = round(coalesce(b.service_charge,0),2)
-         and round(coalesce(v_row.materials_amount,0),2) = round(coalesce(b.materials_amount,0),2)
-         and round(coalesce(v_row.platform_commission,0),2) =
-             round(coalesce(b.service_charge,0) * b.commission_rate / 100,2)
-         and round(coalesce(v_row.electrician_payable,0),2) =
-             round(coalesce(b.service_charge,0) + coalesce(b.materials_amount,0)
-               - round(coalesce(b.service_charge,0) * b.commission_rate / 100,2),2)
-    ) then
-      raise exception 'Booking payment or payout ledger does not match verified booking; payout blocked';
-    end if;
+    -- Existing quote-era payout rows can be settled only against the private,
+    -- immutable historical archive; the live booking table has no quote fields.
+    EXECUTE 'SELECT service_charge,materials_amount,quoted_amount
+               FROM srk_private.legacy_booking_financial_evidence
+              WHERE booking_id=$1'
+      INTO v_legacy_service,v_legacy_materials,v_legacy_quoted
+      USING v_booking.id;
+    IF v_legacy_service IS NULL OR v_legacy_materials IS NULL THEN
+      RAISE EXCEPTION 'ARCHIVED_HISTORICAL_PAYOUT_EVIDENCE_MISSING';
+    END IF;
+    v_expected_service:=round(v_legacy_service,2);
+    v_expected_materials:=round(v_legacy_materials,2);
+    v_expected_commission:=round(v_expected_service*v_booking.commission_rate/100,2);
+    v_expected_amount:=v_expected_service+v_expected_materials;
+    IF v_booking.status<>'completed' OR v_booking.payment_status<>'paid'
+       OR v_booking.payment_verified_at IS NULL
+       OR v_booking.assigned_electrician_id IS DISTINCT FROM v_row.electrician_profile_id
+       OR round(coalesce(v_booking.amount_paid,0),2)<>v_expected_amount
+       OR (v_legacy_quoted IS NOT NULL AND round(v_legacy_quoted,2)<>v_expected_amount)
+       OR v_row.razorpay_payment_id IS DISTINCT FROM v_booking.razorpay_payment_id
+       OR round(coalesce(v_row.gross_service_amount,0),2)<>v_expected_service
+       OR round(coalesce(v_row.materials_amount,0),2)<>v_expected_materials
+       OR round(coalesce(v_row.platform_commission,0),2)<>v_expected_commission
+       OR round(coalesce(v_row.electrician_payable,0),2)<>round(v_expected_amount-v_expected_commission,2)
+       OR (v_booking.razorpay_payment_id IS NULL AND NOT EXISTS(
+          SELECT 1 FROM public.srk_manual_payment_entries e
+           WHERE e.booking_id=v_booking.id
+             AND round(e.amount,2)=round(v_booking.amount_paid,2)
+             AND lower(btrim(e.payment_method))=lower(btrim(v_booking.payment_method))
+       )) THEN
+      RAISE EXCEPTION 'Historical payout does not match archived financial evidence; payout blocked';
+    END IF;
   end if;
 
   update public.srk_electrician_payouts
