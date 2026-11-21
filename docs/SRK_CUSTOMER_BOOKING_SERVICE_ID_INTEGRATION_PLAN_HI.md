@@ -144,3 +144,13 @@ Backend staging response और API contract मिलने के बाद �
 - Existing `POST /api/create-booking` payload unchanged है।
 - कोई Supabase query/RPC, backend, database, payment, dispatch या production code नहीं बदला।
 - Flutter tests/analyzer/formatter/Android build/device tests इस चरण में execute/verify नहीं किए गए।
+
+## 9. नवीनतम Customer form preparation update (21-11-2026)
+
+- नया category picker Dashboard preview से हटाकर मौजूदा Customer Booking Form के अंदर रखा गया है।
+- Form state में `SrkServiceSelection?` draft selection रखा जाता है; चयन का display name और draft catalogue version दिखते हैं।
+- Picker को स्पष्ट रूप से preparation/preview बताया गया है। Backend approval से पहले यह booking payload में नहीं जाता।
+- मौजूदा legacy electrical `service_type` dropdown अभी भी मौजूद और required है, क्योंकि deployed create-booking endpoint अभी उसी field पर निर्भर है।
+- Existing customer details, OTP checks, date/time, work details, payment method, GPS, endpoint और response handling untouched हैं।
+- नया category picker अभी legacy `service_type` को auto-fill नहीं करता। ऐसा करने से AC/Fridge/Plumber आदि की booking गलत legacy dispatch path पर जा सकती है।
+- इसलिए यह form-level state/UI preparation है, live category booking integration नहीं।
