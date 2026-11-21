@@ -297,7 +297,7 @@ BEGIN
     v_id:=v_existing.id; v_before:=to_jsonb(v_existing); v_action:='updated';
     UPDATE public.srk_service_rates SET level_label=btrim(p_level_label),
       technician_hourly_paise=p_technician_hourly_paise,helper_hourly_paise=coalesce(p_helper_hourly_paise,0),
-      fixed_labour_paise=p_fixed_labour_paise,status=p_status,
+      fixed_labour_paise=p_fixed_labour_paise,status='pending_admin_configuration',
       effective_from=p_effective_from,effective_to=p_effective_to
     WHERE id=v_id RETURNING to_jsonb(srk_service_rates) INTO v_after;
   ELSE
@@ -332,6 +332,26 @@ END;
 $function$;
 REVOKE ALL ON FUNCTION public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.srk_admin_list_service_rates()
+RETURNS TABLE(
+  category_code text,skill_code text,service_code text,service_name text,billing_model text,
+  level_code text,level_label text,technician_hourly_paise bigint,helper_hourly_paise bigint,
+  fixed_labour_paise bigint,rate_version text,status text,effective_from timestamptz,effective_to timestamptz
+)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $function$
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
+  RETURN QUERY SELECT o.category_code,o.skill_code,o.service_code,o.display_name,o.billing_model,
+    r.level_code,r.level_label,r.technician_hourly_paise,r.helper_hourly_paise,r.fixed_labour_paise,
+    r.rate_version,r.status,r.effective_from,r.effective_to
+  FROM public.srk_service_offerings o
+  LEFT JOIN public.srk_service_rates r ON r.service_code=o.service_code
+  ORDER BY o.category_code,o.display_name,r.level_label,r.created_at DESC;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.srk_admin_list_service_rates() FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.srk_admin_list_service_rates() TO authenticated;
 
 -- Keep legacy booking history but prevent direct client writes to the new commercial snapshot.
 COMMENT ON TABLE public.srk_service_rates IS 'Versioned Admin-controlled labour rate catalogue. New bookings snapshot the active rate; historical booking snapshots never change.';
