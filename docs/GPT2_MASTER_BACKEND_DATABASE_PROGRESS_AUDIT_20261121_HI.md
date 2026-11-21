@@ -1,13 +1,13 @@
 # SRK ELECTRONIC — Backend / Database Progress Audit
 तारीख: 21-11-2026
 सुरक्षित Feature Branch: `feature/master-gst-accounting-20261121`
-Audit head: `43cef7f665a80ea5425f5d5381d8dbdfd14104e7`
+Audit head before this documentation refresh: `e956b735181bac6bf4b59ba1b305a8700b1f2d3e`
 Repository: `shahrukhkhan12136-bot/Srk-electranic-`
 
 ## सत्यापित स्थिति
 
 - इस branch पर Master backend के लिए migrations, RPCs, endpoint changes, API contracts और Node/pgTAP source tests मौजूद हैं।
-- नवीनतम GitHub Actions Node suite: **521 passed, 0 failed** (run `44894545415`).
+- नवीनतम GitHub Actions Node suite: **521 passed, 0 failed** (latest verified run `44894686674`, commit `e956b735181bac6bf4b59ba1b305a8700b1f2d3e`).
 - यह source/contract verification है; PostgreSQL migration replay, pgTAP runtime, full browser/E2E और Production readiness का प्रमाण नहीं।
 - Supabase Production migration history पुराने baseline पर है; 21-Nov के Master migrations Production में लागू नहीं हैं।
 - Vercel status में build rate-limit failure आया; कोई successful deployment प्रमाणित नहीं।
@@ -41,7 +41,7 @@ Repository: `shahrukhkhan12136-bot/Srk-electranic-`
 
 ## Latest 21-Nov change details
 
-Migration: `supabase/migrations/20261121250000_master_technician_rates_and_two_way_ratings.sql`
+Migration: `supabase/migrations/20261121250000_master_technician_rates_and_two_way_ratings.sql` (latest source revision `e956b735181bac6bf4b59ba1b305a8700b1f2d3e`)
 
 - Adds Admin-assigned approved skill level.
 - Adds Technician own-skill 85% rate-list RPC and all-category 85% reference RPC; the latter is informational only and does not grant work eligibility.
