@@ -628,3 +628,15 @@
 - [ ] Canonical model बनने के बाद tests को IDs, category order, AC/Fridge isolation, Plumber/Painter options, fixed-vs-hourly pricing metadata और unknown/unpriced options पर बढ़ाया जाए।
 
 **स्थिति:** यह source-code inspection और documentation update है। इस चरण में Flutter UI/model source, booking submit, backend, database, payment या production behavior नहीं बदला गया। Flutter format/analyze/test/build अभी execute नहीं हुए।
+
+
+## 2P. Shared catalogue test coverage और पुराने requirements की cross-check (2026-11-21)
+
+- [x] पुराने source-of-truth Master Requirements और project progress दस्तावेज़ में Plumber/Painter के लिए कोई स्पष्ट, owner-approved विस्तृत task/subcategory catalogue इस खोज में नहीं मिला; इसलिए सूची अनुमान से नहीं बनाई गई।
+- [x] Shared catalogue के लिए `packages/srk_mobile_core/test/srk_service_catalog_test.dart` में tests जोड़े: छह category order, AC/Fridge separation, Plumber/Painter task-list gap, Motor & Pump fixed HP winding rates, Cooler ₹500 fixed repair/materials note।
+- [x] Flutter CI workflow में shared core के `dart analyze` के बाद `flutter test` step जोड़ा; Customer app tests पहले से अलग step में हैं।
+- [ ] Shared core और Customer app tests अभी केवल workflow में wired हैं; workflow dispatch/run और test result अभी उपलब्ध नहीं।
+- [ ] Tests pass होने के बाद अगला चरण canonical IDs/rate version contract के आधार पर shared catalogue को Customer picker का एकमात्र data source बनाना होगा। अभी picker को सीधे बदलना या live booking से जोड़ना सुरक्षित नहीं।
+- [ ] Backend owner से Plumber/Painter की approved subcategory list मिलने तक दोनों की विस्तृत service navigation अधूरी रहेगी।
+
+**स्थिति:** Test source और CI workflow update commit हुए हैं; Flutter SDK execution, analyzer, widget/unit test result और Android build का कोई दावा नहीं।
