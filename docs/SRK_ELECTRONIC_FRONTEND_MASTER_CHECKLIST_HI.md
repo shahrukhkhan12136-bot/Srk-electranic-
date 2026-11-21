@@ -1601,3 +1601,37 @@ Founder ने बाजार-दर तुलना के बाद नीच
 - [ ] Complaint/support history, customer rating/review और cancellation/dispute resolution की technician-side screen इस source audit में नहीं मिली।
 - [ ] नए catalogue skill-level/task picker को Technician Dashboard में जोड़ना और offer eligibility में लागू करना backend API/version contract के बाद ही होगा।
 - [ ] यह coverage audit है, feature implementation नहीं। इस चरण में केवल checklist बदली गई; app source, backend, database और production settings नहीं बदले गए। Flutter tests/analyzer/build इस चरण में नहीं चलाए गए।
+
+## 2BS. Founder का अंतिम निर्णय — Quotation System पूरी तरह बंद करना (21-11-2026)
+
+**Founder का स्पष्ट निर्देश:** SRK ELECTRONIC में quotation / counter-offer workflow नहीं रहेगा। इसे केवल UI से छिपाना नहीं है; नई booking और नए काम के पूरे lifecycle में इसकी functional dependency हटानी है। यह निर्णय पुराने 2C/2D audit में लिखे “quote-free बदलाव contract मिलने तक Blocked” से आगे का product decision है; backend implementation फिर भी GPT-2 के ownership में है।
+
+### नया product rule
+- [x] Customer और Technician के बीच quotation, counter-offer, quote approval/rejection और quote के इंतजार वाला चरण नहीं रहेगा।
+- [x] Labour/service price approved shared catalogue और booking के समय सुरक्षित rate snapshot से तय होगा; Technician ग्राहक से मनमाना quotation नहीं माँगेगा।
+- [x] Parts/materials को quotation workflow में नहीं मिलाना है। आवश्यक सामग्री की item-wise सूची, मात्रा और कीमत अलग दिखाई जा सकती है; ग्राहक की स्पष्ट मंजूरी के बाद ही final bill में शामिल हो। इसे quote/counter-offer नाम या lifecycle न दिया जाए।
+- [x] Final payable amount backend द्वारा तय होगा; app केवल server से मिली final amount/payment status दिखाएगा।
+- [ ] पुराने quotation records/statuses का migration, archive या read-only compatibility GPT-2 तय करेगा; पुराने records को frontend से delete/rewrite नहीं करना है।
+
+### GPT-2 — अनिवार्य backend replacement (इस पर frontend निर्भर)
+1. assigned → inspection → in_progress → completed का quote-free server-authoritative lifecycle बनाना; quote_approved/awaiting_quote_approval पर कोई निर्भरता नहीं।
+2. Technician start/complete और Customer booking status के नए RPC/API names, parameters, response JSON, authorization, retry/idempotency और error codes देना।
+3. Existing assigned-booking quote-details RPC को सुरक्षित तरीके से replace/rename या backward-compatible बनाना; इसमें assigned-job address/contact privacy checks कायम रहें।
+4. Cash confirmation और online payment eligibility को quoted_amount/quote_status से अलग करके backend-authoritative final bill से जोड़ना।
+5. Catalogue labour rate snapshot, helper selection, approved materials line items, travel/other valid charges और final total की server calculation देना।
+6. Legacy quotation rows और पुराने bookings के लिए migration/compatibility strategy देना; destructive column/function/constraint removal बिना data-impact audit न हो।
+7. Exact deployed API contract और migration commit साझा करना ताकि Customer और Technician UI को सही तरीके से बदला जा सके।
+
+### GPT-1 — Frontend scope
+- [ ] Customer App से quotation display, approval/rejection buttons, quote status labels और quote-specific wording हटाना।
+- [ ] Technician App से quotation submission/counter-offer form, quote-specific price cards/status labels और quote approval wait हटाना।
+- [ ] Quote-specific RPC/field references को नए backend contract से बदलना; केवल शब्द बदलकर पुराने quote RPC को पीछे से call नहीं करना।
+- [ ] Customer और Technician दोनों में item-wise materials approval तथा server final bill UI केवल GPT-2 contract मिलने के बाद जोड़ना।
+- [ ] पुराने bookings की compatibility और नए quote-free bookings दोनों के widget/integration tests करना।
+- [ ] Flutter format, analyzer, tests और Android builds चलाकर वास्तविक परिणाम दर्ज करना।
+
+### सुरक्षा / वर्तमान स्थिति
+- [x] इस commit में केवल यह product decision और owner handoff checklist में दर्ज है।
+- [x] Customer/Technician Dart source, database, migrations, RPCs, API functions, payment settings और production data अभी नहीं बदले गए।
+- [ ] पूर्ण quotation removal अभी **Backend contract pending** है: वर्तमान backend में in_progress transition quote_approved + quote_status=approved पर निर्भर है और cash confirmation quoted_amount पढ़ता है। Contract बदलने से पहले UI/field काटना booking lifecycle तोड़ सकता है।
+- [ ] GPT-2 contract मिलने के बाद पहले backend migration deploy/verify हो; उसके बाद frontend source से quote flow हटे। Legacy data deletion अलग approval और backup के बिना नहीं होगी।
