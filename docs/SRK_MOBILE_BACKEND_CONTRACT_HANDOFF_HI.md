@@ -217,3 +217,23 @@ Please return, in writing:
 - Added unit tests for current-state mapping, legacy-state identification, completed terminal display and unknown/missing states.
 - The helper is not wired into the live dashboard and does not define or authorize transitions. No RPC, database, payment, offer, booking or production behavior changed.
 - Backend must still provide and deploy the quote-free status enum/transition table, customer work-start/completion confirmation, independent materials approval, duplicate-safe payment/cash and historical quote-booking compatibility before the frontend can safely replace current quote-dependent screens/actions.
+
+
+## 14. Customer ↔ Technician start/completion confirmation gap (21 Nov 2026)
+
+### Existing frontend evidence
+- Customer app reads booking status/payment/quote fields from `service_bookings`. It can approve/reject only the legacy pending quote, cancel only new/confirmed bookings, create complaints, view assigned Technician contact and pay online only when the booking is completed, unpaid and quote-approved.
+- Customer app currently has no separate customer confirmation action/RPC for work-start or work-completion.
+- Technician app can move assigned → inspection; only legacy quote_approved → in_progress; and in_progress → completed. Cash confirmation remains tied to completed cash bookings and the backend's quote approval requirement.
+- Preserve map navigation, authorized contacts, itemized labour/material/total visibility, cancellation restrictions, complaint/support, payment verification, earnings and wallet unless an approved replacement is implemented.
+
+### Required quote-free cross-app contract
+1. Backend publishes new lifecycle statuses and an explicit transition/authorization matrix, including compatibility for historical quote-based bookings.
+2. Technician submits a work-start request; only the owning Customer can confirm it. Server starts the timer using server time only after confirmation.
+3. Technician submits completion request; owning Customer receives a completion summary and can confirm or raise a dispute. Backend defines timeout, dispute and Admin override behavior before UI is built.
+4. Material/parts requests are itemized and approved separately by Customer; this must not recreate quote/counter-offer states.
+5. Every transition validates booking ownership, assigned Technician, active verified skill, current status/version and idempotency key server-side. Duplicate taps/retries must not duplicate timer events, completion or charges.
+6. Final bill response separates labour, approved materials, other applicable charges and total; payment eligibility/method and receipt are server-authoritative.
+7. Preserve or explicitly replace existing cancellation, complaints, privacy-guarded contacts, payment verification, earnings and wallet behaviors in the transition matrix.
+
+**Frontend gate:** Do not add Customer confirmation buttons or alter Technician status buttons against current RPCs. The exact replacement RPCs, payloads, states and error contracts must first be deployed/tested by backend owner. This audit changes no app runtime, backend, database, payment or production behavior.
