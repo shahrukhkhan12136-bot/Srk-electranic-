@@ -306,7 +306,8 @@ test('Master booking idempotency replay uses the saved rate snapshot even after 
     srk_rate_level_code: 'basic',
     srk_duration_minutes: 120,
     srk_service_quantity: 1,
-    srk_required_technician_count: 1
+    srk_required_technician_count: 1,
+    srk_helper_included: true
   })));
   assert.equal(result.statusCode, 200);
   assert.equal(JSON.parse(result.body).replayed, true);
