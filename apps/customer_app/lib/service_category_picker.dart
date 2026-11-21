@@ -185,10 +185,19 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
               return ActionChip(
                 label: Text(task),
                 onPressed: () {
-                  final sourceCategory = catalog.srkServiceCatalog.singleWhere((item) => item.id == category!.id);
-                  final sourceSubcategory = sourceCategory.options.singleWhere((item) => item.id == subcategory.id);
-                  final sourceTask = sourceSubcategory.tasks.singleWhere((item) => item.name == task);
-                  final selection = SrkServiceSelection.create(categoryId: category.id, subcategoryId: subcategory.id, taskId: sourceTask.id);
+                  final selectedCategory = category;
+                  if (selectedCategory == null) return;
+                  final sourceCategory = catalog.srkServiceCatalog
+                      .singleWhere((item) => item.id == selectedCategory.id);
+                  final sourceSubcategory = sourceCategory.options
+                      .singleWhere((item) => item.id == subcategory.id);
+                  final sourceTask = sourceSubcategory.tasks
+                      .singleWhere((item) => item.name == task);
+                  final selection = SrkServiceSelection.create(
+                    categoryId: selectedCategory.id,
+                    subcategoryId: subcategory.id,
+                    taskId: sourceTask.id,
+                  );
                   if (selection != null) widget.onSelection(selection);
                 },
               );
