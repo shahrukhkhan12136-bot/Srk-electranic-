@@ -1683,7 +1683,7 @@ Founder ने बाजार-दर तुलना के बाद नीच
 ### Frontend और Backend लागू करने की शर्तें
 - [ ] GPT-2 backend electrician-wise booking sequence/counter का authoritative source दे और server-side पर हर तीसरी booking के लिए Online payment enforce करे। केवल app में Cash button छिपाना पर्याप्त नहीं है।
 - [ ] Backend contract में स्पष्ट ہو कि sequence किस event पर आगे بڑھے گا (مثلاً booking create/accept/complete) اور cancellation/failure/refund پر count کیسے ہوگا؛ اس کی पुष्टि کے بغیر frontend خود count نہیں کرے گا۔
-- [ ] Booking/payment API response میں اگلی booking کا sequence number، allowed payment methods اور online-required reason واضح طور پر ملے؛ Customer app اسی server response کے مطابق payment options دکھائے۔
-- [ ] اگر किसी booking पर Online अनिवार्य है, तो Cash selection को API/backend भी reject करे; UI bypass या पुराने app version से rule टूटना नहीं चाहिए।
+- [ ] Booking/payment API response में अगली बुकिंग का क्रमांक, स्वीकार्य भुगतान तरीके और ऑनलाइन भुगतान अनिवार्य होने का कारण स्पष्ट रूप से मिले; Customer app उसी server response के अनुसार भुगतान विकल्प दिखाए।
+- [ ] जिस बुकिंग पर Online भुगतान अनिवार्य है, उस पर API/backend भी Cash विकल्प अस्वीकार करे; UI bypass या पुराने app version से नियम नहीं टूटना चाहिए।
 - [ ] Payment failure/cancel होने पर booking और sequence की स्थिति backend के तय नियम के अनुसार रहे; duplicate booking/payment attempt से counter गलत न बढ़े।
 - [ ] यह नियम अभी checklist/product requirement है; इस commit में Customer/Technician source, backend, database, payment settings या production data नहीं बदले गए। Tests/build नहीं चलाए गए।
