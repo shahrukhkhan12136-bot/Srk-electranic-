@@ -19,6 +19,8 @@ test('Technician cash refund inbox is limited to own assigned approved requests'
  assert.match(migration,/p\.technician_id=v_tid/);
  assert.match(migration,/r\.status='approved'/);
  assert.match(technician,/srk_technician_list_master_cash_refund_tasks/);
+ assert.match(technician,/commission_refund_credit_available_paise/);
+ assert.match(technician,/Cash Refund Commission Credit History/);
 });
 test('Cash refund finalization validates tax-inclusive total and preserves commission reversal',()=>{
  assert.match(migration,/t\.total_due_paise/);
