@@ -32,8 +32,35 @@ exports.handler = async function () {
       console.error("Offer expiry RPC returned an unexpected response.");
       return { statusCode: 502, body: "Unexpected offer expiry response" };
     }
-    console.log("Expired electrician offers advanced:", expiredCount);
-    return { statusCode: 200, body: JSON.stringify({ success: true, advanced: expiredCount }) };
+    // Backward-compatible rollout: before the category-neutral dispatch migration is applied,
+    // PostgREST returns 404 for the new RPC. Keep the legacy Electrician worker healthy.
+    let technicianDispatch = { available: false, processed: 0, offers_sent: 0, waiting_for_eligible_technician: 0 };
+    const dispatchResponse = await fetch(
+      (supabaseUrl.endsWith("/") ? supabaseUrl.slice(0, -1) : supabaseUrl) + "/rest/v1/rpc/srk_dispatch_process_pending_queue",
+      {
+        method: "POST",
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: "Bearer " + serviceRoleKey,
+          "Content-Type": "application/json"
+        },
+        body: "{}",
+        signal: AbortSignal.timeout(10000)
+      }
+    );
+    if (dispatchResponse.ok) {
+      const dispatchBody = await dispatchResponse.json();
+      technicianDispatch = { available: true, ...dispatchBody };
+    } else if (dispatchResponse.status !== 404) {
+      console.error("Technician dispatch queue RPC failed with HTTP", dispatchResponse.status);
+      return { statusCode: 502, body: "Technician dispatch queue RPC failed" };
+    }
+
+    console.log("Expired electrician offers advanced:", expiredCount,
+      "Technician dispatch requests processed:", technicianDispatch.processed || 0);
+    return { statusCode: 200, body: JSON.stringify({
+      success: true, electrician_offers_advanced: expiredCount, technician_dispatch: technicianDispatch
+    }) };
   } catch (error) {
     console.error("Offer expiry worker request failed:", error && error.name ? error.name : "unknown");
     return { statusCode: 502, body: "Offer expiry worker request failed" };
