@@ -7,6 +7,7 @@ const bookingUi = fs.readFileSync(path.join(__dirname, '..', 'booking.html'), 'u
 process.env.SUPABASE_URL = 'https://supabase.test';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-test';
 process.env.SRK_MASTER_BOOKING_ENABLED = 'true';
+process.env.SRK_LEGACY_ELECTRICIAN_BOOKING_ENABLED = 'true';
 
 const { handler } = require('../create-booking');
 
@@ -155,6 +156,17 @@ test('booking phone is derived from OTP-verified Auth and ignores forged or miss
   const insertedWithoutPhone = callsWithoutPhone.find(call => call.method === 'POST' && call.target.endsWith('/service_bookings'));
   assert.ok(insertedWithoutPhone);
   assert.equal(JSON.parse(insertedWithoutPhone.body)[0].phone, '9876543210');
+});
+
+test('old hard-coded Electrician rate card is retired for new bookings unless explicitly enabled for compatibility tests', async () => {
+  const prior = process.env.SRK_LEGACY_ELECTRICIAN_BOOKING_ENABLED;
+  delete process.env.SRK_LEGACY_ELECTRICIAN_BOOKING_ENABLED;
+  const calls = mockSupabase();
+  const result = await handler(event());
+  assert.equal(result.statusCode, 503);
+  assert.equal(JSON.parse(result.body).code, 'LEGACY_BOOKING_RATE_CARD_RETIRED');
+  assert.equal(calls.some(call => call.target.includes('/rest/v1/service_bookings')), false);
+  process.env.SRK_LEGACY_ELECTRICIAN_BOOKING_ENABLED = prior || 'true';
 });
 
 test('Master booking stays disabled until the complete timer/payment backend is explicitly enabled', async () => {
