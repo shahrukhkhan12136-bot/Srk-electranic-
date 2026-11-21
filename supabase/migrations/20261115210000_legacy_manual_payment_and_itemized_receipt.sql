@@ -22,13 +22,16 @@ COMMENT ON TABLE srk_private.legacy_booking_financial_evidence IS
 INSERT INTO srk_private.legacy_booking_financial_evidence
   (booking_id,quoted_amount,service_charge,materials_amount,quote_status,quote_note,
    quote_submitted_at,quote_responded_at,customer_suggested_amount,electrician_quote_kind)
-SELECT id,quoted_amount,service_charge,materials_amount,quote_status,quote_note,
-       quote_submitted_at,quote_responded_at,customer_suggested_amount,electrician_quote_kind
-FROM public.service_bookings
-WHERE quoted_amount IS NOT NULL OR service_charge IS NOT NULL OR materials_amount IS DISTINCT FROM 0
-   OR quote_status IS DISTINCT FROM 'not_submitted' OR quote_note IS NOT NULL
-   OR quote_submitted_at IS NOT NULL OR quote_responded_at IS NOT NULL
-   OR customer_suggested_amount IS NOT NULL OR electrician_quote_kind IS NOT NULL
+SELECT b.id,b.quoted_amount,b.service_charge,b.materials_amount,b.quote_status,b.quote_note,
+       b.quote_submitted_at,b.quote_responded_at,
+       nullif(to_jsonb(b)->>'customer_suggested_amount','')::numeric(12,2),
+       to_jsonb(b)->>'electrician_quote_kind'
+FROM public.service_bookings b
+WHERE b.quoted_amount IS NOT NULL OR b.service_charge IS NOT NULL OR b.materials_amount IS DISTINCT FROM 0
+   OR b.quote_status IS DISTINCT FROM 'not_submitted' OR b.quote_note IS NOT NULL
+   OR b.quote_submitted_at IS NOT NULL OR b.quote_responded_at IS NOT NULL
+   OR nullif(to_jsonb(b)->>'customer_suggested_amount','') IS NOT NULL
+   OR to_jsonb(b)->>'electrician_quote_kind' IS NOT NULL
 ON CONFLICT (booking_id) DO NOTHING;
 
 -- No new legacy/manual payment can be recorded through the retired quote flow.
