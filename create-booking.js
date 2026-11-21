@@ -138,6 +138,7 @@ exports.handler = async (event) => {
       ? 1 : Number(body.srk_service_quantity);
     const masterRequiredTechnicians = body.srk_required_technician_count == null || body.srk_required_technician_count === ""
       ? 1 : Number(body.srk_required_technician_count);
+    const masterHelperIncluded = body.srk_helper_included === true;
     const isMasterBooking = Boolean(masterServiceCode || masterRateLevelCode);
     const selected_category = isMasterBooking ? null : clean(body.selected_category, 40);
     const selected_rate_tier = isMasterBooking ? null : clean(body.selected_rate_tier, 40);
@@ -180,7 +181,8 @@ const work_details = clean(body.work_details, 2000);
         (isMasterBooking
           ? (!masterServiceCode || !masterRateLevelCode ||
              !Number.isInteger(masterRequiredTechnicians) || masterRequiredTechnicians < 1 || masterRequiredTechnicians > 10 ||
-             !Number.isInteger(masterServiceQuantity) || masterServiceQuantity < 1 || masterServiceQuantity > 100)
+             !Number.isInteger(masterServiceQuantity) || masterServiceQuantity < 1 || masterServiceQuantity > 100 ||
+             (body.srk_helper_included != null && typeof body.srk_helper_included !== "boolean"))
           : (!service_type ||
              !["home_wiring", "electrical_repair", "light_fan_fitting", "home_repair", "other"].includes(selected_category) ||
              !Object.prototype.hasOwnProperty.call(legacyRateCard, selected_rate_tier) ||
@@ -206,11 +208,12 @@ const work_details = clean(body.work_details, 2000);
       ...(isMasterBooking ? {
         srk_service_code: masterServiceCode, srk_rate_level_code: masterRateLevelCode,
         srk_duration_minutes: masterDurationMinutes, srk_service_quantity: masterServiceQuantity,
-        srk_required_technician_count: masterRequiredTechnicians
+        srk_required_technician_count: masterRequiredTechnicians,
+        srk_helper_included: masterHelperIncluded
       } : {})
     })).digest("hex");
     const findByRequestKey = () => supabase(
-      "service_bookings?select=id,customer_user_id,customer_request_fingerprint,srk_estimated_labour_paise,srk_rate_version_snapshot,srk_billing_model_snapshot,srk_technician_hourly_paise_snapshot,srk_helper_hourly_paise_snapshot,srk_fixed_labour_paise_snapshot&customer_request_key=eq." + encodeURIComponent(idempotencyKey),
+      "service_bookings?select=id,customer_user_id,customer_request_fingerprint,srk_estimated_labour_paise,srk_rate_version_snapshot,srk_billing_model_snapshot,srk_technician_hourly_paise_snapshot,srk_helper_hourly_paise_snapshot,srk_helper_included_snapshot,srk_required_technician_count,srk_fixed_labour_paise_snapshot&customer_request_key=eq." + encodeURIComponent(idempotencyKey),
       { method: "GET" }
     );
     const existingRows = await findByRequestKey();
@@ -234,7 +237,9 @@ const work_details = clean(body.work_details, 2000);
             helper_hourly_paise: existing.srk_helper_hourly_paise_snapshot,
             technician_8h_paise: existing.srk_technician_hourly_paise_snapshot == null ? null : Number(existing.srk_technician_hourly_paise_snapshot) * 8,
             helper_8h_paise: existing.srk_helper_hourly_paise_snapshot == null ? null : Number(existing.srk_helper_hourly_paise_snapshot) * 8,
-            combined_8h_paise: existing.srk_technician_hourly_paise_snapshot == null ? null : (Number(existing.srk_technician_hourly_paise_snapshot) + Number(existing.srk_helper_hourly_paise_snapshot)) * 8,
+            combined_8h_paise: existing.srk_technician_hourly_paise_snapshot == null ? null : (Number(existing.srk_technician_hourly_paise_snapshot) + (existing.srk_helper_included_snapshot ? Number(existing.srk_helper_hourly_paise_snapshot) : 0)) * 8,
+            helper_included: existing.srk_helper_included_snapshot === true,
+            required_technician_count: existing.srk_required_technician_count,
             fixed_labour_paise: existing.srk_fixed_labour_paise_snapshot } : {}) },
         offers_created: priorOfferRows.length, match_level: priorOfferRows[0]?.match_level || null,
         message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
@@ -261,12 +266,13 @@ const work_details = clean(body.work_details, 2000);
         const technicianHourly = Number(masterRate.technician_hourly_paise);
         const helperHourly = Number(masterRate.helper_hourly_paise);
         if (!Number.isSafeInteger(technicianHourly) || !Number.isSafeInteger(helperHourly) ||
-            technicianHourly < 0 || helperHourly < 0 || technicianHourly + helperHourly <= 0) {
+            technicianHourly <= 0 || helperHourly < 0 || (masterHelperIncluded && helperHourly <= 0)) {
           throw new Error("Invalid active hourly rate configuration");
         }
-        estimatedLabourPaise = Math.floor(((technicianHourly + helperHourly) * masterDurationMinutes) / 60 + 0.5);
+        const selectedHourly = technicianHourly + (masterHelperIncluded ? helperHourly : 0);
+        estimatedLabourPaise = Math.floor((selectedHourly * masterRequiredTechnicians * masterDurationMinutes) / 60 + 0.5);
       } else if (masterRate.billing_model === "fixed_per_unit") {
-        if (masterDurationMinutes !== null || !Number.isSafeInteger(Number(masterRate.fixed_labour_paise)) ||
+        if (masterHelperIncluded || masterDurationMinutes !== null || !Number.isSafeInteger(Number(masterRate.fixed_labour_paise)) ||
             Number(masterRate.fixed_labour_paise) <= 0) {
           return json(400, { success: false, error: "Fixed-price सेवा के लिए अवधि नहीं, सही quantity चुनें।" });
         }
@@ -304,6 +310,7 @@ const work_details = clean(body.work_details, 2000);
             srk_billing_model_snapshot: masterRate.billing_model,
             srk_technician_hourly_paise_snapshot: masterRate.billing_model === "hourly" ? Number(masterRate.technician_hourly_paise) : null,
             srk_helper_hourly_paise_snapshot: masterRate.billing_model === "hourly" ? Number(masterRate.helper_hourly_paise) : null,
+            srk_helper_included_snapshot: masterRate.billing_model === "hourly" ? masterHelperIncluded : false,
             srk_fixed_labour_paise_snapshot: masterRate.billing_model === "fixed_per_unit" ? Number(masterRate.fixed_labour_paise) : null,
             srk_estimated_labour_paise: estimatedLabourPaise,
             srk_duration_minutes: masterRate.billing_model === "hourly" ? masterDurationMinutes : null,
