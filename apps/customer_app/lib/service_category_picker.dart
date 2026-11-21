@@ -13,12 +13,14 @@ class SrkServiceCategory {
     required this.title,
     required this.icon,
     this.subcategories = const [],
+    this.skillLevels = const [],
   });
 
   final String id;
   final String title;
   final IconData icon;
   final List<SrkServiceSubcategory> subcategories;
+  final List<catalog.SrkServiceOption> skillLevels;
 }
 
 class SrkServiceSubcategory {
@@ -59,6 +61,7 @@ final List<SrkServiceCategory> srkServiceCategories =
               children: option.tasks.map((task) => task.name).toList(),
             ))
         .toList(),
+    skillLevels: category.skillLevels,
   );
 }).toList();
 
@@ -80,6 +83,8 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   SrkServiceCategory? _category;
   SrkServiceSubcategory? _subcategory;
   String? _selectedTaskId;
+  catalog.SrkServiceOption? _selectedSkillLevel;
+  String? _selectedSkillTaskId;
 
   void _selectCategory(SrkServiceCategory category) {
     widget.onSelection(null);
@@ -87,6 +92,8 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       _category = category;
       _subcategory = null;
       _selectedTaskId = null;
+      _selectedSkillLevel = null;
+      _selectedSkillTaskId = null;
     });
     if (category.subcategories.isEmpty) {
       final selection = SrkServiceSelection.create(categoryId: category.id);
@@ -116,6 +123,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     final category = _category;
     final subcategory = _subcategory;
     final tasks = subcategory?.children ?? const <String>[];
+    final selectedSkillLevel = _selectedSkillLevel;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,6 +172,50 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
             );
           },
         ),
+        if (category != null && category.skillLevels.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          Text('कारीगर का स्तर चुनें',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: category.skillLevels.map((level) {
+              return ChoiceChip(
+                label: Text(level.name),
+                selected: selectedSkillLevel?.name == level.name,
+                onSelected: (_) {
+                  widget.onSelection(null);
+                  setState(() {
+                    _selectedSkillLevel = level;
+                    _selectedSkillTaskId = null;
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          if (selectedSkillLevel != null &&
+              selectedSkillLevel.tasks.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text('इस स्तर के काम / क्षमताएँ',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: selectedSkillLevel.tasks.map((task) {
+                return FilterChip(
+                  label: Text(task.name),
+                  selected: _selectedSkillTaskId == task.id,
+                  onSelected: (_) {
+                    widget.onSelection(null);
+                    setState(() => _selectedSkillTaskId = task.id);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ],
         if (category != null && category.subcategories.isNotEmpty) ...[
           const SizedBox(height: 18),
           Text(category.id == 'ac_fridge' ? 'AC या फ्रिज चुनें' : 'काम चुनें',
