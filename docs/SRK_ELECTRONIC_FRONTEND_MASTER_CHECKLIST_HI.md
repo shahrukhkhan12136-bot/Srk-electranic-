@@ -1046,3 +1046,14 @@
 
 ## Owner correction — commission base clarified (21-11-2026)
 **Controlling rule:** 15% commission is charged only on service charge/labour; Technician receives 85% of service charge/labour. Materials/parts carry 0% company commission/platform fee and remain outside the commission base. Example: ₹600 labour + ₹400 materials → ₹90 company commission, ₹510 technician labour share, ₹400 materials separately. This supersedes earlier full-payment commission wording in this document. No live payment code is changed by this documentation correction.
+
+
+## 2AM. Commission rate/default और legacy payout trigger audit (21-11-2026)
+
+- [x] Feature-branch migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` में `srk_calculate_booking_commission()` paid + completed booking पर `round(service_charge * commission_rate / 100, 2)` निकालता है; `materials_amount` सीधे formula में नहीं है।
+- [x] Base schema snapshots `SUPABASE_SCHEMA.sql` और `COMPLETE_DATABASE_SETUP.sql` में `commission_rate` default 15.00 और 0–100 constraint दिखता है।
+- [ ] Default 15.00 से यह सिद्ध नहीं होता कि हर existing/production booking पर persisted commission_rate 15 है। Historical rows और live production values की read-only reconciliation बाकी है।
+- [ ] Root legacy `PORTAL_SCHEMA.sql` में पुराना trigger `quoted_amount * commission_rate / 100` करता है; वह labour + materials total को commission base बना सकता है। यह legacy snapshot है, वर्तमान deployed trigger का प्रमाण नहीं; deployed trigger/function definition की पुष्टि जरूरी है।
+- [ ] एक अलग source-only branch की 18-Nov financial-visibility migration earnings view में immutable labour bill से provisional 15%/85% निकालती है, लेकिन existing commission/payout triggers को rewrite नहीं करती। इसलिए उस source migration का होना actual paid commission trigger का प्रमाण नहीं है; current approved feature branch में file उपलब्ध भी नहीं थी।
+- [ ] Final acceptance test: service ₹600 + materials ₹400, rate 15% → company commission ₹90; technician labour share ₹510; materials ₹400 पर commission ₹0। साथ में 0/negative/legacy rate, cash, Razorpay, partial/full refund और duplicate webhook cases।
+- [ ] No production query, SQL execution, migration, payout or payment mutation performed. Runtime code unchanged.
