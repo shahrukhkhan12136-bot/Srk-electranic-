@@ -675,7 +675,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         const SizedBox(height: 4),
         Text('भुगतान का तरीका', style: Theme.of(context).textTheme.titleMedium),
         DropdownButtonFormField<String>(value: _paymentMethod, decoration: _decoration('भुगतान चुनें'), items: const [DropdownMenuItem(value: 'cash', child: Text('नकद (काम पूरा होने पर)')), DropdownMenuItem(value: 'online', child: Text('ऑनलाइन (UPI / कार्ड / नेट बैंकिंग)'))], onChanged: (v) => setState(() => _paymentMethod = v ?? 'cash')),
-        const Text('ऑनलाइन भुगतान केवल काम पूरा होने और कोटेशन मंजूर होने के बाद होगा। कोई अग्रिम भुगतान नहीं।'),
+        const Text('भुगतान की अनुमति बुकिंग की स्थिति और सर्वर की पुष्टि के बाद ही मिलेगी। अभी कोई अग्रिम भुगतान नहीं।'),
         Text('काम की जानकारी', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
