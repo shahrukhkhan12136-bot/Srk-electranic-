@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:srk_customer_app/service_category_picker.dart';
-import 'package:srk_mobile_core/srk_service_catalog.dart';
+import 'package:srk_mobile_core/srk_service_catalog.dart' as catalog;
 
 void main() {
   group('SRK service category picker', () {
@@ -32,7 +32,7 @@ void main() {
       for (final pickerCategory in srkServiceCategories) {
         final catalogName = categoryToCatalogName[pickerCategory.id];
         expect(catalogName, isNotNull);
-        final catalogCategory = srkServiceCatalog.singleWhere(
+        final catalogCategory = catalog.srkServiceCatalog.singleWhere(
           (item) => item.name == catalogName,
         );
         expect(
