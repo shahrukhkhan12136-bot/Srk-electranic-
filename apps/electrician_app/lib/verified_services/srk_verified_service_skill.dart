@@ -86,21 +86,24 @@ class SrkVerifiedServiceSkill {
       return null;
     }
 
-    final category = catalog.srkServiceCatalog
+    final categories = catalog.srkServiceCatalog
         .where((item) => item.id == parsed.categoryId)
-        .firstOrNull;
-    if (category == null) return null;
+        .toList();
+    if (categories.length != 1) return null;
+    final category = categories.single;
 
-    final subcategory = category.options
+    final subcategories = category.options
         .where((item) => item.id == parsed.subcategoryId)
-        .firstOrNull;
-    if (subcategory == null) return null;
+        .toList();
+    if (subcategories.length != 1) return null;
+    final subcategory = subcategories.single;
 
     final taskId = parsed.taskId;
-    final task = taskId == null
-        ? null
-        : subcategory.tasks.where((item) => item.id == taskId).firstOrNull;
-    if (taskId != null && task == null) return null;
+    final tasks = taskId == null
+        ? const <catalog.SrkServiceTask>[]
+        : subcategory.tasks.where((item) => item.id == taskId).toList();
+    if (taskId != null && tasks.length != 1) return null;
+    final task = tasks.isEmpty ? null : tasks.single;
 
     return SrkVerifiedServiceSkill(
       categoryId: category.id,
