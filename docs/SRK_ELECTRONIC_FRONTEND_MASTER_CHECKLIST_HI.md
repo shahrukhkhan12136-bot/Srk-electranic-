@@ -903,3 +903,30 @@
 - [ ] इस source audit में Flutter widget tests, analyzer, formatter, Supabase integration test या Android build execute नहीं हुए।
 
 **सीमा:** इस audit में Customer runtime code, booking lifecycle, cancellation/complaint RPC, contacts, payment, Supabase, backend, database या production नहीं बदले। निष्कर्ष source inspection पर आधारित हैं।
+
+
+## 2AJ. Technician Offer Inbox और Accept/Reject compatibility audit (2026-11-21)
+
+### मौजूदा frontend व्यवहार
+- [x] Technician OTP login Supabase phone OTP से होता है।
+- [x] Profile lookup current auth user ID से linked `electrician_profiles` row पढ़ता है।
+- [x] केवल linked profile होने पर `job_offers` को उसी `electrician_id` से query किया जाता है; नवीनतम 100 offers पढ़े जाते हैं।
+- [x] Offer detail और price detail अलग RPCs से आते हैं; Inbox में केवल `offer_status == offered` दिखता है।
+- [x] Offer में service type, booking ID, district/state/PIN, date/time, work details और match level दिखते हैं।
+- [x] Accept/Reject से पहले confirmation dialog है; दोनों actions `srk_respond_to_offer` RPC से होते हैं।
+- [x] RPC success/failure के बाद dashboard reload होता है; race/दूसरे Technician द्वारा offer लेने पर failure message दिया जाता है।
+- [x] UI PIN match और district match का label दिखाता है; वास्तविक offer eligibility Backend/RPC की जिम्मेदारी है।
+
+### महत्वपूर्ण सीमाएँ / Backend dependencies
+- [ ] Profile query में approved verified category/subcategory/task skills नहीं हैं; legacy free-text skills को authorization न मानें।
+- [ ] मौजूदा offer UI में canonical `catalogue_version/category_id/subcategory_id/task_id` match display नहीं होता; वर्तमान service_type और PIN/district match label ही दिखता है।
+- [ ] Frontend source से 30 km GPS matching प्रमाणित नहीं है; अभी match level PIN/district के रूप में आता है।
+- [ ] `job_offers` raw rows और `srk_get_my_offer_details` response अलग sources हैं; दोनों की consistency और status mapping staging में जाँचें।
+- [ ] Accept RPC को transaction में current offer status, expiry, booking state, assigned Technician, active approved verified skill, canonical catalogue version और competing accept race पुनः जाँचना चाहिए।
+- [ ] Decline action भी offer ownership/status/expiry validate करे और idempotent हो।
+- [ ] एक ही booking के competing offers में केवल एक acceptance सफल हो; बाकी offers server-side बंद हों।
+- [ ] Offer details में customer phone/address केवल assignment/contact authorization के बाद मिले; offer preview में निजी संपर्क न आए।
+- [ ] Backend canonical skill + dispatch contract और exact deployed response fields मिलने तक कोई नई Supabase column/RPC query न जोड़ें।
+- [ ] Flutter tests/analyzer/formatter, Supabase staging tests और Android build/device tests इस source audit में execute नहीं हुए।
+
+**सीमा:** केवल source inspection और दस्तावेज़ीकरण। Offer query, Accept/Reject RPC, dispatch, skill authorization, database, payment और production नहीं बदले।
