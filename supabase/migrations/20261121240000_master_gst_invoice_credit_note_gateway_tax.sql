@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.srk_booking_tax_snapshots(
  supplier_legal_name text NOT NULL,
  invoice_prefix text NOT NULL,
  supplier_state_code char(2),
- place_of_supply_state_code char(2) NOT NULL REFERENCES public.srk_gst_indian_state_codes(state_code),
+ place_of_supply_state_code char(2) REFERENCES public.srk_gst_indian_state_codes(state_code),
  labour_amount_paise bigint NOT NULL CHECK(labour_amount_paise>0),
  materials_amount_paise bigint NOT NULL CHECK(materials_amount_paise>=0),
  labour_taxable boolean NOT NULL,
@@ -199,10 +199,17 @@ DECLARE b public.service_bookings%rowtype; c public.srk_gst_company_profiles%row
 BEGIN
  SELECT * INTO b FROM public.service_bookings WHERE id=NEW.booking_id;
  SELECT * INTO c FROM public.srk_gst_company_profiles WHERE id=1;
- IF NOT FOUND THEN RAISE EXCEPTION 'GST_COMPANY_PROFILE_NOT_CONFIGURED'; END IF;
- SELECT state_code INTO v_state FROM public.srk_gst_indian_state_codes
-  WHERE lower(state_name)=lower(btrim(coalesce(b.state,'')));
- IF v_state IS NULL THEN RAISE EXCEPTION 'GST_PLACE_OF_SUPPLY_STATE_NOT_MAPPED'; END IF;
+ IF NOT FOUND THEN
+  c.registration_status:='unregistered'; c.version:=0; c.gstin:=NULL;
+  c.legal_name:='SRK ELECTRONIC'; c.invoice_prefix:='SRK'; c.supplier_state_code:=NULL;
+ END IF;
+ IF c.registration_status='registered' THEN
+  SELECT state_code INTO v_state FROM public.srk_gst_indian_state_codes
+   WHERE lower(state_name)=lower(btrim(coalesce(b.state,'')));
+  IF v_state IS NULL THEN RAISE EXCEPTION 'GST_PLACE_OF_SUPPLY_STATE_NOT_MAPPED'; END IF;
+ ELSE
+  v_state:=NULL;
+ END IF;
  IF c.registration_status='registered' THEN
   SELECT * INTO lr FROM public.srk_gst_service_rate_rules
    WHERE service_category_code=b.srk_service_category_code AND service_code=b.srk_service_skill_code
@@ -255,6 +262,7 @@ DECLARE t public.srk_booking_tax_snapshots%rowtype; c public.srk_gst_company_pro
 BEGIN
  SELECT * INTO t FROM public.srk_booking_tax_snapshots WHERE booking_id=NEW.booking_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'BOOKING_TAX_SNAPSHOT_REQUIRED'; END IF;
+ IF t.registration_status<>'registered' THEN RETURN NEW; END IF;
  SELECT * INTO c FROM public.srk_gst_company_profiles WHERE id=1;
  SELECT * INTO b FROM public.service_bookings WHERE id=NEW.booking_id;
  v_number:=t.invoice_prefix||'-'||to_char(clock_timestamp() AT TIME ZONE 'Asia/Kolkata','YYYY')||'-'||lpad(nextval('public.srk_master_tax_invoice_number_seq')::text,8,'0');
@@ -391,7 +399,7 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
  GET STACKED DIAGNOSTICS v_message=MESSAGE_TEXT;
  IF v_message IN ('TECHNICIAN_LABOUR_LEDGER_REQUIRED','ALL_TECHNICIAN_WORKDAYS_MUST_BE_STOPPED',
-  'CUSTOMER_MATERIAL_DECISION_PENDING','GST_COMPANY_PROFILE_NOT_CONFIGURED','GST_PLACE_OF_SUPPLY_STATE_NOT_MAPPED',
+  'CUSTOMER_MATERIAL_DECISION_PENDING','GST_PLACE_OF_SUPPLY_STATE_NOT_MAPPED',
   'GST_LABOUR_RATE_RULE_NOT_CONFIGURED','GST_MATERIAL_RATE_RULE_NOT_CONFIGURED') THEN RETURN NEW; END IF;
  RAISE;
 END; $$;
@@ -410,7 +418,7 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
    GET STACKED DIAGNOSTICS v_message=MESSAGE_TEXT;
    IF v_message NOT IN ('TECHNICIAN_LABOUR_LEDGER_REQUIRED','ALL_TECHNICIAN_WORKDAYS_MUST_BE_STOPPED',
-    'CUSTOMER_MATERIAL_DECISION_PENDING','GST_COMPANY_PROFILE_NOT_CONFIGURED','GST_PLACE_OF_SUPPLY_STATE_NOT_MAPPED',
+    'CUSTOMER_MATERIAL_DECISION_PENDING','GST_PLACE_OF_SUPPLY_STATE_NOT_MAPPED',
     'GST_LABOUR_RATE_RULE_NOT_CONFIGURED','GST_MATERIAL_RATE_RULE_NOT_CONFIGURED') THEN RAISE; END IF;
   END;
  END LOOP;
