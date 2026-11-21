@@ -85,11 +85,11 @@
 - [ ] Electrician Factory/Large Project: solo ₹400/hour; helper सहित ₹550/hour।
 - [ ] Electrician Master: solo ₹700/hour; helper सहित ₹950/hour।
 - [ ] Plumber Basic: solo ₹100/hour; helper ₹50/hour; team ₹150/hour।
-- [ ] Plumber Expert: solo ₹150/hour; helper ₹75/hour; team ₹225/hour।
-- [ ] Plumber Master/Industrial: solo ₹225/hour; helper ₹100/hour; team ₹325/hour।
+- [ ] Plumber Expert: solo ₹125/hour; helper ₹60/hour; team ₹185/hour (21-11-2026 को स्वीकृत संशोधित दर)।
+- [ ] Plumber Master/Industrial: solo ₹175/hour; helper ₹75/hour; team ₹250/hour (21-11-2026 को स्वीकृत संशोधित दर)।
 - [ ] Painter Basic: ₹87.50/hour; helper विकल्प अभी नहीं।
-- [ ] Painter Expert: solo ₹112.50/hour; helper ₹75/hour; team ₹187.50/hour।
-- [ ] Painter Master/Commercial: solo ₹150/hour; helper ₹100/hour; team ₹250/hour।
+- [ ] Painter Expert: solo ₹112.50/hour (₹900/8 घंटे); helper ₹60/hour अतिरिक्त (21-11-2026 को स्वीकृत संशोधित दर)।
+- [ ] Painter Master/Commercial: solo ₹150/hour (₹1,200/8 घंटे); helper ₹75/hour अतिरिक्त (21-11-2026 को स्वीकृत संशोधित दर)।
 - [ ] AC: solo ₹250/hour; helper ₹150/hour; team ₹400/hour।
 - [ ] Fridge: solo ₹150/hour; helper ₹75/hour।
 - [ ] Motor winding fixed labour: 0.5 HP ₹500; 1 HP ₹600; 1.5 HP ₹700; 2 HP ₹800; 3 HP ₹900; 5 HP ₹1,000; 7.5 HP ₹1,100; 10 HP ₹1,200; 15 HP ₹1,300; 20 HP ₹1,400।
