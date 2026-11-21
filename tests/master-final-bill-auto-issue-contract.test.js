@@ -6,7 +6,7 @@ const sql=fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/2026112
 
 test('Master final bill is retried automatically after customer-confirmed completion',()=>{
  assert.match(sql,/srk_master_final_bill_after_customer_completion/);
- assert.match(sql,/completion_approval_status='approved'/);
+ assert.match(sql,/completion_approval_status<>'approved'/);
  assert.match(sql,/customer_completed_at IS NULL/);
 });
 
