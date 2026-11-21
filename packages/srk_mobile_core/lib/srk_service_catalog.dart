@@ -14,6 +14,8 @@ class SrkServiceRate {
   final String unit;
   final String? helperAmount;
   final String? note;
+  /// Hourly amount shown beside the live work timer; does not replace base rate.
+  final String? timerHourlyAmount;
 
   const SrkServiceRate({
     required this.label,
@@ -21,6 +23,7 @@ class SrkServiceRate {
     required this.unit,
     this.helperAmount,
     this.note,
+    this.timerHourlyAmount,
   });
 }
 
@@ -73,7 +76,7 @@ class SrkServiceCategory {
 
 /// Approved catalogue revision. IDs remain local keys, not deployed backend IDs.
 /// Keep the legacy constant name to avoid breaking existing app references.
-const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.9';
+const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.10';
 
 /// Six approved top-level categories, in the owner's requested order.
 ///
@@ -99,8 +102,8 @@ const List<SrkServiceCategory> srkServiceCatalog = [
             name: 'Normal Wiring',
             displayName: 'नॉर्मल वायरिंग (घर / दुकान)',
             rates: [
-              SrkServiceRate(label: 'बिना Helper', amount: '₹1,000', unit: '8 घंटे'),
-              SrkServiceRate(label: 'Helper सहित', amount: '₹1,500', unit: '8 घंटे', helperAmount: '₹62.50 प्रति घंटा अतिरिक्त'),
+              SrkServiceRate(label: 'बिना Helper', amount: '₹1,000', unit: '8 घंटे', timerHourlyAmount: '₹125 प्रति घंटा'),
+              SrkServiceRate(label: 'Helper सहित', amount: '₹1,500', unit: '8 घंटे', helperAmount: '₹62.50 प्रति घंटा अतिरिक्त', timerHourlyAmount: '₹187.50 प्रति घंटा'),
             ],
           ),
           SrkServiceOption(
@@ -108,8 +111,8 @@ const List<SrkServiceCategory> srkServiceCatalog = [
             name: 'Project Wiring',
             displayName: 'प्रोजेक्ट वायरिंग (बड़ी फैक्ट्री / कंपनी / औद्योगिक भवन)',
             rates: [
-              SrkServiceRate(label: 'बिना Helper', amount: '₹400', unit: 'प्रति घंटा'),
-              SrkServiceRate(label: 'Helper सहित', amount: '₹550', unit: 'प्रति घंटा', helperAmount: '₹150 प्रति घंटा अतिरिक्त'),
+              SrkServiceRate(label: 'बिना Helper', amount: '₹400', unit: 'प्रति घंटा', timerHourlyAmount: '₹400 प्रति घंटा'),
+              SrkServiceRate(label: 'Helper सहित', amount: '₹550', unit: 'प्रति घंटा', helperAmount: '₹150 प्रति घंटा अतिरिक्त', timerHourlyAmount: '₹550 प्रति घंटा'),
             ],
           ),
         ],
