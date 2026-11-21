@@ -640,3 +640,14 @@
 - [ ] Backend owner से Plumber/Painter की approved subcategory list मिलने तक दोनों की विस्तृत service navigation अधूरी रहेगी।
 
 **स्थिति:** Test source और CI workflow update commit हुए हैं; Flutter SDK execution, analyzer, widget/unit test result और Android build का कोई दावा नहीं।
+
+
+## 2Q. Picker/shared-catalogue parity guard (2026-11-21)
+
+- [x] Customer picker widget tests में shared `srk_mobile_core` catalogue के साथ six category mapping और हर category के second-level option count का parity assertion जोड़ा।
+- [x] इससे Electrician, AC + Fridge, Motor & Pump और Cooler के विकल्पों की संख्या तथा Plumber/Painter के अभी खाली task lists में accidental drift पकड़ा जा सकेगा।
+- [x] यह guard केवल structural parity जाँचता है; display labels, task IDs, canonical backend IDs, rate-version या verified Technician skill की समानता सिद्ध नहीं करता।
+- [ ] Flutter tests अभी execute नहीं हुए; GitHub Actions workflow dispatch/run और analyzer/build evidence pending है।
+- [ ] Backend owner से canonical catalogue contract मिलने पर duplicated navigation data को वास्तविक shared model से replace करना है; parity test को तब ID/label/task-level contract test में बदलें।
+
+**सीमा:** कोई live booking, payment, backend, database या dispatch behavior नहीं बदला।
