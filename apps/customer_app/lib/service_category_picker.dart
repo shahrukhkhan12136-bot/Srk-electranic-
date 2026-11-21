@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:srk_mobile_core/srk_service_catalog.dart' as catalog;
+import 'package:srk_mobile_core/srk_service_selection_contract.dart';
 
 /// Customer-facing service catalogue prototype.
 ///
@@ -67,15 +68,8 @@ class SrkServiceCategoryPicker extends StatefulWidget {
     required this.onSelection,
   });
 
-  /// Emits stable catalogue IDs and display labels only.
-  /// It deliberately does not create or submit a booking.
-  final void Function({
-    required String categoryId,
-    required String categoryTitle,
-    String? subcategoryId,
-    String? subcategoryTitle,
-    String? taskTitle,
-  }) onSelection;
+  /// Emits a versioned shared selection; still preview-only.
+  final void Function(SrkServiceSelection selection) onSelection;
 
   @override
   State<SrkServiceCategoryPicker> createState() =>
@@ -92,10 +86,8 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       _subcategory = null;
     });
     if (category.subcategories.isEmpty) {
-      widget.onSelection(
-        categoryId: category.id,
-        categoryTitle: category.title,
-      );
+      final selection = SrkServiceSelection.create(categoryId: category.id);
+      if (selection != null) widget.onSelection(selection);
     }
   }
 
@@ -104,12 +96,11 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     if (category == null) return;
     setState(() => _subcategory = subcategory);
     if (subcategory.children.isEmpty) {
-      widget.onSelection(
+      final selection = SrkServiceSelection.create(
         categoryId: category.id,
-        categoryTitle: category.title,
         subcategoryId: subcategory.id,
-        subcategoryTitle: subcategory.title,
       );
+      if (selection != null) widget.onSelection(selection);
     }
   }
 
@@ -193,13 +184,13 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
             children: tasks.map((task) {
               return ActionChip(
                 label: Text(task),
-                onPressed: () => widget.onSelection(
-                  categoryId: category!.id,
-                  categoryTitle: category.title,
-                  subcategoryId: subcategory.id,
-                  subcategoryTitle: subcategory.title,
-                  taskTitle: task,
-                ),
+                onPressed: () {
+                  final sourceCategory = catalog.srkServiceCatalog.singleWhere((item) => item.id == category!.id);
+                  final sourceSubcategory = sourceCategory.options.singleWhere((item) => item.id == subcategory.id);
+                  final sourceTask = sourceSubcategory.tasks.singleWhere((item) => item.name == task);
+                  final selection = SrkServiceSelection.create(categoryId: category.id, subcategoryId: subcategory.id, taskId: sourceTask.id);
+                  if (selection != null) widget.onSelection(selection);
+                },
               );
             }).toList(),
           ),
