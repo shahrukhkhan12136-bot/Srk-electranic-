@@ -400,3 +400,36 @@ Backend response/verification आवश्यकताएँ:
 9. Frontend को exact deployed response schema और migration/version confirmation मिलने के बाद ही नई fields/RPC पढ़ने दें।
 
 **सीमा:** कोई Backend, database, dispatch, Supabase, payment या production बदलाव नहीं किया गया। यह contract handoff है, deployed API का दावा नहीं।
+
+
+## 28. Customer ↔ Technician नियुक्त बुकिंग, काम-पुष्टि और भुगतान lifecycle audit (21-11-2026)
+
+मौजूदा ऐप source में Technician:
+- `srk_get_my_assigned_booking_quote_details` से assigned booking पढ़ता है।
+- `srk_electrician_get_my_assigned_booking_contacts` से authorized customer contact लेता है।
+- `srk_update_booking_work_status` से assigned→inspection और quote_approved→in_progress→completed करता है।
+- `srk_submit_booking_quote` से legacy quote भेजता है।
+- completed cash booking पर `srk_electrician_confirm_cash_payment` चलाता है।
+
+Customer:
+- `service_bookings` में केवल अपने user की latest 50 bookings पढ़ता है।
+- `srk_customer_respond_booking_quote` से quote approve/reject करता है।
+- `srk_customer_cancel_my_booking` से केवल eligible pre-assignment booking cancel करता है।
+- completed + unpaid + quote-approved booking पर online payment करता है।
+- अलग work-start confirmation, work-completion confirmation या dispute action अभी उपलब्ध नहीं।
+
+### Backend से आवश्यक quote-free lifecycle contract
+1. एक canonical booking status enum और Customer/Technician/Admin transition matrix दें; पुराने quote lifecycle वाले bookings के लिए compatibility mapping भी दें।
+2. Technician केवल `request_start` भेजे। Booking के मालिक Customer की पुष्टि के बाद ही server start timestamp और timer चालू करे।
+3. Technician `request_completion` भेजे। Customer को final work summary मिले और वह confirm या dispute कर सके।
+4. Customer response timeout, no-response, dispute, Admin review/override और reopen policy स्पष्ट करें। कोई auto-confirm अवधि बिना owner approval और स्पष्ट Backend policy के लागू न करें।
+5. प्रत्येक RPC पर auth user, booking owner, assigned Technician, active approved unexpired skill, current status/version और idempotency key server पर atomically validate हों।
+6. Timer server timestamps से चले; client clock, app-open duration या button press को authoritative न मानें।
+7. Materials/parts की itemized list, quantity/rate/amount और Customer approval अलग रिकॉर्ड हों; unapproved item final bill में charge न हो।
+8. Final bill एक server-authoritative snapshot हो: labour, approved materials, other charges, total (integer paise), currency, payment method/status/eligibility, receipt ID।
+9. Online payment order/verification और cash confirmation final bill + customer-confirmed completion से जुड़ें; duplicate payment, amount mismatch और refund reconciliation सुरक्षित रहे।
+10. Earnings/commission 15% Company + 85% Technician के owner-confirmed full customer booking payment basis से reconcile हो; tax/refund/rounding/settlement treatment स्पष्ट हो।
+11. Complaint, cancellation, contact privacy, offer assignment और historical bookings की behavior matrix दें।
+12. Exact deployed RPC names, request/response JSON, SQL migration IDs, RLS/grants, staging test evidence और rollback plan उपलब्ध कराएँ।
+
+**महत्वपूर्ण:** जब तक नया lifecycle/payment contract deploy और staging में सत्यापित नहीं होता, मौजूदा quote-dependent status, RPC, UI और payment gates न हटाएँ। यह source audit/handoff है; कोई backend/database/RPC/payment/production परिवर्तन नहीं हुआ।
