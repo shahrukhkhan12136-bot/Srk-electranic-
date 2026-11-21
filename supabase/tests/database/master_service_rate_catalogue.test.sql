@@ -54,7 +54,7 @@ SELECT ok(
     WHERE service_code IN ('residential_plumbing','industrial_plumbing') AND status='active')
   AND NOT EXISTS(SELECT 1 FROM public.srk_service_rates
     WHERE service_code IN ('residential_wiring','factory_wiring','interior_painting','exterior_painting',
-      'ac_technician','fridge_technician','motor_winding','pump_repair','cooler_repair','cooler_motor_winding')
+      'ac_technician','ac_installation','ac_repair','fridge_technician','motor_winding','pump_repair','cooler_repair','cooler_motor_winding')
       AND status='active'),
   'only confirmed Plumber rates are seeded active; conflicting rates remain Admin-configurable'
 );
