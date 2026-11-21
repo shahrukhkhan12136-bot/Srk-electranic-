@@ -49,5 +49,8 @@ INSERT INTO public.srk_service_rates
 VALUES
  ('ac_installation','team','AC Technician + Helper Team ₹437/hour — Pay Split Pending',NULL,0,NULL,'SRK-AC-2026-11-22-PENDING','pending_admin_configuration'),
  ('ac_repair','team','AC Technician + Helper Team ₹437/hour — Pay Split Pending',NULL,0,NULL,'SRK-AC-2026-11-22-PENDING','pending_admin_configuration'),
- ('pump_repair','standard','Pump Repair — Admin Rate Pending',NULL,0,NULL,'SRK-PUMP-2026-11-22-PENDING','pending_admin_configuration')
+ ('pump_repair','standard','Pump Repair — Admin Rate Pending',NULL,0,NULL,'SRK-PUMP-2026-11-22-PENDING','pending_admin_configuration'),
+ ('residential_wiring','basic_helper','Basic Electrician + Helper — Helper Rate Pending',10000,0,NULL,'SRK-ELECTRICIAN-2026-11-22-PENDING','pending_admin_configuration'),
+ ('motor_winding','hp_over_20','Above 20 HP — Admin Rate Pending',NULL,0,NULL,'SRK-MOTOR-PUMP-2026-11-22-PENDING','pending_admin_configuration'),
+ ('cooler_motor_winding','hp_over_20','Above 20 HP — Admin Rate Pending',NULL,0,NULL,'SRK-COOLER-2026-11-22-PENDING','pending_admin_configuration')
 ON CONFLICT(service_code,level_code,rate_version) DO NOTHING;
