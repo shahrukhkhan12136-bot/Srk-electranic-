@@ -60,7 +60,7 @@ test('new booking schema stores canonical category, service, duration and immuta
   ]) assert.match(migration, new RegExp('ADD COLUMN IF NOT EXISTS ' + field));
   assert.match(migration, /service_bookings_srk_rate_snapshot_complete/);
   assert.match(migration, /DROP CONSTRAINT IF EXISTS service_bookings_estimate_matches_rate_card/);
-  assert.match(migration, /historical booking snapshots never change/i);
+  assert.match(migration, /Historical bookings retain their legacy rate columns and immutable snapshots/i);
 });
 
 test('Admin service offering and rate changes are audited and no direct client table access is granted', () => {
@@ -74,7 +74,21 @@ test('Admin service offering and rate changes are audited and no direct client t
 test('rate catalogue migration is syntactically shaped without duplicated SQL fragments', () => {
   assert.equal((migration.match(/CREATE OR REPLACE FUNCTION public\\.srk_admin_upsert_service_offering/g) || []).length, 1);
   assert.equal((migration.match(/CREATE OR REPLACE FUNCTION public\\.srk_admin_upsert_service_rate/g) || []).length, 1);
-  assert.match(migration, /p_service_code !~ '\\^\[a-z\]\[a-z0-9_\]\{1,79\}\$'/);
+  assert.ok(migration.includes("p_service_code !~ '^[a-z][a-z0-9_]{1,79}
+  assert.ok(migration.includes("p_level_code !~ '^[a-z][a-z0-9_]{1,79}
+  assert.doesNotMatch(migration, /79} IS NULL|79}    OR/);
+  assert.doesNotMatch(migration, /OR p_level_label IS NULL[\\s\\S]{0,100}CREATE OR REPLACE FUNCTION/);
+});
+"));
+  assert.match(migration, /p_level_code !~ '\\^\[a-z\]\[a-z0-9_\]\{1,79\}\$'/);
+  assert.doesNotMatch(migration, /79} IS NULL|79}    OR/);
+  assert.doesNotMatch(migration, /OR p_level_label IS NULL[\\s\\S]{0,100}CREATE OR REPLACE FUNCTION/);
+});
+"));
+  assert.doesNotMatch(migration, /79} IS NULL|79}    OR/);
+  assert.doesNotMatch(migration, /OR p_level_label IS NULL[\\s\\S]{0,100}CREATE OR REPLACE FUNCTION/);
+});
+"));
   assert.match(migration, /p_level_code !~ '\\^\[a-z\]\[a-z0-9_\]\{1,79\}\$'/);
   assert.doesNotMatch(migration, /79} IS NULL|79}    OR/);
   assert.doesNotMatch(migration, /OR p_level_label IS NULL[\\s\\S]{0,100}CREATE OR REPLACE FUNCTION/);
