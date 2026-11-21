@@ -838,6 +838,8 @@ function renderCustomerMasterServices(){
  const category=document.getElementById('masterCategory')?.value,service=document.getElementById('service'),level=document.getElementById('rateTier');
  if(!service||!level)return;
  const rows=customerMasterRates.filter(r=>r.category_code===category);
+ const status=document.getElementById('masterRateLoadStatus');
+ if(status)status.textContent=!category?'पहले Service Category चुनें।':rows.length?rows.length+' Active Rate Levels इस Category में उपलब्ध हैं।':'इस Category में अभी कोई Active Service Rate नहीं है। Admin Rate Configuration Pending है।';
  service.innerHTML='<option value="">Service चुनें</option>'+[...new Map(rows.map(r=>[r.service_code,r])).values()].map(r=>'<option value="'+customerEsc(r.service_code)+'">'+customerEsc(r.service_name)+' ('+customerEsc(r.billing_model==='hourly'?'Hourly':'Fixed / '+r.unit_label)+')</option>').join('');
  level.innerHTML='<option value="">Rate Level चुनें</option>';
  updateMasterBookingControls();
