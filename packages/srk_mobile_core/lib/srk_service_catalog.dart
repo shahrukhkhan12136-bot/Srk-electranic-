@@ -1,6 +1,9 @@
 /// SRK ELECTRONIC customer-facing service catalogue with owner-approved rates.
 ///
 /// IMPORTANT:
+/// Helper policy: across ALL service categories, a helper is optional. The
+/// customer chooses whether to book with a helper or without one. When selected,
+/// charge the applicable approved helper rate; never force-add a helper.
 /// The listed rates are approved for catalogue display. This catalogue is still
 /// presentation data only; it is NOT wired to booking submit, dispatch, payment,
 /// or technician eligibility until the backend contract is versioned and verified.
@@ -68,7 +71,7 @@ class SrkServiceCategory {
 
 /// Approved catalogue revision. IDs remain local keys, not deployed backend IDs.
 /// Keep the legacy constant name to avoid breaking existing app references.
-const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.6';
+const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.7';
 
 /// Six approved top-level categories, in the owner's requested order.
 ///
