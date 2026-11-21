@@ -4168,3 +4168,33 @@ Master Requirements Section 6 की दोबारा जाँच में �
 - Inline-handler name scan found no unresolved application handler names in either page. The Customer scan's only apparent unresolved token was the built-in JavaScript Number(), not an application function.
 - These checks establish source-level handler presence and routing only. They do not prove browser execution, RPC existence/permissions, database behavior, push delivery, SMS/OTP delivery, payment provider behavior, or UI acceptance.
 - No application code, database, configuration, deployment, merge, or production state was changed in this pass. Runtime/mobile QA remains deferred to the authorized consolidated final QA stage.
+
+
+## 21-11-2026 — Master System consolidated follow-up
+
+**Working staging branch:** tmp/master-final-ui-20261121  
+**Exact source HEAD:** 4cfdc869b3b69e3875e89fdf989ed215fcc351ab  
+**Node CI:** run 44906291585 — 573 passed, 0 failed.
+
+### Source work completed in this checkpoint
+- Shared Technician App OTP-first onboarding, multiple category/skill applications, private KYC upload, Admin KYC/skill review and approval gate.
+- Unified Master Technician offers, online/GPS presence, 30 km dispatch eligibility, Admin dispatch monitor and safe retry.
+- Customer Assigned Technician names/team, booking-scoped GPS, workday start approval, exactly three day-end decisions, and stopped-day normal/overtime breakdown.
+- Customer Master Final Bill, GST snapshot and Customer GST invoice/credit-note view.
+- Admin completed Cash/Manual Payment verification queue; GST-inclusive amount, no Razorpay-linked bookings, actual receipt/UTR review before recording.
+- Technician approved Cash Refund task inbox; Admin finalization now checks tax-inclusive total_due_paise and reverses commission; recovered commission credit joins the existing payout request workflow.
+- Technician Wallet now shows commission refund credit available/requested/paid and history.
+- Confirmed service rates seeded as 36 active levels across Electrician, Plumber, Painter, Fridge, Motor Winding, Cooler Repair and Cooler Motor Winding. Six pending Admin rows preserve unresolved helper/AC/Pump/above-20HP pricing without making them customer-bookable.
+- Main Admin panels for Master applications, dispatch, service rates and manual payment verification are role-hidden from Support Staff.
+- New migration timestamps use valid 2026-11-22 ordering.
+
+### Runtime and release status
+- Supabase Development Branch creation was blocked by the account's Pro Plan requirement; no branch was created and no hourly branch cost started.
+- A disposable GitHub-hosted Supabase CLI replay was attempted, then removed after it exposed that the repository migrations depend on an authoritative pre-existing core schema (e.g. service_bookings) that is not supplied as a clean baseline. No migration completed and no pgTAP test executed.
+- 112 SQL migrations and 55 pgTAP test files are present. PostgreSQL/Auth/Storage baseline, migration lineage and pgTAP runtime remain pending.
+- Road-distance travel fee (3 km free, then ₹4/km one-way) still requires an approved routing provider and server-side credential; GPS straight-line distance will not be substituted.
+- AC ₹437/hour team split, Basic Electrician Helper, Pump Repair and above-20HP rates remain Admin/owner configuration pending.
+- Actual approved founder photo is still awaited; no generated or substitute portrait used.
+- Browser E2E, OTP/SMS, KYC Storage, Push provider, backup/restore, Preview and consolidated desktop/mobile QA remain separate gates.
+- Main Branch, Production Database, live payments/refunds/payouts and deployment remain untouched. No Main PR opened or merged.
+
