@@ -248,7 +248,8 @@ RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_id uuid; v_before jsonb:='{}'::jsonb; v_after jsonb; v_action text:='created';
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
-  IF p_category_code IS NULL OR p_skill_code IS NULL OR p_service_code IS NULL OR p_service_code !~ '^[a-z][a-z0-9_]{1,79} IS NULL OR length(btrim(p_display_name)) NOT BETWEEN 2 AND 120
+  IF p_category_code IS NULL OR p_skill_code IS NULL OR p_service_code IS NULL OR p_service_code !~ '^[a-z][a-z0-9_]{1,79}$'
+    OR p_display_name IS NULL OR length(btrim(p_display_name)) NOT BETWEEN 2 AND 120
     OR p_billing_model IS NULL OR p_billing_model NOT IN ('hourly','fixed_per_unit') OR p_unit_label IS NULL
     OR length(btrim(p_unit_label)) NOT BETWEEN 1 AND 40 OR p_is_active IS NULL THEN
     RAISE EXCEPTION 'INVALID_SERVICE_OFFERING' USING ERRCODE='22023';
@@ -295,94 +296,7 @@ DECLARE
   v_action text:='created'; v_model text; v_old record;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
-  IF p_service_code IS NULL OR p_level_code IS NULL OR p_level_code !~ '^[a-z][a-z0-9_]{1,79}    OR p_level_label IS NULL OR length(btrim(p_level_label)) NOT BETWEEN 2 AND 100
-    OR p_rate_version IS NULL OR length(btrim(p_rate_version)) NOT BETWEEN 3 AND 100
-    OR p_status IS NULL OR p_status NOT IN ('pending_admin_configuration','active')
-    OR p_effective_from IS NULL OR (p_status='active' AND p_effective_from>clock_timestamp())
-    OR (p_status='active' AND p_effective_to IS NOT NULL AND p_effective_to<=clock_timestamp())
-    OR (p_effective_to IS NOT NULL AND p_effective_to<=p_effective_from)
-    OR coalesce(p_helper_hourly_paise,0)<0
-    OR (p_technician_hourly_paise IS NOT NULL AND p_technician_hourly_paise<0)
-    OR (p_fixed_labour_paise IS NOT NULL AND p_fixed_labour_paise<=0) THEN
-    RAISE EXCEPTION 'INVALID_SERVICE_RATE' USING ERRCODE='22023';
-  END IF;
-  SELECT billing_model INTO v_model FROM public.srk_service_offerings
-    WHERE service_code=p_service_code AND is_active FOR SHARE;
-  IF v_model IS NULL THEN RAISE EXCEPTION 'ACTIVE_SERVICE_OFFERING_REQUIRED' USING ERRCODE='22023'; END IF;
-  IF (v_model='hourly' AND (p_technician_hourly_paise IS NULL OR p_technician_hourly_paise+p_helper_hourly_paise<=0 OR p_fixed_labour_paise IS NOT NULL))
-    OR (v_model='fixed_per_unit' AND (p_fixed_labour_paise IS NULL OR p_technician_hourly_paise IS NOT NULL OR coalesce(p_helper_hourly_paise,0)<>0)) THEN
-    RAISE EXCEPTION 'RATE_FIELDS_DO_NOT_MATCH_BILLING_MODEL' USING ERRCODE='22023';
-  END IF;
-
-  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_service_code||':'||p_level_code,0));
-  SELECT * INTO v_existing FROM public.srk_service_rates
-    WHERE service_code=p_service_code AND level_code=p_level_code AND rate_version=p_rate_version FOR UPDATE;
-  IF FOUND THEN
-    IF v_existing.status='active' OR v_existing.status='retired' THEN
-      RAISE EXCEPTION 'RATE_VERSION_IS_IMMUTABLE_CREATE_A_NEW_VERSION' USING ERRCODE='55000';
-    END IF;
-    v_id:=v_existing.id; v_before:=to_jsonb(v_existing); v_action:='updated';
-    UPDATE public.srk_service_rates SET level_label=btrim(p_level_label),
-      technician_hourly_paise=p_technician_hourly_paise,helper_hourly_paise=coalesce(p_helper_hourly_paise,0),
-      fixed_labour_paise=p_fixed_labour_paise,status='pending_admin_configuration',
-      effective_from=p_effective_from,effective_to=p_effective_to
-    WHERE id=v_id RETURNING to_jsonb(srk_service_rates) INTO v_after;
-  ELSE
-    INSERT INTO public.srk_service_rates(service_code,level_code,level_label,technician_hourly_paise,
-      helper_hourly_paise,fixed_labour_paise,rate_version,status,effective_from,effective_to,created_by)
-    VALUES(p_service_code,p_level_code,btrim(p_level_label),p_technician_hourly_paise,
-      coalesce(p_helper_hourly_paise,0),p_fixed_labour_paise,btrim(p_rate_version),
-      'pending_admin_configuration',p_effective_from,p_effective_to,auth.uid())
-    RETURNING id,to_jsonb(srk_service_rates) INTO v_id,v_after;
-  END IF;
-
-  IF p_status='active' THEN
-    FOR v_old IN SELECT * FROM public.srk_service_rates
-      WHERE service_code=p_service_code AND level_code=p_level_code
-        AND status='active' AND id<>v_id FOR UPDATE
-    LOOP
-      UPDATE public.srk_service_rates SET status='retired',effective_to=least(coalesce(effective_to,'infinity'::timestamptz),clock_timestamp())
-        WHERE id=v_old.id;
-      INSERT INTO public.srk_service_rate_events(rate_id,actor_user_id,action,before_data,after_data)
-      SELECT v_old.id,auth.uid(),'retired',to_jsonb(v_old),to_jsonb(r)
-      FROM public.srk_service_rates r WHERE r.id=v_old.id;
-    END LOOP;
-    UPDATE public.srk_service_rates SET status='active' WHERE id=v_id;
-    SELECT to_jsonb(r) INTO v_after FROM public.srk_service_rates r WHERE r.id=v_id;
-    v_action:='activated';
-  END IF;
-
-  INSERT INTO public.srk_service_rate_events(rate_id,actor_user_id,action,before_data,after_data)
-  VALUES(v_id,auth.uid(),v_action,v_before,v_after);
-  RETURN v_id;
-END;
-$function$;
-REVOKE ALL ON FUNCTION public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz) TO authenticated;
-
-CREATE OR REPLACE FUNCTION public.srk_admin_list_service_rates()
-RETURNS TABLE(
-  category_code text,skill_code text,service_code text,service_name text,billing_model text,
-  level_code text,level_label text,technician_hourly_paise bigint,helper_hourly_paise bigint,
-  fixed_labour_paise bigint,rate_version text,status text,effective_from timestamptz,effective_to timestamptz
-)
-LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path='' AS $function$
-BEGIN
-  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ACCESS_REQUIRED' USING ERRCODE='42501'; END IF;
-  RETURN QUERY SELECT o.category_code,o.skill_code,o.service_code,o.display_name,o.billing_model,
-    r.level_code,r.level_label,r.technician_hourly_paise,r.helper_hourly_paise,r.fixed_labour_paise,
-    r.rate_version,r.status,r.effective_from,r.effective_to
-  FROM public.srk_service_offerings o
-  LEFT JOIN public.srk_service_rates r ON r.service_code=o.service_code
-  ORDER BY o.category_code,o.display_name,r.level_label,r.created_at DESC;
-END;
-$function$;
-REVOKE ALL ON FUNCTION public.srk_admin_list_service_rates() FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.srk_admin_list_service_rates() TO authenticated;
-
--- Keep legacy booking history but prevent direct client writes to the new commercial snapshot.
-COMMENT ON TABLE public.srk_service_rates IS 'Versioned Admin-controlled labour rate catalogue. New bookings snapshot the active rate; historical booking snapshots never change.';
-
+  IF p_service_code IS NULL OR p_level_code IS NULL OR p_level_code !~ '^[a-z][a-z0-9_]{1,79}$'
     OR p_level_label IS NULL OR length(btrim(p_level_label)) NOT BETWEEN 2 AND 100
     OR p_rate_version IS NULL OR length(btrim(p_rate_version)) NOT BETWEEN 3 AND 100
     OR p_status IS NULL OR p_status NOT IN ('pending_admin_configuration','active')
