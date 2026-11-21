@@ -171,6 +171,10 @@ const work_details = clean(body.work_details, 2000);
       return json(503, { success: false, code: "MASTER_BOOKING_BACKEND_NOT_READY",
         error: "नई Master Booking अभी सुरक्षित rollout के लिए तैयार नहीं है। कृपया थोड़ी देर बाद कोशिश करें।" });
     }
+    if (!isMasterBooking && process.env.SRK_LEGACY_ELECTRICIAN_BOOKING_ENABLED !== "true") {
+      return json(503, { success: false, code: "LEGACY_BOOKING_RATE_CARD_RETIRED",
+        error: "पुरानी Booking Rate List बंद की जा चुकी है। नई Master Rate List तैयार होने पर बुकिंग शुरू होगी।" });
+    }
     if (!customer_name || !state || !district ||
         !/^[0-9]{6}$/.test(pincode) || !address ||
         (isMasterBooking
@@ -248,6 +252,9 @@ const work_details = clean(body.work_details, 2000);
       service_type = masterRate.service_name;
       rateCardVersion = masterRate.rate_version;
       if (masterRate.billing_model === "hourly") {
+        if (masterServiceQuantity !== 1) {
+          return json(400, { success: false, error: "Hourly सेवा में quantity 1 रखें; अतिरिक्त Technician संख्या अलग चुनें।" });
+        }
         if (!Number.isInteger(masterDurationMinutes) || masterDurationMinutes < 1 || masterDurationMinutes > 72000) {
           return json(400, { success: false, error: "घंटे के हिसाब से सेवा के लिए 1 मिनट से 50 दिन तक की सही अवधि चुनें।" });
         }
