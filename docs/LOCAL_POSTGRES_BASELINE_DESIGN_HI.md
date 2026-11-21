@@ -25,12 +25,12 @@
 
 ## 3. Core baseline के लिए अभी तक प्रमाणित बातें
 
-- Branch में अब 111 SQL migration files हैं (नए Master follow-up migrations सहित)।
+- Branch में अब 112 SQL migration files हैं (नए Master follow-up migrations सहित)।
 - शुरुआती migrations core application tables पर `ALTER TABLE`, policies, triggers और functions लगाती हैं; इसलिए migration directory अकेले clean-room baseline नहीं है।
 - `COMPLETE_DATABASE_SETUP.sql` में पाँच core tables दिखती हैं, पर यह नवीनतम migration chain के सभी पुराने columns, constraints, triggers या platform objects की पूर्ण परिभाषा नहीं है। इसे बिना reconciliation के fixture या canonical schema नहीं मानना है।
 - Customer profile/avatar/support migrations `auth.users`, `auth.uid()` और Storage objects का संदर्भ देती हैं।
 - Refund, payout, booking, timer, dispatch और audit migrations कई पहले से मौजूद booking/profile columns तथा helper schemas पर निर्भर हैं।
-- 54 pgTAP SQL test files मौजूद हैं। वर्तमान Node plan-count test केवल `plan()` और assertion-call संख्या मिलाता है; SQL execute नहीं करता।
+- 55 pgTAP SQL test files मौजूद हैं। वर्तमान Node plan-count test केवल `plan()` और assertion-call संख्या मिलाता है; SQL execute नहीं करता।
 
 ## 4. Fixture लिखने से पहले अनिवार्य dependency inventory
 
@@ -81,6 +81,7 @@
 - `20261122000000_master_technician_unified_offer_read.sql`: `service_bookings`, `electrician_profiles`, `job_offers`, `srk_booking_technician_assignments`, `srk_technician_dispatch_offers`, `srk_technician_applications`, `srk_technician_presence`, `srk_booking_technician_workdays`।
 - `20261122000100_master_technician_app_and_admin_ops.sql`: Technician application/skill/KYC tables, service taxonomy/rates, dispatch requests/offers/events, booking workdays/customer decisions, final bills, GST snapshots/material items और `service_bookings`।
 - `20261122000200_master_manual_payment_and_cash_refund_tasks.sql`: Master booking payments/payables, refund requests/evidence/reviews, commission dues/events, wallet credits, final bills, GST snapshots और legacy manual refund compatibility ledger।
+- `20261122000300_master_confirmed_service_rates.sql`: service-rate catalogue में confirmed Electrician, Painter, Fridge, Motor/Pump और Cooler prices; AC ₹437 team split, Basic Electrician Helper, Pump Repair और 20HP से ऊपर की दरें pending-only रखी गई हैं।
 
 GitHub-hosted disposable Supabase CLI trial में stack startup ने migration replay से पहले ही `service_bookings` जैसी pre-existing core relation न मिलने पर fail किया। इसलिए वह workflow हटाया गया; कोई pgTAP test execute नहीं हुआ और कोई database migration apply नहीं हुई। यह परिणाम migration-only clean-room baseline की कमी की पुष्टि करता है—इसे SQL runtime success नहीं माना जाएगा।
 
