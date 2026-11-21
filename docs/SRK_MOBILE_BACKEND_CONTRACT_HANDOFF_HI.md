@@ -363,3 +363,8 @@ Rules:
 - The server must independently re-check approved/active/unexpired skill, assignment, booking ownership, current state/version and idempotency on accept and every protected work/material/payment transition.
 
 **Not integrated:** Customer Dashboard picker still previews only. Existing `POST /api/create-booking` payload and booking form remain unchanged; no new Supabase query/RPC, offer filtering, dispatch, payment or production behavior was added. Do not send this draft version to production until backend approval and coordinated rollout.
+
+
+## 23. Customer booking service identity rollout plan
+
+Detailed staged rollout and backend acceptance gates are documented in `docs/SRK_CUSTOMER_BOOKING_SERVICE_ID_INTEGRATION_PLAN_HI.md`. It records the current legacy create-booking payload, proposed additional structured fields, normalized booking response, immutable booking-to-offer snapshot, legacy compatibility, staging gates and rollback requirements. Draft IDs must not be sent to production before backend approval. No live API/backend/database/payment changes were made.
