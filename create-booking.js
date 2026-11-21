@@ -313,12 +313,17 @@ const work_details = clean(body.work_details, 2000);
           : "job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(raced.id)
       );
       const racedOfferRows = Array.isArray(racedOffers) ? racedOffers : [];
+      const racedAmount = raced.srk_estimated_labour_paise ?? estimatedLabourPaise;
       return json(200, { success: true, booking_id: raced.id, replayed: true,
-        estimate: { amount_paise: estimatedLabourPaise, amount_rupees: (estimatedLabourPaise / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: rateCardVersion,
-          ...(isMasterBooking ? { billing_model: masterRate.billing_model,
-            technician_hourly_paise: masterRate.technician_hourly_paise,
-            helper_hourly_paise: masterRate.helper_hourly_paise,
-            fixed_labour_paise: masterRate.fixed_labour_paise } : {}) },
+        estimate: { amount_paise: racedAmount, amount_rupees: (racedAmount / 100).toFixed(2),
+          rate8h_paise: rate8hPaise, rate_card_version: raced.srk_rate_version_snapshot || rateCardVersion,
+          ...(isMasterBooking ? { billing_model: raced.srk_billing_model_snapshot,
+            technician_hourly_paise: raced.srk_technician_hourly_paise_snapshot,
+            helper_hourly_paise: raced.srk_helper_hourly_paise_snapshot,
+            technician_8h_paise: raced.srk_technician_hourly_paise_snapshot == null ? null : Number(raced.srk_technician_hourly_paise_snapshot) * 8,
+            helper_8h_paise: raced.srk_helper_hourly_paise_snapshot == null ? null : Number(raced.srk_helper_hourly_paise_snapshot) * 8,
+            combined_8h_paise: raced.srk_technician_hourly_paise_snapshot == null ? null : (Number(raced.srk_technician_hourly_paise_snapshot) + Number(raced.srk_helper_hourly_paise_snapshot)) * 8,
+            fixed_labour_paise: raced.srk_fixed_labour_paise_snapshot } : {}) },
         offers_created: racedOfferRows.length, match_level: racedOfferRows[0]?.match_level || null,
         message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
     }
