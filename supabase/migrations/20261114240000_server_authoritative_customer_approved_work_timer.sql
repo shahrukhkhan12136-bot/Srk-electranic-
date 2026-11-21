@@ -1,5 +1,5 @@
 -- Server-authoritative work timer and immutable labour-only bill.
--- New customer bookings do not use inspection quotations or quote approval.
+-- New bookings use customer-approved work start and server-timed labour billing.
 -- This migration is source-only until separately approved for database rollout.
 
 ALTER TABLE public.service_bookings
