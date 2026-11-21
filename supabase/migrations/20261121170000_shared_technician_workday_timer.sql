@@ -536,7 +536,7 @@ GRANT EXECUTE ON FUNCTION public.srk_customer_decide_workday(uuid,date,text,uuid
 COMMENT ON TABLE public.srk_booking_technician_workdays IS
   'One independently customer-approved daily timer per assigned canonical Technician. First four active hours precede an automatic one-hour lunch pause; timer resumes automatically after lunch. Daily first eight actual hours are normal and further time is 1.5x.';
 COMMENT ON TABLE public.srk_booking_technician_labour_ledger IS
-  'Immutable per-Technician daily labour ledger. Helper charges and final customer bill are separate integration steps.';
+  'Immutable per-Technician daily labour ledger. Technician and selected helper normal/overtime amounts are recorded separately; consolidated customer final bill is a separate integration step.';
 
 
 -- A replaced Technician who completed billable workdays still contributed to
