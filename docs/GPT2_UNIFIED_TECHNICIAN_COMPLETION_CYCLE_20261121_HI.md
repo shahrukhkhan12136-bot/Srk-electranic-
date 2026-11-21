@@ -47,3 +47,35 @@ Status: **Partially implemented — source only; not deployed**
 - pgTAP file added: `supabase/tests/database/unified_technician_completion_cycle.test.sql`.
 - The pgTAP test has **not** been executed against a disposable PostgreSQL/Supabase database yet.
 - No Production SQL, Main Branch, live payment, payout, or deployment action was performed.
+
+
+## 22 November 2026 — Category-neutral integration source audit
+
+The next integration audit inspected the feature-branch source for booking creation, application intake, the current technician portal, and sequential offer dispatch.
+
+### Confirmed current-state findings
+
+1. The existing customer booking API `create-booking.js` still validates only the legacy Electrician service categories (`home_wiring`, `electrical_repair`, `light_fan_fitting`, `home_repair`, `other`). It uses an Electrician-only hard-coded rate card and limits duration to 1–8 hours. It is not yet the Master System's six-category/dynamic-rate booking API.
+2. The same booking API still accepts legacy quotation-related request input (`quoted_amount`) even though it writes `quoted_amount: null`. This is a compatibility residue to remove from the new request contract after payment/refund dependencies are mapped; no historical DB fields or records should be dropped blindly.
+3. Booking creation relies on the existing database trigger/dispatch queue. The sequential dispatch migration uses `electrician_profiles`, `job_offers.electrician_id`, electrician-specific approved rate tiers, and the `assigned_electrician_id` field. It cannot yet dispatch to Plumber, Painter, AC/Fridge, Motor/Pump or Cooler Technician identities.
+4. The current portal source is `electrician.html`, titled “Electrician Partner”, and its KYC, availability, location, offers and wallet panels call Electrician-specific RPCs. The repository root listing contains `electrician.html` but no separate Plumber/Painter/AC/Fridge/Motor/Cooler or shared Technician portal source.
+5. The current public `apply-electrician.js` endpoint inserts into `electrician_applications` after IP rate limiting. It does not itself validate an authenticated Supabase OTP session or bind the application to the verified Auth user's phone. The Master System requires OTP login before the shared Technician application form. This must be corrected in the shared onboarding contract; do not expose service-role credentials or trust a client-supplied phone as proof of verification.
+6. The existing electrician identity bridge is a useful legacy adapter, not the universal application/identity system. New category onboarding must link to the same canonical Technician ID using the verified Auth identity and must reject duplicate/ambiguous verified phone identities.
+7. The existing dispatch flow is sequential and nearest-first, but its eligibility and candidate tables are Electrician-specific. The future generic dispatcher must preserve the existing timeout/decline/next-candidate behavior while evaluating approved status, skill/category, online availability, fresh location, work-area match, capacity and duplicate assignment for every category.
+
+### Integration decision
+
+Do not add a thin category-name switch to the old Electrician API and call it complete. First establish the shared Technician application/profile and category-skill schema, then introduce a category-neutral booking contract and dispatch relation that writes to `srk_booking_technician_assignments`. Keep the Electrician tables/RPCs as compatibility adapters during migration; retain their rows and histories.
+
+### Required next implementation sequence
+
+1. Inspect the complete live schema definitions and all relevant RPC dependencies for `electrician_applications`, `electrician_profiles`, `service_bookings`, `job_offers`, rate approvals, availability and GPS.
+2. Define a shared Technician application/profile and category-skill model, including one verified Auth identity per Technician and Admin review states (pending/under review/approved/rejected with reason).
+3. Define server-authoritative category/service/rate snapshots for all six categories. Resolve the documented rate conflicts through Admin-configurable rate records; do not hard-code disputed rates into a migration.
+4. Add category-neutral assignment/offer candidate and offer-response contracts, preserving existing Electrician history and adapting the legacy flow without duplicate offers.
+5. Update customer booking API only after the database contract exists; enforce OTP identity, dynamic rate calculation, work-address dispatch and the every-third-completion payment rule.
+6. Add integration tests for all six categories, onboarding approval gates, duplicate verified mobile, GPS eligibility, timeout/decline progression, multiple Technicians, and legacy Electrician compatibility.
+
+### Scope and safety
+
+This is a source-code audit and planning update on the approved feature branch only. No database schema was queried or changed in this audit; no migration was applied; no Production, Main Branch, payment, payout or deployment action was performed.
