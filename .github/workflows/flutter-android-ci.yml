@@ -75,11 +75,12 @@ jobs:
             sed -i '/<application/i\\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' "$manifest"
           done
 
-      - name: Resolve dependencies and analyze shared core
+      - name: Resolve dependencies, analyze and test shared core
         run: |
           cd packages/srk_mobile_core
           flutter pub get
           dart analyze
+          flutter test
 
       - name: Analyze and build Customer app
         run: |
