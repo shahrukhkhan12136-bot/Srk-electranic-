@@ -62,7 +62,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   String? _error;
   List<Map<String, dynamic>> _bookings = [];
   List<Map<String, dynamic>> _complaints = [];
-  String? _selectedServicePreview;
 
   @override
   void initState() {
@@ -312,40 +311,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           children: [
             const SrkFounderBanner(),
             const SizedBox(height: 14),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('हमारी सेवाएँ', style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    const Text('अपनी जरूरत के अनुसार सेवा चुनें।'),
-                    const SizedBox(height: 12),
-                    SrkServiceCategoryPicker(
-                      onSelection: (serviceSelection) {
-                        final selection = serviceSelection.displayName;
-                        setState(() => _selectedServicePreview = selection);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('चयन हुआ: $selection')),
-                        );
-                      },
-                    ),
-                    if (_selectedServicePreview != null) ...[
-                      const SizedBox(height: 8),
-                      Text('आपका चयन: $_selectedServicePreview',
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
-                    ],
-                    const SizedBox(height: 6),
-                    const Text(
-                      'नोट: यह नया सेवा चयन अभी प्रारूप है। मौजूदा बुकिंग फॉर्म और बुकिंग भेजने की प्रक्रिया अलग और यथावत है।',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
             Text('मेरी बुकिंग',
                 style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 6),
@@ -500,6 +465,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   final _work = TextEditingController();
   final _client = Supabase.instance.client;
   String? _service;
+  SrkServiceSelection? _draftServiceSelection;
   DateTime? _date;
   TimeOfDay? _time;
   bool _submitting = false;
@@ -693,6 +659,40 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           Expanded(child: Text('बुकिंग आपके OTP-verified मोबाइल खाते से जुड़ी होगी। मोबाइल नंबर वही होना चाहिए जिससे लॉगिन किया है।')),
         ]))),
         const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('नई सर्विस कैटेगरी', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                SrkServiceCategoryPicker(
+                  onSelection: (selection) {
+                    setState(() => _draftServiceSelection = selection);
+                  },
+                ),
+                if (_draftServiceSelection != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'चुना गया प्रारूप: ${_draftServiceSelection!.displayName}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'कैटलॉग वर्जन: ${_draftServiceSelection!.catalogueVersion}',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                const Text(
+                  'यह चयन अभी केवल तैयारी/preview के लिए है। Backend की मंजूरी से पहले इसे बुकिंग में नहीं भेजा जाएगा। नीचे मौजूदा बुकिंग सिस्टम का सर्विस विकल्प अभी आवश्यक है।',
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         Text('ग्राहक की जानकारी', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         _field(_name, 'पूरा नाम', maxLength: 100),
@@ -715,7 +715,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         Text('काम की जानकारी', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
-          value: _service, decoration: _decoration('कौन-सी इलेक्ट्रिकल सर्विस चाहिए?'),
+          value: _service, decoration: _decoration('मौजूदा बुकिंग सिस्टम की सर्विस चुनें'),
           items: _services.map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))).toList(),
           onChanged: (v) => setState(() => _service = v),
           validator: (v) => v == null ? 'सर्विस चुनें' : null,
