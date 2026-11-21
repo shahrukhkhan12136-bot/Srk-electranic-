@@ -425,16 +425,25 @@ REVOKE ALL ON FUNCTION public.srk_get_my_offer_details() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_get_my_offer_details() TO authenticated;
 
 
--- Legacy quotation RPCs remain usable only for historical rows without a
--- customer-selected work category. New bookings must use the server timer.
-CREATE OR REPLACE FUNCTION public.srk_submit_booking_quote(
-  p_booking_id uuid,p_service_charge numeric,p_materials_amount numeric,p_quote_note text DEFAULT NULL
-) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
-SET search_path TO 'pg_catalog','public','auth','pg_temp'
+-- Prevent direct Admin/browser status edits from bypassing the customer-approved
+-- server-timed work lifecycle for new-category bookings.
+CREATE OR REPLACE FUNCTION public.srk_guard_new_category_booking_status_transition()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
 AS $function$
-DECLARE v_profile_id uuid; v_booking public.service_bookings%ROWTYPE;
+DECLARE
+  v_authorized boolean := false;
+  v_cancel_request_id text;
 BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentication required' USING ERRCODE='42501'; LD.selected_category IS NULL THEN
+  IF NEW.selected_category IS DISTINCT FROM OLD.selected_category THEN
+    RAISE EXCEPTION 'BOOKING_CATEGORY_IS_IMMUTABLE'
+      USING ERRCODE='42501';
+  END IF;
+
+  IF NEW.status IS NOT DISTINCT FROM OLD.status
+     OR OLD.selected_category IS NULL THEN
     RETURN NEW;
   END IF;
 
