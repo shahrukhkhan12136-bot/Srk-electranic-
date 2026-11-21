@@ -123,7 +123,7 @@ DECLARE v_out jsonb;
 BEGIN
  IF auth.uid() IS NULL OR NOT public.is_srk_admin() THEN RAISE EXCEPTION 'ADMIN_ONLY' USING ERRCODE='42501'; END IF;
  SELECT coalesce(jsonb_agg(jsonb_build_object(
-  'request_id',r.id,'technician_id',r.technician_id,'technician_name',coalesce(ep.display_name,t.primary_phone,'Technician'),
+  'request_id',r.id,'technician_id',r.technician_id,'technician_name',coalesce((SELECT ep.display_name FROM public.srk_technician_profile_links l JOIN public.electrician_profiles ep ON ep.id=l.electrician_profile_id WHERE l.technician_id=t.id ORDER BY l.linked_at LIMIT 1),t.primary_phone,'Technician'),
   'amount_paise',r.amount_paise,'destination_type',r.destination_type,'destination_reference',r.destination_reference,
   'status',r.status,'requested_at',r.requested_at,'review_note',r.review_note,
   'payable_count',(SELECT count(*) FROM public.srk_master_payout_request_items i WHERE i.payout_request_id=r.id),
@@ -131,8 +131,6 @@ BEGIN
  ) ORDER BY r.requested_at DESC),'[]'::jsonb) INTO v_out
  FROM public.srk_master_payout_requests r
  JOIN public.srk_technicians t ON t.id=r.technician_id
- LEFT JOIN public.srk_technician_profile_links l ON l.technician_id=t.id
- LEFT JOIN public.electrician_profiles ep ON ep.id=l.electrician_profile_id
  WHERE r.status IN ('requested','approved');
  RETURN v_out;
 END; $$;
