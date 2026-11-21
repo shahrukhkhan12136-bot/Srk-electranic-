@@ -106,6 +106,39 @@ void main() {
       expect(selected, isNull);
     });
 
+    testWidgets('shows Plumber and Painter approved rates with optional helper note', (tester) async {
+      tester.view.physicalSize = const Size(900, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(onSelection: (_) {}),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('प्लंबर'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Expert'));
+      await tester.pumpAndSettle();
+      expect(find.text('मजदूरी की दर (सामग्री अलग)'), findsOneWidget);
+      expect(
+        find.text('मजदूरी: ₹125 / प्रति घंटा • Helper ₹60 प्रति घंटा; कुल ₹185 प्रति घंटा'),
+        findsOneWidget,
+      );
+      expect(find.text('Helper वैकल्पिक है; चुनने पर ही अतिरिक्त शुल्क लगेगा।'), findsOneWidget);
+
+      await tester.tap(find.text('पेंटर'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Expert'));
+      await tester.pumpAndSettle();
+      expect(find.text('मजदूरी: ₹900 / 8 घंटे • Helper ₹60 प्रति घंटा अतिरिक्त'), findsOneWidget);
+      expect(find.text('Helper वैकल्पिक है; चुनने पर ही अतिरिक्त शुल्क लगेगा।'), findsOneWidget);
+    });
+
     testWidgets('shows both Expert Electrician wiring options with their own rates', (tester) async {
       tester.view.physicalSize = const Size(900, 1400);
       tester.view.devicePixelRatio = 1;
