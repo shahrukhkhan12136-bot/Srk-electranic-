@@ -1635,3 +1635,34 @@ Founder ने बाजार-दर तुलना के बाद नीच
 - [x] Customer/Technician Dart source, database, migrations, RPCs, API functions, payment settings और production data अभी नहीं बदले गए।
 - [ ] पूर्ण quotation removal अभी **Backend contract pending** है: वर्तमान backend में in_progress transition quote_approved + quote_status=approved पर निर्भर है और cash confirmation quoted_amount पढ़ता है। Contract बदलने से पहले UI/field काटना booking lifecycle तोड़ सकता है।
 - [ ] GPT-2 contract मिलने के बाद पहले backend migration deploy/verify हो; उसके बाद frontend source से quote flow हटे। Legacy data deletion अलग approval और backup के बिना नहीं होगी।
+
+## 2BT. Customer + Technician संयुक्त स्क्रीन/बुकिंग फॉर्म पुनः-जाँच (21-11-2026)
+
+### Customer App में वर्तमान वास्तविक स्थिति
+- [x] OTP-linked customer booking history, booking refresh, cancellation, complaint create/list, assigned technician contact, Razorpay order + server verification flow मौजूद हैं; इन्हें preserve करना है।
+- [x] Existing booking form में नाम, verified phone, state/district/PIN/address, optional GPS, date/time, work details, cash/online choice और legacy Electrical-only service dropdown मौजूद हैं।
+- [x] Shared catalogue picker form में preview के रूप में मौजूद है; source स्पष्ट कहता है कि selection backend approval से पहले booking payload में नहीं भेजा जाता। इसलिए catalogue selection अभी live booking integration नहीं है।
+- [x] Form submit अभी legacy /api/create-booking payload (service_type/date/time आदि) भेजता है; category/task/skill/helper/duration/team/rate snapshot के fields अभी submit नहीं होते।
+- [x] Customer booking list अभी service_bookings से quote columns पढ़ती है, quote response RPC call करती है, quote status/actions दिखाती है और completed online payment को quote-approved state से gate करती है।
+- [x] शिकायत category में अभी “कीमत / कोटेशन” विकल्प है; इसे quote-free भाषा जैसे “बिल / अतिरिक्त सामान” में बदलना है, बिना complaint RPC contract बदले।
+- [ ] Customer profile first-login name persistence/autofill, verified-phone-only reuse और category picker से legacy dropdown हटाना API/profile contract के बाद पूरा करना है।
+- [ ] Customer final bill/payment view को quote fields से हटाकर server-authoritative payable amount/status पर ले जाना GPT-2 response contract पर निर्भर है।
+
+### Technician App में वर्तमान वास्तविक स्थिति
+- [x] OTP login, profile approval/active gate, offer list, accept/decline, assigned booking details, map/directions, assigned customer phone, work status actions, cash confirmation, earnings और wallet मौजूद हैं।
+- [x] Assigned booking data अभी quote-named RPC srk_get_my_assigned_booking_quote_details से आता है; इसमें assigned booking address/contact/privacy data भी है। इसे नया सुरक्षित response आने तक काटना नहीं है।
+- [x] Technician quote details/price cards, quote status labels, quote submit action और _QuoteSubmissionDialog मौजूद हैं; इनमें srk_submit_booking_quote call है।
+- [x] Work-start button केवल quote_approved status पर दिखता है; cash confirmation quoted_amount पढ़ती है। ये दोनों quote-free replacement के लिए वास्तविक blockers हैं।
+- [ ] Quote-free backend lifecycle और final amount RPC आने के बाद quote form/dialog, quote cards, quote statuses, quote RPC calls और quoted_amount references को app source से पूरी तरह हटाना है।
+- [ ] Technician profile onboarding/KYC/skills, online availability, consented live GPS, multi-day timer/lunch/overtime, team progress, payout request/UTR/history, complaints और ratings अभी अधूरे हैं; backend-supported order में बनेंगे।
+
+### सुरक्षित प्राथमिकता और duplicate-work रोकथाम
+1. [x] दोनों मुख्य app files और Customer booking form का वर्तमान source audit पूरा; इस चरण में कोई Dart source नहीं बदला।
+2. [ ] GPT-2 से quote-free lifecycle, assigned-job detail response, final bill/payment, cash confirmation और legacy-record compatibility का exact contract प्राप्त करना।
+3. [ ] Contract मिलने पर Customer और Technician के quotation controls/API dependencies एक ही coordinated change में हटाना; केवल labels बदलकर पुराने quote RPCs call नहीं करने।
+4. [ ] Existing booking form में shared catalogue picker को वास्तविक submission से जोड़ना; legacy endpoint contract बदले बिना category preview को live booking न बताना।
+5. [ ] Customer profile autofill, complaint wording, booking status/history और payment screens को नए contract से जोड़ना।
+6. [ ] Technician availability/location, timer/lunch/overtime, daily logs, team progress और payout screens को backend contracts के अनुसार चरणबद्ध जोड़ना।
+7. [ ] Widget/integration tests, Flutter format/analyzer, debug/release Android builds और device checks चलाकर हर result दर्ज करना।
+
+**इस audit में नहीं बदला:** Customer/Technician Dart source, backend/API, database/migrations/RPCs, payment provider settings, production data या Main branch। Flutter tests/build इस चरण में नहीं चलाए गए। पुराने quotation data को delete करना इस frontend commit का हिस्सा नहीं है; legacy handling GPT-2 की migration strategy और अलग data-safety approval से तय होगी।
