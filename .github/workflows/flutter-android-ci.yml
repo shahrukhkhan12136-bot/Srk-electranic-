@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   analyze-and-build:
-    name: Analyze and build Android apps
+    name: Analyze and build Customer and Technician Android apps
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -71,7 +71,6 @@ jobs:
           }
           prepare_android apps/customer_app customer in.srkelectronic.customer
           prepare_android apps/electrician_app electrician in.srkelectronic.electrician
-          prepare_android apps/admin_app admin in.srkelectronic.admin
           for manifest in apps/customer_app/android/app/src/main/AndroidManifest.xml apps/electrician_app/android/app/src/main/AndroidManifest.xml; do
             sed -i '/<application/i\\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' "$manifest"
           done
@@ -92,19 +91,9 @@ jobs:
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=SRK_API_BASE_URL="$SRK_API_BASE_URL"
 
-      - name: Analyze and build Electrician app
+      - name: Analyze and build Technician app
         run: |
           cd apps/electrician_app
-          flutter pub get
-          dart analyze
-          flutter build apk --debug \
-            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
-            --dart-define=SRK_API_BASE_URL="$SRK_API_BASE_URL"
-
-      - name: Analyze and build Admin app
-        run: |
-          cd apps/admin_app
           flutter pub get
           dart analyze
           flutter build apk --debug \
@@ -115,10 +104,9 @@ jobs:
       - name: Upload debug APKs
         uses: actions/upload-artifact@v4
         with:
-          name: srk-electronic-android-debug-apks
+          name: srk-electronic-customer-technician-android-debug-apks
           if-no-files-found: error
           retention-days: 7
           path: |
             apps/customer_app/build/app/outputs/flutter-apk/app-debug.apk
             apps/electrician_app/build/app/outputs/flutter-apk/app-debug.apk
-            apps/admin_app/build/app/outputs/flutter-apk/app-debug.apk
