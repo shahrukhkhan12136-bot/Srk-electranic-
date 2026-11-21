@@ -199,3 +199,10 @@ Please return, in writing:
 - Contract field names are a proposed frontend shape only. Do not add them to Supabase queries until backend confirms deployed JSON/schema exactly.
 - Added tests for approved, pending, rejected, inactive, expired, missing IDs, AC/Fridge separation and empty/non-empty panel.
 - Technician CI now runs `flutter test` after `dart analyze`; execution remains pending until the workflow is actually run.
+
+
+## 12. Offer-to-skill match preview helper (21 Nov 2026)
+- Added a pure preview helper that compares exact canonical category/subcategory and, when present, task/tier IDs against already parsed verified skills.
+- Missing canonical IDs return `unknown`; an exact mismatch returns `notMatched`; exact match returns `matched`.
+- This helper is not wired into offer inbox filtering, accept/decline, assignment or work actions. It is not authorization; backend must independently enforce eligibility.
+- Tests cover exact match, trade/subcategory mismatch, specialist task/tier mismatch and missing canonical IDs.
