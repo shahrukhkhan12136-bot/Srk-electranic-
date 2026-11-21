@@ -166,7 +166,7 @@ test('missing electrician profile removes the stale realtime offer subscription'
   const refresh = body('refresh');
   const missingProfile = refresh.slice(refresh.indexOf('if(!p){'));
   assert.match(missingProfile, /if\(offersChannel\)\{const oldChannel=offersChannel;offersChannel=null;sb\.removeChannel\(oldChannel\);\}/);
-  assert.ok(missingProfile.indexOf('sb.removeChannel(oldChannel)') < missingProfile.indexOf("document.getElementById('name').textContent='प्रोफाइल लिंक नहीं हुई'"));
+  assert.ok(missingProfile.indexOf('sb.removeChannel(oldChannel)') < missingProfile.indexOf("document.getElementById('name').textContent=sharedTechnicianStatus"));
 });
 
 
