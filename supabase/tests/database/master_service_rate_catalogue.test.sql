@@ -1,6 +1,5 @@
 BEGIN;
-SELECT plan(21);
-
+SELECT plan(25);
 SELECT has_table('public','srk_service_offerings','service offerings are separate from technician skills');
 SELECT has_table('public','srk_service_rates','versioned Admin-controlled labour rates exist');
 SELECT has_table('public','srk_service_rate_events','rate changes have an audit ledger');
@@ -10,64 +9,23 @@ SELECT has_column('public','service_bookings','srk_technician_hourly_paise_snaps
 SELECT has_column('public','service_bookings','srk_helper_hourly_paise_snapshot','booking stores Helper hourly rate');
 SELECT has_column('public','service_bookings','srk_fixed_labour_paise_snapshot','booking stores fixed labour price');
 SELECT has_column('public','service_bookings','srk_service_quantity','booking stores fixed service quantity');
-SELECT has_index('public','srk_service_rates','srk_service_rates_one_active_level_uidx',
-  'only one active rate exists per service and level');
-SELECT has_trigger('public','srk_service_rates','srk_guard_service_rate_history',
-  'active and retired rate versions cannot be rewritten');
-SELECT has_trigger('public','srk_service_rate_events','srk_service_rate_events_append_only',
-  'rate audit history is append-only');
-
-SELECT ok(
-  has_function('public','srk_customer_get_service_rate',ARRAY['text','text'])
-  AND has_function('public','srk_customer_list_active_service_rates',ARRAY[]::text[]),
-  'customer rate lookup and active rate list RPCs exist'
-);
-SELECT ok(
-  has_function('public','srk_admin_upsert_service_offering',ARRAY['text','text','text','text','text','text','boolean'])
-  AND has_function('public','srk_admin_upsert_service_rate',
-    ARRAY['text','text','text','bigint','bigint','bigint','text','text','timestamp with time zone','timestamp with time zone']),
-  'Admin service and rate catalogue RPCs exist'
-);
-SELECT ok(
-  has_function('public','srk_admin_list_service_rates',ARRAY[]::text[]),
-  'Admin can review the complete rate catalogue and pending configurations'
-);
-SELECT ok(
-  has_function_privilege('anon','public.srk_customer_list_active_service_rates()','EXECUTE')
-  AND has_function_privilege('authenticated','public.srk_customer_list_active_service_rates()','EXECUTE')
-  AND NOT has_function_privilege('anon','public.srk_customer_get_service_rate(text,text)','EXECUTE')
-  AND has_function_privilege('service_role','public.srk_customer_get_service_rate(text,text)','EXECUTE'),
-  'public can read only active rate list; booking backend resolves a selected rate'
-);
-SELECT ok(
-  has_function_privilege('authenticated','public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz)','EXECUTE')
-  AND NOT has_function_privilege('anon','public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz)','EXECUTE'),
-  'Admin rate mutation RPC is not available to anonymous users'
-);
-SELECT ok(
-  (SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_service_rates'::regclass)
-  AND (SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_service_offerings'::regclass),
-  'rate and service catalogue tables have RLS enabled'
-);
-SELECT ok(
-  (SELECT count(*)=3 FROM public.srk_service_rates
-    WHERE service_code IN ('residential_plumbing','industrial_plumbing') AND status='active')
-  AND NOT EXISTS(SELECT 1 FROM public.srk_service_rates
-    WHERE service_code IN ('residential_wiring','factory_wiring','interior_painting','exterior_painting',
-      'ac_technician','ac_installation','ac_repair','fridge_technician','motor_winding','pump_repair','cooler_repair','cooler_motor_winding')
-      AND status='active'),
-  'only confirmed Plumber rates are seeded active; conflicting rates remain Admin-configurable'
-);
-SELECT ok(
-  (SELECT count(*)=3 FROM public.srk_customer_list_active_service_rates()),
-  'customer list contains only the three active confirmed Plumber levels in the initial seed'
-);
-SELECT ok(
-  position('srk_service_category_code' in pg_get_constraintdef((
-    SELECT oid FROM pg_constraint WHERE conname='service_bookings_srk_rate_snapshot_complete'
-  )))>0,
-  'new booking rate snapshot requires canonical service identity'
-);
-
+SELECT has_index('public','srk_service_rates','srk_service_rates_one_active_level_uidx','only one active rate exists per service and level');
+SELECT has_trigger('public','srk_service_rates','srk_guard_service_rate_history','active and retired rate versions cannot be rewritten');
+SELECT has_trigger('public','srk_service_rate_events','srk_service_rate_events_append_only','rate audit history is append-only');
+SELECT ok(has_function('public','srk_customer_get_service_rate',ARRAY['text','text']) AND has_function('public','srk_customer_list_active_service_rates',ARRAY[]::text[]),'customer rate lookup and active rate list RPCs exist');
+SELECT ok(has_function('public','srk_admin_upsert_service_offering',ARRAY['text','text','text','text','text','text','boolean']) AND has_function('public','srk_admin_upsert_service_rate',ARRAY['text','text','text','bigint','bigint','bigint','text','text','timestamp with time zone','timestamp with time zone']),'Admin service and rate catalogue RPCs exist');
+SELECT ok(has_function('public','srk_admin_list_service_rates',ARRAY[]::text[]),'Admin can review complete rate catalogue and pending configurations');
+SELECT ok(has_function_privilege('anon','public.srk_customer_list_active_service_rates()','EXECUTE') AND has_function_privilege('authenticated','public.srk_customer_list_active_service_rates()','EXECUTE') AND NOT has_function_privilege('anon','public.srk_customer_get_service_rate(text,text)','EXECUTE') AND has_function_privilege('service_role','public.srk_customer_get_service_rate(text,text)','EXECUTE'),'public can read only active rate list; booking backend resolves a selected rate');
+SELECT ok(has_function_privilege('authenticated','public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz)','EXECUTE') AND NOT has_function_privilege('anon','public.srk_admin_upsert_service_rate(text,text,text,bigint,bigint,bigint,text,text,timestamptz,timestamptz)','EXECUTE'),'Admin rate mutation RPC is not available to anonymous users');
+SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_service_rates'::regclass) AND (SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_service_offerings'::regclass),'rate and service catalogue tables have RLS enabled');
+SELECT ok((SELECT count(*)=3 FROM public.srk_service_rates WHERE service_code IN ('residential_plumbing','industrial_plumbing') AND status='active') AND NOT EXISTS(SELECT 1 FROM public.srk_service_rates WHERE service_code IN ('ac_installation','ac_repair','pump_repair') AND status='active'),'Plumber rates active while AC split and Pump Repair remain pending');
+SELECT ok((SELECT count(*)=36 FROM public.srk_service_rates WHERE status='active'),'all confirmed category rates are active; no unresolved rate is customer-bookable');
+SELECT ok((SELECT technician_hourly_paise=30000 AND helper_hourly_paise=12500 FROM public.srk_service_rates WHERE service_code='factory_wiring' AND level_code='expert' AND status='active'),'Factory Wiring Expert rate is ₹300 + ₹125 per hour');
+SELECT ok((SELECT technician_hourly_paise=70000 AND helper_hourly_paise=20000 FROM public.srk_service_rates WHERE service_code='residential_wiring' AND level_code='master' AND status='active'),'Master Electrician rate is ₹700 + ₹200 per hour');
+SELECT ok((SELECT fixed_labour_paise=140000 FROM public.srk_service_rates WHERE service_code='motor_winding' AND level_code='hp_20' AND status='active') AND (SELECT fixed_labour_paise=50000 FROM public.srk_service_rates WHERE service_code='cooler_repair' AND level_code='standard' AND status='active'),'Motor 20 HP and Cooler Repair fixed rates match the approved catalogue');
+SELECT ok((SELECT count(*)=20 FROM public.srk_service_rates WHERE service_code IN ('motor_winding','cooler_motor_winding') AND status='active'),'Motor and Cooler winding share all ten approved HP bands');
+SELECT ok((SELECT count(*)=3 FROM public.srk_service_rates WHERE status='pending_admin_configuration' AND service_code IN ('ac_installation','ac_repair','pump_repair')),'AC ₹437 team rate split and Pump Repair rate remain explicit Admin configuration items');
+SELECT ok((SELECT count(*)=36 FROM public.srk_customer_list_active_service_rates()),'customer list contains only 36 confirmed active rate levels');
+SELECT ok(position('srk_service_category_code' in pg_get_constraintdef((SELECT oid FROM pg_constraint WHERE conname='service_bookings_srk_rate_snapshot_complete')))>0,'new booking rate snapshot requires canonical service identity');
 SELECT * FROM finish();
 ROLLBACK;
