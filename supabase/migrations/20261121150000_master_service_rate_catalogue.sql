@@ -120,6 +120,15 @@ FROM public.srk_service_skills s
 JOIN public.srk_service_categories c ON c.id=s.category_id
 ON CONFLICT(service_code) DO NOTHING;
 
+-- AC Installation and AC Repair are distinct customer-selectable services under the separately assessed AC skill.
+UPDATE public.srk_service_offerings SET is_active=false,updated_at=clock_timestamp()
+WHERE service_code='ac_technician';
+INSERT INTO public.srk_service_offerings(category_code,skill_code,service_code,display_name,billing_model,unit_label)
+VALUES
+  ('ac_fridge_technician','ac_technician','ac_installation','AC Installation','hourly','घंटा'),
+  ('ac_fridge_technician','ac_technician','ac_repair','AC Repair','hourly','घंटा')
+ON CONFLICT(service_code) DO NOTHING;
+
 -- Plumber rates are explicitly confirmed. Conflicting category prices are deliberately not activated.
 INSERT INTO public.srk_service_rates
 (service_code,level_code,level_label,technician_hourly_paise,helper_hourly_paise,rate_version,status)
