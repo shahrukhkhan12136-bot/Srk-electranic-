@@ -27,5 +27,7 @@ test('Motor and Cooler winding include all ten approved HP fixed rates',()=>{
 test('AC team rate and Pump Repair remain pending instead of guessing a pay split',()=>{
  assert.match(migration,/AC Technician \+ Helper Team ₹437\/hour — Pay Split Pending/);
  assert.match(migration,/Pump Repair — Admin Rate Pending/);
+ assert.match(migration,/Basic Electrician \+ Helper — Helper Rate Pending/);
+ assert.match(migration,/Above 20 HP — Admin Rate Pending/);
  assert.match(migration,/pending_admin_configuration/);
 });
