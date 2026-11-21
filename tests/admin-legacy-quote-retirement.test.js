@@ -46,6 +46,11 @@ test('Final migration removes quote-era columns from live bookings but preserves
  assert.match(finalRetirement,/DROP COLUMN IF EXISTS quote_status/);
  assert.match(finalRetirement,/DROP COLUMN IF EXISTS service_charge/);
  assert.match(finalRetirement,/DROP COLUMN IF EXISTS materials_amount/);
+ assert.match(finalRetirement,/SET status='legacy_archived'/);
+ assert.match(finalRetirement,/service_bookings_status_check/);
+ assert.match(finalRetirement,/awaiting_quote_approval/);
+ assert.match(finalRetirement,/'legacy_archived'/);
+ assert.match(admin,/legacy_archived/);
  assert.match(finalRetirement,/legacy_booking_financial_evidence/);
  assert.match(finalRetirement,/DROP FUNCTION IF EXISTS public\.srk_admin_record_manual_payment/);
  assert.doesNotMatch(finalRetirement,/DROP TABLE public\.service_bookings/i);
