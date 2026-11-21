@@ -1,7 +1,8 @@
 # SRK ELECTRONIC — मुख्य मास्टर चेकलिस्ट (एकीकृत स्थिति)
 
-**अंतिम मिलान:** 17 नवम्बर 2026  
-**काम की branch:** `feat/customer-login-first-dashboard-20261114`  
+**अंतिम मिलान:** 21 नवम्बर 2026  
+**वर्तमान staging branch:** `tmp/master-final-ui-20261121`  
+**Feature base:** `feature/master-rating-ui-followup-v2-20261121`  
 **Repository:** `shahrukhkhan12136-bot/Srk-electranic-`  
 **स्थिति का नियम:** [x] = Feature Branch source में implement/verified; इसका अर्थ Production पर लागू होना नहीं है। Runtime/Production/owner approval को अलग स्पष्ट रखा गया है। पुरानी विस्तृत कार्य-इतिहास `docs/SRK_ELECTRONIC_PROJECT_PROGRESS_HI.md` में है। इस checklist में duplicate पुराने pending items को बार-बार नहीं दोहराया जाएगा।
 
@@ -17,6 +18,46 @@
 - Admin Panel के शीर्ष पर पूरे प्रोजेक्ट का कार्ड और GPT-2 का अलग कार्ड पहले से दर्ज हैं; GPT-1 का प्रतिशत इस checklist/progress log में अलग दिखाया जाएगा।
 - **GPT नंबर 2 का अलग कार्यक्षेत्र:** Admin/Support Staff (13), Payment/Accounting (10), Main Database audit/parity (16) — कुल 39 मदों में 27 पूर्ण, 12 शेष: **69% पूरा / 31% बाकी**। GPT-1 के Customer/Electrician कार्य इसमें शामिल नहीं हैं।
 - Admin Panel में पूरे प्रोजेक्ट के कार्ड के नीचे GPT-2 का अलग प्रगति कार्ड भी दिखाया गया है।
+
+---
+
+
+## 0. नवीनतम समेकित स्थिति — 21 नवम्बर 2026
+
+यह checkpoint पुराने 15/17 नवम्बर progress percentages और पुराने pending snapshots को supersede करता है। ऊपर के 65%/69% आंकड़े पुराने checkbox snapshot हैं; इन्हें वर्तमान completion या release readiness न मानें। नया प्रतिशत तभी बदलेगा जब पूरा checklist पुनर्गणित हो।
+
+### Source implementation इस staging branch में जोड़ा
+
+- [x] Shared Technician App: OTP login के बाद एक आवेदन, अनेक service categories/skills, private KYC upload, Admin skill/KYC review और approval gate।
+- [x] Master unified Technician offer inbox, online presence/GPS, 30 km eligibility, Admin dispatch queue और सुरक्षित retry।
+- [x] Customer Assigned Technician Team, booking-scoped GPS, Technician display names, workday start approval और हर दिन के तीन Customer decisions।
+- [x] Server workday timer, pause/resume/lunch handling, 8 घंटे normal + उसके बाद 1.5x overtime accounting; Customer और Technician UI में stopped-day normal/overtime breakdown।
+- [x] Master Final Bill, GST snapshot, Customer GST Invoice/Credit Note view, Admin GST/accounting path।
+- [x] Admin completed Cash/Manual Payment verification queue; GST-inclusive total due और वास्तविक Receipt/UTR confirmation के बाद ही payment record।
+- [x] Technician को Admin-approved Cash Refund task inbox; Technician द्वारा वास्तविक refund evidence; Admin finalization में GST-inclusive amount check और commission reversal/wallet credit।
+- [x] Technician Wallet में commission refund credits available/requested/paid और history display।
+- [x] Confirmed rates का नया versioned seed: 36 active rate levels — Electrician, Plumber, Painter, Fridge, Motor Winding, Cooler Repair और Cooler Motor Winding। Customer list में Technician/Helper hourly और 8-hour salaries तथा combined total।
+- [x] Unresolved prices customer-bookable नहीं: 6 pending Admin rows — AC Installation/Repair ₹437 team rate का Technician/Helper split, Basic Electrician Helper, Pump Repair, और Motor/Cooler winding above 20 HP।
+- [x] Master Cash Refund finalization में GST-inclusive total_due_paise validation; पुराने subtotal_paise comparison से होने वाली tax mismatch समस्या सुधारी।
+- [x] Legacy quote UI/RPC retirement work पहले के migrations में है; historical quote columns/records archival compatibility के लिए रखे गए हैं। New Master booking में quote approval workflow नहीं है।
+
+### अभी भी वास्तविक blockers / owner या provider input
+
+- [ ] Road-distance travel fee अभी implement/runtime-verified नहीं: नियम 3 km free, उसके बाद ₹4/km one-way है। GPS straight-line distance को road distance बताकर charge नहीं करेंगे। Google Routes/Maps या अन्य approved routing provider और सुरक्षित server-side API credential/configuration चाहिए।
+- [ ] AC Installation और AC Repair का ₹437/hour combined team total दर्ज है, लेकिन Technician/Helper pay split नहीं दिया गया; इसलिए दोनों pending हैं और booking बंद है।
+- [ ] Basic Electrician Helper rate, Pump Repair rate और 20 HP से ऊपर की Motor/Cooler winding दरें Admin approval तक pending हैं।
+- [ ] Founder का वास्तविक approved original photo अभी upload नहीं हुआ; कोई generated/दूसरी portrait substitute नहीं होगी। Upload मिलने पर Customer और shared Technician App दोनों में लगाना है।
+- [ ] Supabase Development Branch Pro Plan सीमा के कारण नहीं बनी। GitHub-hosted local replay भी source-only migrations से fail हुआ क्योंकि authoritative pre-existing core schema (जैसे service_bookings) repository में baseline के रूप में उपलब्ध नहीं है। इसलिए 55 pgTAP files का runtime execution अभी NOT RUN है; कोई production/test database migration apply नहीं हुई।
+- [ ] PostgreSQL/Auth/Storage baseline और duplicate migration-version history का source reconciliation; फिर disposable database में पूरी migration replay और सभी pgTAP tests।
+- [ ] Hosted Supabase schema/role parity, real OTP/SMS, Storage/KYC, Push provider delivery, concurrency/actor ACL और browser end-to-end verification।
+- [ ] Desktop/mobile visual QA और owner acceptance; Vercel Preview पर पहले build-rate-limit समस्या थी, Netlify Deploy Preview भी अलग verify होना है।
+- [ ] Main branch के लिए PR अभी नहीं खोला गया। पहले staging changes को feature branch में review/test करना है; Main/Production merge, migration और deployment अलग owner approval के बिना नहीं होंगे।
+
+### इस checkpoint के सुरक्षित नियम
+
+- Main Branch, Production Database, real customer payment/refund/payout, SMS/Push provider action और deployment नहीं किए गए।
+- Source-level Node tests और SQL runtime tests अलग gates हैं; Node PASS को pgTAP/production verification नहीं कहा जाएगा।
+- Temporary Supabase local replay attempt को हटाया गया क्योंकि canonical baseline नहीं था; COMPLETE_DATABASE_SETUP.sql या पुराने portal schema को authoritative baseline मानकर नहीं चलाया जाएगा।
 
 ---
 
