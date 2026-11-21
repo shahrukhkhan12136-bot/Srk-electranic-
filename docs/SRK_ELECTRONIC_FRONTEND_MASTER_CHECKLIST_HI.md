@@ -1464,7 +1464,7 @@ Founder के निर्देश के अनुसार ग्राह�
 - [ ] चुनी गई अवधि के अनुसार कुल रकम अपने आप calculate हो और BOOK NOW से पहले ग्राहक को दिखाई जाए।
 - [ ] ग्राहक रकम और अवधि देखकर ही BOOK NOW दबाकर बुकिंग submit करे।
 - [ ] Hour-based duration का हिसाब: लागू प्रति घंटा दर × चुने गए billable घंटे; minute-based actual timer billing और पहले से तय Lunch नियम final actual work accounting में लागू रहें।
-- [ ] 50 दिन जैसी day-based अवधि को billable working hours में बदलने का नियम (प्रतिदिन कितने काम के घंटे, daily schedule/holidays) Founder से स्पष्ट कराना बाकी; पुष्टि से पहले दिन को मनमाने ढंग से 8 घंटे मानकर final amount न निकालें।
+- [x] Founder ने स्पष्ट किया: एक कार्य-दिन में 8 घंटे सामान्य काम होंगे; 8 घंटे पूरे होने के बाद उसी दिन का अतिरिक्त वास्तविक काम 1.5x overtime होगा। 50 दिन जैसी अवधि के शुरुआती अनुमान में प्रति दिन 8 सामान्य घंटे का आधार लें; overtime वास्तविक अतिरिक्त काम होने पर अलग गिना जाएगा।
 - [ ] Customer के सामने booking से पहले दिखी रकम को स्पष्ट रूप से अवधि-आधारित अनुमान/बुकिंग राशि के रूप में label करें; final bill actual verified working minutes और approved overtime rules के अनुसार server-authoritative होगा।
 - [ ] वास्तविक Customer booking UI, live rate calculation, duration selector और tests अभी implementation के लिए बाकी हैं।
 
@@ -1497,3 +1497,17 @@ Founder के निर्देश के अनुसार काम के 
 - [x] मौजूदा 8-hour base package amounts और project hourly rates सुरक्षित; booking/billing की मूल दर या server calculation इस display instruction से नहीं बदली।
 - [ ] Customer और Electrician के live Timer UI में केवल चुने गए wiring option/helper selection का `timerHourlyAmount` दिखाना; 8-hour amount छिपाना — UI implementation और test बाकी।
 - [ ] Final bill server-authoritative calculation से ही बने; timer पर दिखने वाला hourly text केवल display है, client-side billing authority नहीं।
+
+
+## 2BN. दैनिक 8 घंटे, उसके बाद Overtime और 1 घंटे का Lunch (21-11-2026)
+
+Founder की स्पष्ट पुष्टि:
+
+- [x] एक कार्य-दिन में **8 घंटे सामान्य काम** होंगे।
+- [x] 8 सामान्य घंटे पूरे होने के बाद उसी दिन किया गया अतिरिक्त वास्तविक काम **Overtime** में गिना जाएगा; लागू स्वीकृत नियम के अनुसार overtime rate 1.5x है।
+- [x] Technician जब **Lunch** दबाएगा, timer ठीक **1 घंटे** के लिए अपने आप रुकेगा ताकि वह खाना खा सके।
+- [x] 1 घंटे का Lunch पूरा होते ही timer अपने आप फिर चालू होगा; कोई Resume बटन नहीं होगा।
+- [x] Lunch का समय काम के billable minutes में नहीं जुड़ेगा और 8 सामान्य working hours की गणना में भी शामिल नहीं होगा।
+- [ ] दैनिक 8 घंटे सामान्य काम पूरे होने की सीमा और overtime transition को server-authoritative timer/accounting में लागू और test करना बाकी है।
+- [ ] Lunch auto-resume तथा 8 घंटे/overtime boundary के लिए app बंद, नेटवर्क बाधा और device clock बदलने वाले test बाकी हैं।
+- [ ] 50 दिन तक की booking के pre-booking estimate में सामान्य समय का आधार 8 घंटे प्रति कार्य-दिन होगा; वास्तविक overtime केवल वास्तव में किए गए अतिरिक्त काम के अनुसार final bill में जुड़ेगा।
