@@ -47,7 +47,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $function$
   CASE WHEN b.assigned_electrician_id=p.id AND b.status IN
    ('assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected',
     'awaiting_work_start_approval','in_progress','completed','cancelled') THEN b.quote_note ELSE NULL END,
-  'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+  'legacy',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
  FROM public.job_offers o
  JOIN public.electrician_profiles p ON p.id=o.electrician_id
  JOIN public.service_bookings b ON b.id=o.booking_id
