@@ -1,10 +1,11 @@
 BEGIN;
-SELECT plan(12);
+SELECT plan(13);
 SELECT has_function('public','srk_technician_get_my_applications',ARRAY[]::text[],'Technician can read own shared applications');
 SELECT ok(position('application_skill_id' in pg_get_functiondef('public.srk_technician_get_my_applications()'::regprocedure))>0,'own application projection includes skill IDs for KYC attachment');
 SELECT ok(position('customer_decision' in pg_get_functiondef('public.srk_customer_get_technician_workdays(uuid)'::regprocedure))>0,'Customer can see the daily decision state');
 SELECT has_function('public','srk_technician_get_my_presence',ARRAY[]::text[],'Technician can read own online presence');
 SELECT has_function('public','srk_customer_get_master_final_bill',ARRAY['uuid'],'Customer can read own Master final bill and GST snapshot');
+SELECT ok(position('technician_name' in pg_get_functiondef('public.srk_customer_get_technician_workdays(uuid)'::regprocedure))>0,'Customer workday history includes Technician display names for daily decisions');
 SELECT has_function('public','srk_customer_list_master_booking_team',ARRAY['uuid'],'Customer can read assigned Master Technician team and live GPS');
 SELECT ok(has_function_privilege('authenticated','public.srk_technician_get_my_presence()','EXECUTE')
  AND NOT has_function_privilege('anon','public.srk_technician_get_my_presence()','EXECUTE'),'Technician presence read is authenticated-only');
