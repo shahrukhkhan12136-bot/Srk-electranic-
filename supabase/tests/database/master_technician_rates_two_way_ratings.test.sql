@@ -1,8 +1,9 @@
 BEGIN;
-SELECT plan(12);
+SELECT plan(13);
 SELECT has_column('public','srk_technician_application_skills','approved_level_code','verified skill can store its Admin-assigned level');
 SELECT has_table('public','srk_master_booking_ratings','two-way booking ratings are stored');
 SELECT has_table('public','srk_master_rating_moderation_events','rating moderation has an audit ledger');
+SELECT has_trigger('public','srk_master_rating_moderation_events','srk_master_rating_moderation_events_append_only','rating moderation audit is append-only');
 SELECT has_function('public','srk_admin_set_technician_skill_level',ARRAY['uuid','text']);
 SELECT has_function('public','srk_technician_list_my_85_percent_rates',ARRAY[]::text[]);
 SELECT has_function('public','srk_technician_list_all_85_percent_rates',ARRAY[]::text[]);
