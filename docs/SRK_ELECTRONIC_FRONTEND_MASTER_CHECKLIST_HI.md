@@ -800,3 +800,17 @@
 - [ ] Flutter format, analyzer, Technician tests, Customer/shared-core tests और Android build अभी run/verify नहीं हुए।
 
 **सीमा:** यह ID/label consistency check है, Technician approval/dispatch authorization नहीं। Existing offer inbox, accept/reject, assigned booking, map/contact, status, cash/online payment, earnings/wallet, Supabase, backend, database और production behavior untouched हैं।
+
+
+## 2AC. Offer skill preview का shared catalogue/version से मिलान (2026-11-21)
+
+- [x] नया `previewOfferSkillMatchAgainstDraftCatalogue` जोड़ा: offer का catalogue version, category ID, subcategory ID और उपलब्ध task ID shared draft catalogue से validate होते हैं।
+- [x] केवल उसी draft version के Technician skills को preview match में माना जाता है।
+- [x] अज्ञात/पुराने version पर `unknown`; ज्ञात लेकिन गलत category/subcategory/task पर `notMatched`; सही IDs और version पर ही `matched`।
+- [x] जिन subcategories की task taxonomy अभी तय नहीं है, उनके task-specific offer पर fail-closed `unknown`।
+- [x] Tests जोड़े: exact version match, missing/old version, unknown IDs, दूसरी subcategory का task, पुरानी skill version और unconfirmed task taxonomy।
+- [ ] यह matcher live offer inbox को filter/hide नहीं करता और offer accept, dispatch, work, material या payment action को authorize नहीं करता।
+- [ ] Backend canonical catalogue/version approve करके offer और verified-skill payload में वही version/IDs दे; server हर protected transition पर स्वतंत्र रूप से skill/assignment/ownership जाँचे।
+- [ ] Flutter tests/analyzer/formatter/Android build अभी execute नहीं किए गए।
+
+**सीमा:** केवल preview helper और test जोड़े। Existing offer list, accept/reject, booking lifecycle, Supabase queries/RPC, payments, database और production unchanged।
