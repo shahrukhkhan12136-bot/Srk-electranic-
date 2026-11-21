@@ -342,6 +342,32 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.srk_technician_get_workday(p_workday_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
+DECLARE v_uid uuid:=auth.uid(); v_technician uuid; w public.srk_booking_technician_workdays%rowtype;
+  v_elapsed numeric(20,3);
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'TECHNICIAN_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
+  SELECT id INTO v_technician FROM public.srk_technicians
+  WHERE auth_user_id=v_uid AND account_status='active';
+  SELECT * INTO w FROM public.srk_booking_technician_workdays
+  WHERE id=p_workday_id AND technician_id=v_technician FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'OWN_WORKDAY_REQUIRED' USING ERRCODE='42501'; END IF;
+  PERFORM srk_private.srk_normalize_technician_workday_lunch(w.id);
+  SELECT * INTO w FROM public.srk_booking_technician_workdays WHERE id=p_workday_id;
+  v_elapsed:=CASE
+    WHEN w.status='running' THEN w.accumulated_work_seconds+
+      greatest(extract(epoch FROM (clock_timestamp()-w.running_started_at)),0)
+    WHEN w.status='lunch_paused' THEN 14400
+    ELSE w.accumulated_work_seconds END;
+  RETURN jsonb_build_object('workday_id',w.id,'booking_id',w.booking_id,
+    'work_date',w.work_date,'status',w.status,'elapsed_work_seconds',v_elapsed,
+    'lunch_ends_at',w.lunch_ends_at,'normal_work_seconds',w.normal_work_seconds,
+    'overtime_work_seconds',w.overtime_work_seconds,
+    'hourly_rate_paise_snapshot',w.technician_hourly_paise_snapshot);
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.srk_customer_get_technician_workdays(p_booking_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $function$
 DECLARE v_uid uuid:=auth.uid(); v_result jsonb; v_workday_id uuid;
@@ -472,6 +498,7 @@ REVOKE ALL ON FUNCTION public.srk_customer_respond_technician_workday_start(uuid
 REVOKE ALL ON FUNCTION public.srk_technician_pause_workday(uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.srk_technician_resume_workday(uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.srk_technician_stop_workday(uuid) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.srk_technician_get_workday(uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.srk_customer_get_technician_workdays(uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.srk_customer_decide_workday(uuid,date,text,uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.srk_technician_request_workday_start(uuid) TO authenticated;
@@ -479,6 +506,7 @@ GRANT EXECUTE ON FUNCTION public.srk_customer_respond_technician_workday_start(u
 GRANT EXECUTE ON FUNCTION public.srk_technician_pause_workday(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.srk_technician_resume_workday(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.srk_technician_stop_workday(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.srk_technician_get_workday(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.srk_customer_get_technician_workdays(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.srk_customer_decide_workday(uuid,date,text,uuid) TO authenticated;
 
