@@ -595,3 +595,11 @@
 - [x] Added `flutter test` to the Customer app CI sequence after dependency resolution and Dart analysis, before the debug APK build (commit e696098).
 - [x] Re-fetched both files and verified the test command is present in the Customer job and absent from no other app job changes.
 - [ ] Workflow has not been dispatched; no test/analyzer/build result is claimed.
+
+
+## 2N. Owner reconfirmation — company platform fee and technician share (2026-11-21)
+
+- [x] Owner reconfirmed the existing split: Company platform fee **15%**, Technician share **85%**; this is not a new change.
+- [x] The agreed basis remains the full booking payment. Illustration: ₹1,000 customer booking payment → ₹150 company share + ₹850 technician share.
+- [x] Updated `docs/SRK_MOBILE_BACKEND_CONTRACT_HANDOFF_HI.md` to remove the open question about the percentage/base and explicitly supersede the older labour-only wording in the Master Requirements for this later owner decision.
+- [ ] Backend must still reconcile ledger treatment for helper/material/tax/travel/refunds, rounding, cash and online settlements while preserving the confirmed 15%/85% split. No backend or payment code changed.
