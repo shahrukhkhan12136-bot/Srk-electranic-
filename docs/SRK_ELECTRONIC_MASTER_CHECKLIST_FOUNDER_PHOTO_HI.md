@@ -43,6 +43,7 @@
 
 ### अभी भी वास्तविक blockers / owner या provider input
 
+- [ ] Customer के अलावा authorized household member के लिए booking-scoped OTP authorization और सीमित arrival/workday/completion confirmation flow अभी implement नहीं है।
 - [ ] Road-distance travel fee अभी implement/runtime-verified नहीं: नियम 3 km free, उसके बाद ₹4/km one-way है। GPS straight-line distance को road distance बताकर charge नहीं करेंगे। Google Routes/Maps या अन्य approved routing provider और सुरक्षित server-side API credential/configuration चाहिए।
 - [ ] AC Installation और AC Repair का ₹437/hour combined team total दर्ज है, लेकिन Technician/Helper pay split नहीं दिया गया; इसलिए दोनों pending हैं और booking बंद है।
 - [ ] Basic Electrician Helper rate, Pump Repair rate और 20 HP से ऊपर की Motor/Cooler winding दरें Admin approval तक pending हैं।
@@ -50,6 +51,7 @@
 - [ ] Supabase Development Branch Pro Plan सीमा के कारण नहीं बनी। GitHub-hosted local replay भी source-only migrations से fail हुआ क्योंकि authoritative pre-existing core schema (जैसे service_bookings) repository में baseline के रूप में उपलब्ध नहीं है। इसलिए 55 pgTAP files का runtime execution अभी NOT RUN है; कोई production/test database migration apply नहीं हुई।
 - [ ] PostgreSQL/Auth/Storage baseline और duplicate migration-version history का source reconciliation; फिर disposable database में पूरी migration replay और सभी pgTAP tests।
 - [ ] Hosted Supabase schema/role parity, real OTP/SMS, Storage/KYC, Push provider delivery, concurrency/actor ACL और browser end-to-end verification।
+- [ ] Backup/restore schedule, actual restore और ledger integrity का isolated verification बाकी है।
 - [ ] Desktop/mobile visual QA और owner acceptance; Vercel Preview पर पहले build-rate-limit समस्या थी, Netlify Deploy Preview भी अलग verify होना है।
 - [ ] Main branch के लिए PR अभी नहीं खोला गया। पहले staging changes को feature branch में review/test करना है; Main/Production merge, migration और deployment अलग owner approval के बिना नहीं होंगे।
 
@@ -73,6 +75,7 @@
 - [x] Customer और electrician phone numbers acceptance से पहले छिपे; acceptance/assignment के बाद full number visible; Support Staff को unrestricted phone projection नहीं। `tests/customer-electrician-phone-visibility.test.js` में दोनों दिशाओं के authenticated/assignment-scoped source regression tests PASS (latest Node CI run)।
 - [x] Customer payment receipt contract अलग-अलग flows के अनुसार reconcile है: Legacy paid booking की उसी receipt में approved labour और materials अलग line items हैं; नई Category Booking में immutable labour bill और settled cancellation-fee ledger दिखते हैं तथा materials `0` हैं (अलग materials-receipt RPC नहीं है)। Legacy manual-payment RPC केवल पुराने completed/assigned/customer-approved quote पर चलती है; नई Category Booking इससे स्पष्ट रूप से बाहर है। Migration `20261115210000_legacy_manual_payment_and_itemized_receipt.sql`; Node/pgTAP source tests मौजूद, PostgreSQL/pgTAP runtime अलग pending है।
 - [x] Master Customer booking source: service/rate tier, 1–10 Technician, per-Technician Helper, work address, booking status, assigned Technician names/team, booking-scoped GPS, daily workday approval/decisions, final bill और GST invoice/credit-note UI जोड़े।
+- [ ] Booking-scoped authorized household member को verified OTP/authorization के बाद ही arrival, workday start और completion decisions की सीमित अनुमति दें; यह flow अभी नहीं बना।
 - [ ] Customer payment/refund/cancellation के सभी owner/non-owner/anon और duplicate/concurrency व्यवहार isolated database में runtime verify करें।
 
 ## 2. इलेक्ट्रिशियन (Electrician) — Feature Branch implementation
@@ -117,6 +120,7 @@
 - [x] Manual payment evidence में unique booking, method, receipt/UTR, recorder और timestamp।
 - [x] Payment और refund paths Razorpay IDs/verified provider evidence से अलग रखे गए; manual RPC Razorpay-linked booking स्वीकार नहीं करती।
 - [x] Master payment/accounting source: GST-inclusive final bill, tax invoice/credit note, manual cash/UPI/bank verification, Technician cash refund evidence, commission reversal और wallet-credit payout history।
+- [ ] Assigned Technician से work address तक road-distance travel fee: पहले 3 km free, उसके बाद ₹4/km one-way; routing provider, rounding और GST/commission treatment final करके server-side calculation लागू करें।
 - [ ] Legacy manual payment migration + pgTAP को isolated PostgreSQL में चलाएँ; duplicate/concurrent payment, rollback, payout-row trigger और customer receipt runtime verify करें।
 - [ ] Legacy commission trigger और completion/accounting path का end-to-end runtime reconciliation करें।
 
@@ -185,6 +189,7 @@
 - [x] Latest completed staging Node CI before founder-photo placeholder update: run `44906454353`, HEAD `280a6a17`: **573 PASS / 0 FAIL**. Founder-photo placeholder change and its revised contract test are newer and must receive a fresh CI run. Node CI is source-level only; pgTAP/live DB/browser E2E/Preview/mobile QA remain separate gates.
 - [x] Push Deno check और local PostgreSQL Push migration/RPC runtime checks PASS।
 - [ ] ऊपर सूचीबद्ध शेष Customer/Electrician/Admin/Staff/legacy-payment SQL और browser workflows के isolated runtime tests पूरे करें।
+- [ ] Backup schedule/retention/security और वास्तविक restore test; restore के बाद booking/payment/refund/commission ledger integrity reconcile करें।
 - [ ] सभी implementation और internal checks पूरे होने के बाद ही एक consolidated desktop + mobile QA pass करें; बीच में अलग mobile test नहीं।
 - [ ] यदि final end-to-end testing के लिए अलग Supabase staging branch/subscription जरूरी हो, तो पहले लागत बताकर owner की स्पष्ट अनुमति लें। अभी कोई paid Development Branch न बनाएँ।
 - [ ] Vercel Preview/build सफलतापूर्वक verify करें; पिछली failure `upgradeToPro=build-rate-limit` थी, इसलिए उसे application test failure या successful build न मानें।
