@@ -394,7 +394,7 @@ BEGIN
   END LOOP;
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
     'workday_id',w.id,'technician_id',w.technician_id,'work_date',w.work_date,
-    'status',w.status,'start_requested_at',w.start_requested_at,
+    'status',w.status,'customer_decision',(SELECT d.decision FROM public.srk_booking_workday_customer_decisions d WHERE d.booking_id=w.booking_id AND d.work_date=w.work_date),'replaced_technician_id',(SELECT d.replaced_technician_id FROM public.srk_booking_workday_customer_decisions d WHERE d.booking_id=w.booking_id AND d.work_date=w.work_date),'start_requested_at',w.start_requested_at,
     'customer_approved_at',w.customer_approved_at,'accumulated_work_seconds',
       CASE WHEN w.status='running' THEN w.accumulated_work_seconds+
         greatest(extract(epoch FROM (clock_timestamp()-w.running_started_at)),0)
