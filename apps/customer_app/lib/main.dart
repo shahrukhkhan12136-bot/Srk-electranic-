@@ -62,6 +62,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   String? _error;
   List<Map<String, dynamic>> _bookings = [];
   List<Map<String, dynamic>> _complaints = [];
+  String? _contactLoadWarning;
+  String? _complaintLoadWarning;
 
   @override
   void initState() {
@@ -87,10 +89,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     setState(() {
       _loading = true;
       _error = null;
+      _contactLoadWarning = null;
+      _complaintLoadWarning = null;
     });
     try {
       final user = _client.auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        _error = 'लॉगिन सत्र समाप्त हो गया है। कृपया दोबारा OTP से लॉगिन करें।';
+        return;
+      }
       final response = await _client
           .from('service_bookings')
           .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,materials_amount,quote_status,quote_note,district,state,pincode,electrician_quote_kind')
@@ -104,13 +111,17 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           final phone = row['electrician_phone']?.toString().trim() ?? '';
           if (phone.isNotEmpty) contacts[row['booking_id'].toString()] = phone;
         }
-      } catch (_) {}
+      } catch (_) {
+        _contactLoadWarning = 'इलेक्ट्रिशियन का संपर्क अभी लोड नहीं हो पाया। बुकिंग सुरक्षित है; Refresh करके फिर कोशिश करें।';
+      }
       try {
         final complaintRows = await _client.rpc('srk_customer_list_booking_complaints');
         _complaints = List<Map<String, dynamic>>.from(complaintRows as List);
-      } catch (_) { _complaints = []; }
+      } catch (_) {
+        _complaintLoadWarning = 'शिकायतों की सूची अभी लोड नहीं हो पाई। Refresh करके फिर कोशिश करें।';
+      }
       _bookings = List<Map<String, dynamic>>.from(response).map((booking) {
-        final phone = contacts[booking['id'].toString()];
+        final phone = contacts[booking['id'].toString()] ?? booking['electrician_phone']?.toString();
         return {...booking, if (phone != null) 'electrician_phone': phone};
       }).toList();
     } catch (_) {
@@ -322,12 +333,22 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 padding: const EdgeInsets.all(16),
                 child: Text(_error!),
               )),
+            if (_contactLoadWarning != null)
+              Card(child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(_contactLoadWarning!),
+              )),
             if (!_loading && _error == null && _bookings.isEmpty)
               const Card(child: Padding(
                 padding: EdgeInsets.all(18),
                 child: Text('अभी इस OTP लॉगिन से कोई बुकिंग लिंक नहीं है।'),
               )),
             ..._bookings.map(_bookingCard),
+            if (_complaintLoadWarning != null)
+              Card(child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(_complaintLoadWarning!),
+              )),
             if (_complaints.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text('मेरी शिकायतें', style: Theme.of(context).textTheme.titleLarge),
