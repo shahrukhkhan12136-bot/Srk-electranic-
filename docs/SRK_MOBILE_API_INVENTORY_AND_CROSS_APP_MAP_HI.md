@@ -54,7 +54,7 @@
 4. Customer quote approve/reject केवल `awaiting_quote_approval` में कर सकता है।
 5. Online order केवल completed + unpaid + online + quote-approved पर बनता है।
 6. Cash confirmation completed + cash + unpaid के साथ quote approval भी जाँचता है।
-7. Commission migration में service_charge पर आधारित है, जबकि मालिक की नवीनतम पुष्टि 15% कंपनी / 85% technician की full customer booking payment पर है। इसे backend में अलग approved change के बिना न बदलें।
+7. Commission migration का service_charge-only आधार owner-confirmed rule से मेल खाता है: Company 15% और Technician 85% केवल labour/service charge पर; materials_amount पर commission/platform fee 0%।
 8. Offer matching अभी PIN/district आधारित है; verified skill filtering या GPS radius को client-side authorization मानना गलत होगा।
 
 ## 5. प्रस्तावित quote-free API surface — backend design के लिए
