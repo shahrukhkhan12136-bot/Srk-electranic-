@@ -123,9 +123,9 @@ Required APIs/RPCs: payment eligibility and authoritative payable amount; Razorp
 
 **Payment-method cycle:** Project requirements describe first two eligible bookings as Cash-eligible and the third as Online-only, with verified top-up and outstanding platform-fee rules. The exact counter scope, eligibility definition, reservation/locking and reset rules must be confirmed against the current database before implementation. Customer should see only server-returned allowed methods; do not silently change a customer selection.
 
-**Owner clarification (21 Nov 2026):** The owner has reconfirmed that the existing split remains unchanged: **Company platform fee = 15%; Technician share = 85%**. This is the previously specified split on the full booking payment (not a newly introduced percentage or a labour-only replacement). Example: if the customer pays ₹1,000 for the booking, ₹150 is the company share and ₹850 is the technician share. The earlier 15%/85% percentage decision is therefore closed; do not ask the owner to reconfirm the percentages.
+**Owner clarification (21 Nov 2026 — latest and controlling):** Company commission/platform fee is **15% of service charge/labour only**. Technician receives **85% of service charge/labour**. Materials/parts are excluded from the commission base: company commission/platform fee on materials is **0%**. Example: service charge ₹600 + materials ₹400 → company commission ₹90; technician service share ₹510; ₹400 materials remain separate and are not commission-bearing. This supersedes the earlier full-booking-payment interpretation recorded in this handoff.
 
-**Backend reconciliation still required:** The current Master Requirements file contains older wording that calculates the 15% fee on labour/service only and excludes materials. That older wording must be reconciled with this later owner-confirmed full-booking split; do not silently let it override the latest clarification. Backend must implement one consistent server-side ledger formula and document how helper charges, materials, tax, travel, cancellations/refunds, paise rounding, cash collections and online settlements are represented, without changing the confirmed 15%/85% split. Example values above are a simple split illustration, not a statement that every ledger component has been separately specified.
+Backend must calculate commission only from the server-verified service_charge field, never from service_charge + materials_amount or gross booking total. Keep materials separately itemized and reconcile collection, tax, travel, helper, cash/online settlement, refunds and rounding without applying company commission to materials. No runtime/payment code changed by this clarification.
 
 Wallet balance is not proof of bank payout. Payout must only be marked Paid after provider transfer success and a verified transfer reference.
 
@@ -435,11 +435,13 @@ Customer:
 **महत्वपूर्ण:** जब तक नया lifecycle/payment contract deploy और staging में सत्यापित नहीं होता, मौजूदा quote-dependent status, RPC, UI और payment gates न हटाएँ। यह source audit/handoff है; कोई backend/database/RPC/payment/production परिवर्तन नहीं हुआ।
 
 
-## 29. Owner-confirmed 15% Company / 85% Technician full-payment split — financial audit (21-11-2026)
+## 29. Previous commission interpretation audit — superseded by service-charge-only rule (21-11-2026)
 
 ### Owner-confirmed rule
-- Company platform fee: 15% of the full customer booking payment.
-- Technician share: 85% of the same full customer booking payment.
+- Current owner-confirmed rule: Company commission = 15% of service charge/labour only.
+- Technician service share = 85% of service charge/labour.
+- Materials/parts are excluded; commission/platform fee on materials = 0%.
+- This supersedes the earlier full-booking-payment interpretation in this section.
 - Example: ₹1,000 verified customer payment → Company ₹150; Technician ₹850.
 - Full booking amount is the base, not labour/service charge alone. Approved materials and applicable booking charges must be included according to the final bill.
 - Same split applies to cash and online bookings; collection evidence and reconciliation differ.
@@ -453,7 +455,7 @@ Customer:
 
 ### Required server contract
 - Define gross as server-verified collected customer booking total and specify treatment of labour, approved materials, discounts, taxes, travel/extra charges and other bill components.
-- Calculate company fee as 15% and technician payable as 85% of that same gross; use integer paise and deterministic rounding so shares always sum exactly to gross.
+- Calculate company commission as 15% of service_charge only; calculate Technician service share as remaining 85% of service_charge. Keep materials_amount outside this calculation and ledger separately.
 - Define allocation/reversal rules for full/partial refunds, failed payments, chargebacks and cash disputes.
 - Verify cash collection evidence and Razorpay captured payment server-side; never trust a client-supplied total.
 - Post idempotent, auditable ledger entries for collection, company fee, technician payable, refund/reversal and payout, linked to booking and payment references.
@@ -487,3 +489,7 @@ OTP auth; dashboard + profile approval state; offer inbox; offer price details; 
 Privacy policy URL and in-app access; terms; support contact; data safety declaration; account deletion request path; permission rationale; push notification behavior; deep links; network/offline/error states; accessibility/text scaling; app icons/splash/screenshots/feature graphic; package IDs/signing/versioning; Android 13+ notification permission; target SDK and policy compliance; release build and physical-device QA.
 
 **No runtime code or backend changed.** Inventory is source-based and not a claim of Play Store readiness. Release build and store policy review remain unverified.
+
+
+## Owner correction — commission base clarified (21-11-2026)
+**Controlling rule:** 15% commission is charged only on service charge/labour; Technician receives 85% of service charge/labour. Materials/parts carry 0% company commission/platform fee and remain outside the commission base. Example: ₹600 labour + ₹400 materials → ₹90 company commission, ₹510 technician labour share, ₹400 materials separately. This supersedes earlier full-payment commission wording in this document. No live payment code is changed by this documentation correction.
