@@ -493,3 +493,19 @@ Privacy policy URL and in-app access; terms; support contact; data safety declar
 
 ## Owner correction — commission base clarified (21-11-2026)
 **Controlling rule:** 15% commission is charged only on service charge/labour; Technician receives 85% of service charge/labour. Materials/parts carry 0% company commission/platform fee and remain outside the commission base. Example: ₹600 labour + ₹400 materials → ₹90 company commission, ₹510 technician labour share, ₹400 materials separately. This supersedes earlier full-payment commission wording in this document. No live payment code is changed by this documentation correction.
+
+
+## 31. Commission formula, persisted rate और legacy trigger verification (21-11-2026)
+
+### Source findings
+1. Feature-branch migration `20261109_electrician_inspection_quotes_and_service_only_commission.sql` defines `srk_calculate_booking_commission()`: only when booking is completed + paid and `service_charge` is present, it sets `commission_amount = round(service_charge * commission_rate / 100, 2)`. Materials are not included in this formula.
+2. Root schema snapshots `SUPABASE_SCHEMA.sql` and `COMPLETE_DATABASE_SETUP.sql` show `commission_rate numeric ... default 15.00`, constrained 0–100. A default does not prove all historical or production rows persist 15%.
+3. Legacy root `PORTAL_SCHEMA.sql` contains an older trigger formula based on `quoted_amount * commission_rate / 100`; because quoted_amount can include materials, this legacy snapshot must not be treated as current truth, but the deployed trigger definition must be inspected to rule out that path.
+4. A separate 18-Nov source-only financial visibility migration was inspected from its source commit. It preserves existing commission/payout triggers; its earnings RPC uses immutable labour bill values for provisional checkout display, while verified paid commission comes from existing booking commission/payout ledger. It was not present on the approved mobile feature branch and source evidence explicitly says production verification is pending. Do not infer deployment or live correctness from this source file.
+
+### Backend acceptance gates
+- Confirm the active deployed trigger(s), function definition, trigger attachment/order, persisted `commission_rate` values and payout-ledger calculation using read-only inspection.
+- Ensure all new bookings persist exactly 15.00 unless a separately authorized Admin-configurable rate is in scope; no client may set the rate.
+- For service ₹600 + materials ₹400: company commission ₹90; Technician labour share ₹510; materials remain separately accounted at ₹400 and attract 0% company fee.
+- Test paise rounding, zero/invalid labour, cash and Razorpay, refunds/chargebacks, duplicate/retried webhooks, historical bookings, and reconciliation of Admin commission report, Technician earnings and payout ledger.
+- Do not edit or apply production SQL until separately authorized. No payment/runtime code changed in this audit.
