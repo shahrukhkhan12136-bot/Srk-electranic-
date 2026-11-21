@@ -54,17 +54,9 @@ begin
       v_materials := 0;
       v_rate := new.commission_rate;
     else
-      -- Preserve the established legacy approved-quote payout calculation.
-      if new.quote_status <> 'approved' then
-        return new;
-      end if;
-      v_service := round(coalesce(new.service_charge,0),2);
-      v_materials := round(coalesce(new.materials_amount,0),2);
-      v_rate := new.commission_rate;
-      if round(coalesce(new.amount_paid,0),2) <>
-         round(v_service + v_materials,2) then
-        raise exception 'VERIFIED_PAYMENT_DOES_NOT_MATCH_APPROVED_QUOTE_TOTAL';
-      end if;
+      -- Legacy quote-era bookings never enter the new payout creation path.
+      -- Their historical payout rows remain preserved and Admin-reconciled.
+      return new;
     end if;
 
     if v_rate is null or v_rate < 0 or v_rate > 100 then
@@ -122,9 +114,8 @@ create trigger trg_srk_create_electrician_payable
 after insert or update of
   payment_status,
   status,
-  quote_status,
-  service_charge,
-  materials_amount,
+  selected_category,
+  commission_rate,
   assigned_electrician_id,
   payment_verified_at,
   razorpay_payment_id,
