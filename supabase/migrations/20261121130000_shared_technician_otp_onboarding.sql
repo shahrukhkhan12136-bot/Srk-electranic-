@@ -696,7 +696,9 @@ BEGIN
   VALUES(p_category_code,btrim(p_display_name),p_is_active,p_sort_order,auth.uid())
   ON CONFLICT(category_code) DO UPDATE SET display_name=EXCLUDED.display_name,
     is_active=EXCLUDED.is_active,sort_order=EXCLUDED.sort_order
-  RETURNING id,to_jsonb(public.srk_service_categories) INTO v_id,v_after;
+  RETURNING id,jsonb_build_object('category_code',category_code,'display_name',display_name,
+    'is_active',is_active,'sort_order',sort_order,'created_at',created_at,'created_by',created_by)
+    INTO v_id,v_after;
   INSERT INTO public.srk_service_catalogue_events(actor_user_id,object_type,object_id,action,before_data,after_data)
   VALUES(auth.uid(),'category',v_id,v_action,v_before,v_after);
   RETURN v_id;
@@ -727,7 +729,10 @@ BEGIN
   ON CONFLICT(skill_code) DO UPDATE SET category_id=EXCLUDED.category_id,
     display_name=EXCLUDED.display_name,is_active=EXCLUDED.is_active,
     requires_separate_assessment=EXCLUDED.requires_separate_assessment
-  RETURNING id,to_jsonb(public.srk_service_skills) INTO v_id,v_after;
+  RETURNING id,jsonb_build_object('category_id',category_id,'skill_code',skill_code,
+    'display_name',display_name,'is_active',is_active,
+    'requires_separate_assessment',requires_separate_assessment,'created_at',created_at,'created_by',created_by)
+    INTO v_id,v_after;
   INSERT INTO public.srk_service_catalogue_events(actor_user_id,object_type,object_id,action,before_data,after_data)
   VALUES(auth.uid(),'skill',v_id,v_action,v_before,v_after);
   RETURN v_id;
