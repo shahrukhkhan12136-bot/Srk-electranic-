@@ -1559,3 +1559,14 @@ Founder ने बाजार-दर तुलना के बाद नीच
 - [ ] Booking submit/dispatch में nested option ID, skill level, task और rate version का इस्तेमाल GPT-2 के versioned API contract मिलने के बाद ही होगा।
 - [ ] Flutter format, analyzer, widget test execution और Android build अभी बाकी हैं; tests source में जोड़े गए हैं, चलाए नहीं गए।
 - संबंधित commits: `d1c362608147881ab7a40364fdf7627dc2d1085e`, `57faacbe519a6b0d0f4bd888752c2f9039a4b194`, `177ec27baef38dbaf11e2d25a60185231cca36ef`.
+
+## 2BR. Customer picker — skill-level rate preview और Helper नियम (21-11-2026)
+
+- [x] चुने हुए skill level की approved labour rate अब picker में दिखाई जाती है; rate का unit (प्रति घंटा / 8 घंटे) catalogue से ही आता है।
+- [x] Plumber Expert और Painter Expert की दरों के लिए Widget Test जोड़ा।
+- [x] जहाँ catalogue में Helper rate है, वहाँ स्पष्ट लिखा है कि Helper वैकल्पिक है और अतिरिक्त शुल्क तभी लगेगा जब ग्राहक Helper चुने।
+- [x] Rate heading में सामग्री अलग होने की सूचना दिखाई जाती है; सामग्री को labour rate में मिलाकर नहीं दिखाया गया।
+- [ ] अभी Helper चुनने का booking input, price calculation या booking submit नहीं जोड़ा गया; backend contract और मौजूदा booking lifecycle की पुष्टि जरूरी है।
+- [ ] Plumber/Painter के skill-level-specific कामों की सूची catalogue में उपलब्ध नहीं है; कोई काम मन से जोड़कर approved नहीं दिखाया गया।
+- [ ] Flutter format/analyzer/widget tests/Android build अभी नहीं चलाए गए; test source जोड़ा गया है, pass होने का दावा नहीं है।
+- Commits: `a48f9ea8f89927dea531056b930372bd6aeef310`, `dbdb777aa0a06e91b00de944d62b8a79cff59e28`, `f599c79de8e69acc9d4fc2ef629eb844e6d60c03`.
