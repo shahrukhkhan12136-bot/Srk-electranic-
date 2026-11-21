@@ -30,13 +30,14 @@ test('Customer receipts are offered only for payment events and the RPC requires
   assert.match(receiptSql, /'amount_paid', round\(v_booking\.amount_paid,2\)/);
 });
 
-test('Electrician earnings and Admin bank payout remain distinct and UI never initiates withdrawal', () => {
+test('Electrician earnings, Master payout request and Admin bank transfer remain distinct', () => {
   assert.match(earningsSql, /where p\.user_id=auth\.uid\(\) and p\.verification_status='approved'/);
   assert.match(electrician, /sb\.rpc\('srk_get_my_earnings'\)/);
   assert.match(electrician, /srk_electrician_payouts/);
   assert.match(electrician, /ग्राहक का भुगतान और Admin द्वारा आपके बैंक\/UPI में किया गया भुगतान अलग-अलग रिकॉर्ड हैं/);
   assert.match(electrician, /यह ऐप का आंतरिक लेजर बैलेंस है/);
-  assert.match(electrician, /बैंक खाता जोड़ना और निकासी अभी बंद है/);
+  assert.match(electrician, /पुराने Wallet में बैंक खाता जोड़ना और निकासी अभी बंद है/);
+  assert.match(electrician, /srk_technician_request_master_payout/);
   assert.doesNotMatch(electrician, /srk_wallet_withdraw|srk_create_withdrawal|create_bank_transfer|razorpay_route_transfer/i);
 });
 
