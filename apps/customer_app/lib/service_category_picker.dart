@@ -100,7 +100,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       _selectedSkillLevel = null;
       _selectedSkillTaskId = null;
     });
-    if (category.subcategories.isEmpty) {
+    if (category.subcategories.isEmpty && category.skillLevels.isEmpty) {
       final selection = SrkServiceSelection.create(categoryId: category.id);
       if (selection != null) widget.onSelection(selection);
     }
