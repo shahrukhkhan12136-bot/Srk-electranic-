@@ -211,19 +211,21 @@ class _SrkLoginPageState extends State<SrkLoginPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 460),
             child: Card(
+              clipBehavior: Clip.antiAlias,
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SrkWelcomeHeader(),
-                    const SizedBox(height: 8),
-                    Text('SRK ELECTRONIC',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineSmall),
+                    const SizedBox(height: 10),
                     Text(roleTitle(widget.role),
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 24),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: const Color(0xFF073B91),
+                          fontWeight: FontWeight.w800,
+                        )),
+                    const SizedBox(height: 16),
                     if (isAdmin) ...[
                       TextField(
                         controller: _email,
@@ -297,96 +299,80 @@ class _SrkLoginPageState extends State<SrkLoginPage> {
 
 
 /// Branded welcome artwork shown before login in all three mobile apps.
+/// Full-width, uncropped SRK ELECTRONIC welcome poster shared by both mobile apps.
 class SrkWelcomeHeader extends StatelessWidget {
   const SrkWelcomeHeader({super.key});
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Container(
-        width: 76,
-        height: 76,
-        decoration: BoxDecoration(
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(16),
+    child: AspectRatio(
+      aspectRatio: 0.8008,
+      child: Image.asset(
+        'packages/srk_mobile_core/assets/founder(2).webp',
+        width: double.infinity,
+        fit: BoxFit.contain,
+        alignment: Alignment.center,
+        errorBuilder: (_, __, ___) => Container(
           color: const Color(0xFFEAF2FF),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFB8D2FF)),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(20),
+          child: const Text(
+            'SRK ELECTRONIC',
+            style: TextStyle(
+              color: Color(0xFF073B91),
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
-        child: const Icon(Icons.electrical_services_rounded,
-            size: 48, color: Color(0xFF0755B8)),
       ),
-      const SizedBox(height: 10),
-      const Text('SRK ELECTRONIC',
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900,
-          letterSpacing: .5, color: Color(0xFF073B91))),
-      const SizedBox(height: 12),
-      const SrkFounderBanner(),
-    ],
+    ),
   );
 }
 
-/// Shared SRK ELECTRONIC founder artwork used consistently across mobile apps.
-/// The portrait is a bundled transparent WebP asset and intentionally contains no personal name.
+/// Compact brand strip used on the dashboards; the full poster stays on the welcome screen.
 class SrkFounderBanner extends StatelessWidget {
   const SrkFounderBanner({super.key, this.compact = false});
   final bool compact;
 
   @override
-  Widget build(BuildContext context) => Card(
-    clipBehavior: Clip.antiAlias,
-    elevation: 2,
-    child: Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF073B91), Color(0xFF0876E8), Color(0xFFEAF4FF)],
-        ),
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: EdgeInsets.symmetric(
+      horizontal: 18,
+      vertical: compact ? 12 : 16,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(18),
+      gradient: const LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [Color(0xFF073B91), Color(0xFF0876E8)],
       ),
-      child: SizedBox(
-        height: compact ? 132 : 176,
-        child: Stack(
-          children: [
-            Positioned(
-              right: compact ? 8 : 16,
-              bottom: -8,
-              top: 0,
-              child: Image.asset(
-                'packages/srk_mobile_core/assets/founder.webp',
-                fit: BoxFit.contain,
-                alignment: Alignment.bottomCenter,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
-            ),
-            Positioned(
-              left: 18,
-              top: 18,
-              bottom: 18,
-              right: compact ? 112 : 145,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'SRK ELECTRONIC',
-                    style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w900, letterSpacing: .4),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    compact ? 'हर घर की इलेक्ट्रिकल सेवा' : 'आपकी सेवा में हमेशा तैयार…',
-                    style: TextStyle(color: Colors.white, fontSize: compact ? 12 : 16, fontWeight: FontWeight.w700),
-                  ),
-                  if (!compact) ...[
-                    const SizedBox(height: 9),
-                    Container(width: 54, height: 3, decoration: BoxDecoration(color: const Color(0xFFFFC928), borderRadius: BorderRadius.circular(8))),
-                  ],
-                ],
-              ),
-            ),
-          ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'SRK ELECTRONIC',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .4,
+          ),
         ),
-      ),
+        const SizedBox(height: 4),
+        Text(
+          compact ? 'हर घर की इलेक्ट्रिकल सेवा' : 'सुरक्षित • तेज • भरोसेमंद सेवा',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: compact ? 12 : 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     ),
   );
 }
