@@ -565,3 +565,14 @@
 - [x] Corrected Cooler widget test to tap the visible कूलर रिपेयर subcategory before asserting the selection callback (49bae0c).
 - [x] Checked GitHub Actions runs for this feature branch: no runs are currently listed. Test source is committed but execution is still pending.
 - [ ] Plumber and Painter detailed subcategories are intentionally not invented; only their top-level categories are shown until the owner confirms their service lists.
+
+
+## 2K. Safe option-removal pass (2026-11-21)
+
+- [x] Re-inspected current Customer and Technician widgets before deleting any visible option.
+- [x] Customer cancellation remains limited to `new`/`confirmed`; complaint/support remains available for non-cancelled bookings; assigned-technician contact is guarded by assigned lifecycle states. Preserve these actions.
+- [x] Customer cash/online payment choice is still accepted by the current create-booking endpoint; payment rotation/technician-specific eligibility contract is not yet available. Do not remove or replace the control until the backend contract is supplied.
+- [x] Customer legacy electrical service dropdown is the actual input to the existing booking form. The new six-category picker is currently preview-only and is not connected to the create-booking payload. Do not swap the form to the picker until category IDs, verified-skill dispatch, and API payload are ready.
+- [x] Technician offer accept/decline, map, assigned customer contact, work completion, cash confirmation, earnings and wallet views are functional lifecycle actions; preserve them.
+- [x] Quote screens/actions and quote-dependent status labels are still tied to current work-start, cash confirmation and Razorpay backend checks. They remain explicitly blocked for removal pending quote-free lifecycle + materials-approval + payment contract. No quote UI was deceptively hidden.
+- [x] No additional safe-to-delete functional option was identified in this pass; no Flutter source changed. This is intentional preservation, not a missed implementation.
