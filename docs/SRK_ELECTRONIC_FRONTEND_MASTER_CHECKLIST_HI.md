@@ -1000,3 +1000,45 @@
 - [ ] Existing historical bookings/commission values का reconciliation plan और rollback/backfill approval अलग हो।
 
 **सीमा:** इस चरण में केवल source audit और दस्तावेज़ीकरण हुआ। कोई commission function, migration, wallet ledger, payout, payment, Supabase या production code नहीं बदला। Flutter tests/analyzer/Android build execute नहीं हुए।
+
+
+## 2AM. Customer और Technician ऐप — screen/navigation inventory audit (21-11-2026)
+
+### Customer ऐप — मौजूदा screens/entry points
+- [x] OTP authentication screen (unauthenticated state)।
+- [x] मुख्य home/dashboard एक scrollable screen है; अलग bottom navigation/tab/drawer नहीं मिला।
+- [x] Founder banner और “मेरी बुकिंग” सूची।
+- [x] Floating “नई बुकिंग” action से अलग booking form route खुलता है।
+- [x] Booking form में customer details, address, date/time, work details, GPS, cash/online और legacy electrical service dropdown है।
+- [x] छह-category picker उसी form में draft/preview है; अभी वास्तविक booking payload में नहीं जाता।
+- [x] Booking card में status, assigned Technician contact, legacy quote/materials, cancellation, complaint/help और conditional payment controls।
+- [x] Complaint list इसी मुख्य screen पर inline दिखती है।
+- [x] Refresh, logout और pull-to-refresh उपलब्ध हैं।
+- [ ] अलग Profile/Account, saved addresses, notification centre, payment history, help centre/FAQ और settings screens source में नहीं मिले।
+- [ ] Booking list के लिए अलग filter/search/history tabs नहीं मिले; current list latest 50 bookings query से आती है।
+- [ ] Empty/error/loading states मौजूद हैं; contact/complaint fetch errors की silent fallback behavior का अलग UX सुधार बाकी है।
+
+### Technician ऐप — मौजूदा screens/entry points
+- [x] OTP authentication screen।
+- [x] मुख्य dashboard एक scrollable screen है; अलग bottom navigation/tab/drawer नहीं मिला।
+- [x] Technician profile status/name/location और Approved/Active badge।
+- [x] Offer inbox, offer counters और Accept/Reject actions।
+- [x] Offer price details inline section।
+- [x] Assigned bookings, map/directions, authorized Customer contact।
+- [x] Legacy inspection, quote submission, quote approval wait, work start/completion और cash confirmation actions।
+- [x] Earnings summary और internal wallet balance।
+- [x] Refresh, logout और pull-to-refresh।
+- [ ] अलग Profile edit/KYC documents, verified-service skill management, availability/schedule, notifications, support/complaints, payout/bank account, settings screens source में नहीं मिले।
+- [ ] Offer/assigned booking/earnings के अलग navigable tabs या filters नहीं मिले।
+- [ ] Wallet bank payout UI disabled; current mobile screen केवल internal balance दिखाती है।
+
+### Release readiness / जरूरी निर्णय
+- [ ] पहले तय करें कि वर्तमान single-dashboard navigation ही रखना है या Customer/Technician के लिए अलग tabs बनानी हैं; अनावश्यक screens नहीं जोड़ें।
+- [ ] Customer booking history, booking details, complaint/help, payment receipt और profile/account के आवश्यक minimum flows का owner-approved screen map बनाएं।
+- [ ] Technician offers, assigned work, verified skills/profile, earnings/payout status और support के आवश्यक minimum flows का owner-approved screen map बनाएं।
+- [ ] Notifications/push permissions, deep links, privacy policy, terms, account deletion/data request, contact/support details और Play Store listing assets का release checklist अलग पूरा करें।
+- [ ] Customer का छह-category picker live submit से पहले Backend canonical IDs contract से जुड़ना चाहिए; legacy electrical service dropdown हटाना अभी असुरक्षित है।
+- [ ] Quote workflow अभी legacy Backend lifecycle/payment gate से जुड़ा है; quote-free lifecycle deploy होने से पहले quote screens/actions न हटाएँ।
+- [ ] इस audit में कोई screen, route, navigation, API या runtime code नहीं बदला। Flutter tests/analyzer/formatter/Android build/device testing execute नहीं हुई।
+
+**निष्कर्ष:** वर्तमान mobile apps में मुख्य सुविधाएँ एक-एक dashboard screen पर हैं; यह पूर्ण multi-screen Play Store app होने का प्रमाण नहीं है। अगला कदम owner-approved minimum screen map और missing release requirements तय करना है।
