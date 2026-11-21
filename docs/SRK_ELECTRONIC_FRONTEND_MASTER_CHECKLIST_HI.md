@@ -585,3 +585,5 @@
 - [x] Explicitly records unresolved rate conflicts between the older Master Requirements document and later owner decisions; no rates/formula are silently combined.
 - [ ] This handoff has NOT been sent to GPT-2 or implemented in backend. Backend owner review/contract is pending.
 - [ ] Frontend picker remains preview-only until verified-skill dispatch and booking payload are available.
+
+- [x] Static source review caught and corrected Flutter test view sizing to use TestFlutterView physicalSize/devicePixelRatio properties (commit 07b915e). Test execution is still pending.
