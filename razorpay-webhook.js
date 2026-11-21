@@ -66,8 +66,17 @@ async function updateBooking(orderId, payment) {
     if (!billResponse.ok) throw new Error("Master final bill lookup failed");
     const bills = await billResponse.json();
     const bill = Array.isArray(bills) ? bills[0] : null;
-    const expectedAmount = Number(bill?.subtotal_paise);
-    if (!bill || !Number.isSafeInteger(expectedAmount) || expectedAmount < 100 ||
+    if (!bill) return "amount_mismatch";
+    const taxUrl = new URL("/rest/v1/srk_booking_tax_snapshots", SUPABASE_URL);
+    taxUrl.searchParams.set("booking_id", "eq." + booking.id);
+    taxUrl.searchParams.set("select", "total_due_paise,total_tax_paise");
+    taxUrl.searchParams.set("limit", "1");
+    const taxResponse = await fetch(taxUrl, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } });
+    if (!taxResponse.ok) throw new Error("Master GST snapshot lookup failed");
+    const taxRows = await taxResponse.json();
+    const tax = Array.isArray(taxRows) ? taxRows[0] : null;
+    const expectedAmount = Number(tax?.total_due_paise);
+    if (!tax || !Number.isSafeInteger(expectedAmount) || expectedAmount < 100 || expectedAmount !== Number(bill.subtotal_paise) + Number(tax.total_tax_paise) ||
         payment.amount !== expectedAmount || payment.currency !== "INR") return "amount_mismatch";
     const settlementResponse = await fetch(new URL("/rest/v1/rpc/srk_service_role_record_master_online_payment", SUPABASE_URL), {
       method: "POST",
