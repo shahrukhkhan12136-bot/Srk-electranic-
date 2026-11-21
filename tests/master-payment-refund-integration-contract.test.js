@@ -58,3 +58,12 @@ test('Razorpay webhook reconciles Master payment from signed captured event and 
  assert.match(webhook,/booking\.srk_service_category_code/);
  assert.match(webhook,/payment\.amount !== expectedAmount/);
 });
+
+test('Master customer receipt reads only the immutable final bill and verified payment ledger',()=>{
+ const receipt=read('supabase/migrations/20261121210000_master_customer_payment_receipt.sql');
+ assert.match(receipt,/srk_master_booking_payments/);
+ assert.match(receipt,/srk_booking_final_bills/);
+ assert.match(receipt,/material_items/);
+ assert.match(receipt,/MASTER_FINAL_BILL_PAYMENT_RECONCILIATION_FAILED/);
+ assert.match(receipt,/Preserve the historical single-Electrician and quote-era receipt contracts/);
+});
