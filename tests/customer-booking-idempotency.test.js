@@ -201,6 +201,88 @@ test('Master booking calculates hourly labour from Admin rate and stores canonic
   assert.ok(calls.some(call => call.target.includes('/rest/v1/srk_technician_dispatch_offers?select=id,match_level')));
 });
 
+test('Master fixed-price booking multiplies the Admin unit price by quantity without hourly duration', async () => {
+  const calls = mockSupabase({
+    masterRateRows: [{
+      category_code: 'cooler', skill_code: 'cooler_repair',
+      service_code: 'cooler_repair', service_name: 'Cooler Repair',
+      billing_model: 'fixed_per_unit', unit_label: 'कूलर', level_code: 'standard', level_label: 'Standard',
+      technician_hourly_paise: null, helper_hourly_paise: 0,
+      fixed_labour_paise: 50000, rate_version: 'SRK-COOLER-2026-11-21-V1'
+    }],
+    insertResponse: [{ id: BOOKING_ID }]
+  });
+  const result = await handler(event(bookingBody({
+    service_type: '',
+    selected_category: undefined,
+    selected_rate_tier: undefined,
+    selected_duration_hours: undefined,
+    srk_service_code: 'cooler_repair',
+    srk_rate_level_code: 'standard',
+    srk_duration_minutes: null,
+    srk_service_quantity: 2
+  })));
+  assert.equal(result.statusCode, 200);
+  const body = JSON.parse(result.body);
+  assert.equal(body.estimate.amount_paise, 100000);
+  assert.equal(body.estimate.billing_model, 'fixed_per_unit');
+  const inserted = calls.find(call => call.method === 'POST' && call.target.endsWith('/service_bookings'));
+  const row = JSON.parse(inserted.body)[0];
+  assert.equal(row.srk_fixed_labour_paise_snapshot, 50000);
+  assert.equal(row.srk_estimated_labour_paise, 100000);
+  assert.equal(row.srk_service_quantity, 2);
+  assert.equal(row.srk_duration_minutes, null);
+});
+
+test('Master booking idempotency replay uses the saved rate snapshot even after catalogue deactivation', async () => {
+  const fingerprint = require('node:crypto').createHash('sha256').update(JSON.stringify({
+    customer_user_id: USER_ID,
+    customer_name: 'Customer A',
+    phone: '9876543210',
+    state: 'Uttar Pradesh',
+    district: 'Varanasi',
+    pincode: '221001',
+    address: 'Test address',
+    location_lat: null,
+    location_lng: null,
+    service_type: 'residential_plumbing',
+    selected_category: null,
+    selected_rate_tier: null,
+    selected_duration_hours: null,
+    work_details: 'Fan repair',
+    payment_method: 'नकद (Cash)',
+    srk_service_code: 'residential_plumbing',
+    srk_rate_level_code: 'basic',
+    srk_duration_minutes: 120,
+    srk_service_quantity: 1,
+    srk_required_technician_count: 1
+  })).digest('hex');
+  const calls = mockSupabase({
+    existingRows: [{
+      id: BOOKING_ID, customer_user_id: USER_ID, customer_request_fingerprint: fingerprint,
+      srk_estimated_labour_paise: 30000, srk_rate_version_snapshot: 'SRK-PLUMBER-OLD-V1',
+      srk_billing_model_snapshot: 'hourly', srk_technician_hourly_paise_snapshot: 10000,
+      srk_helper_hourly_paise_snapshot: 5000, srk_fixed_labour_paise_snapshot: null
+    }]
+  });
+  const result = await handler(event(bookingBody({
+    service_type: '',
+    selected_category: undefined,
+    selected_rate_tier: undefined,
+    selected_duration_hours: undefined,
+    srk_service_code: 'residential_plumbing',
+    srk_rate_level_code: 'basic',
+    srk_duration_minutes: 120,
+    srk_service_quantity: 1,
+    srk_required_technician_count: 1
+  })));
+  assert.equal(result.statusCode, 200);
+  assert.equal(JSON.parse(result.body).replayed, true);
+  assert.equal(JSON.parse(result.body).estimate.amount_paise, 30000);
+  assert.equal(JSON.parse(result.body).estimate.rate_card_version, 'SRK-PLUMBER-OLD-V1');
+  assert.equal(calls.some(call => call.target.endsWith('/rpc/srk_customer_get_service_rate')), false);
+});
+
 test('Master booking refuses a service without an active Admin rate and never inserts it', async () => {
   const calls = mockSupabase({ masterRateRows: [] });
   const result = await handler(event(bookingBody({
