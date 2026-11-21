@@ -5,12 +5,11 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const receiptSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261115210000_legacy_manual_payment_and_itemized_receipt.sql'), 'utf8');
-const accountingSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261115150000_admin_readonly_booking_accounting_reconciliation.sql'), 'utf8');
-const payoutSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114360000_new_category_electrician_payout_reconciliation.sql'), 'utf8');
-const refundSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261114290000_full_refund_cancellation_fee_and_wallet_reversal.sql'), 'utf8');
+const accountingSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261117010000_reconcile_booking_commission_and_manual_payment_method.sql'), 'utf8');
+const removalSql = fs.readFileSync(path.join(root, 'supabase/migrations/20261118000000_remove_quotation_system_completely.sql'), 'utf8');
 const booking = fs.readFileSync(path.join(root, 'booking.html'), 'utf8');
 
-test('new-category receipt is grounded in the immutable customer-owned labour bill and settled fee ledger', () => {
+test('new-category receipt uses customer-owned immutable labour bill and settled fee ledger', () => {
   const start = receiptSql.indexOf('create or replace function public.srk_customer_get_payment_receipt');
   const fn = receiptSql.slice(start);
   assert.match(fn, /if v_booking\.selected_category is not null then/);
@@ -22,36 +21,32 @@ test('new-category receipt is grounded in the immutable customer-owned labour bi
   assert.match(fn, /round\(v_booking\.amount_paid\*100\)::bigint<>v_total_paise/);
 });
 
-test('legacy receipt keeps approved labour and materials itemized on the same payment receipt', () => {
+test('historical paid receipt is read from the private archive, not live booking quote fields', () => {
   const start = receiptSql.indexOf('create or replace function public.srk_customer_get_payment_receipt');
   const fn = receiptSql.slice(start);
-  assert.match(fn, /v_labour_paise:=round\(coalesce\(v_booking\.service_charge,0\)\*100\)::bigint/);
-  assert.match(fn, /v_materials_paise:=round\(coalesce\(v_booking\.materials_amount,0\)\*100\)::bigint/);
-  assert.match(fn, /round\(coalesce\(v_booking\.quoted_amount,0\)\*100\)::bigint<>v_total_paise/);
-  assert.match(fn, /'materials_amount',v_materials_paise\/100\.0/);
+  assert.match(fn, /from srk_private\.legacy_booking_financial_evidence/);
+  assert.match(fn, /v_legacy\.service_charge/);
+  assert.match(fn, /v_legacy\.materials_amount/);
+  assert.match(fn, /ऐतिहासिक सत्यापित भुगतान रसीद/);
+  assert.doesNotMatch(fn, /v_booking\.(?:quoted_amount|quote_status|service_charge|materials_amount)/);
   assert.match(booking, /labourRow\+materialsRow\+cancellationFeeRows/);
 });
 
-test('legacy manual payment is excluded from new-category bookings and commissions only labour', () => {
-  assert.match(receiptSql, /if v_booking\.selected_category is not null then\s+raise exception 'NEW_CATEGORY_BOOKING_USES_DEDICATED_SETTLEMENT'/);
-  assert.match(receiptSql, /v_booking\.quote_status is distinct from 'approved'/);
-  assert.match(receiptSql, /v_commission_paise:=round\(v_service_paise::numeric\*v_booking\.commission_rate\/100\)::bigint/);
-  assert.match(receiptSql, /v_payable_paise:=v_total_paise-v_commission_paise/);
+test('new payout commission is calculated from immutable labour only; materials are zero', () => {
+  assert.match(removalSql, /v_service:=round\(v_bill\.labour_amount_paise\/100\.0,2\)/);
+  assert.match(removalSql, /v_materials:=0/);
+  assert.match(removalSql, /v_commission:=round\(v_service\*v_rate\/100,2\)/);
 });
 
-test('new-category payout and read-only accounting use immutable labour, zero materials and settled fee reconciliation', () => {
-  assert.match(payoutSql, /v_service := round\(v_bill\.labour_amount,2\)/);
-  assert.match(payoutSql, /v_materials := 0/);
-  assert.match(payoutSql, /v_bill\.labour_amount \+ coalesce\(/);
-  assert.match(accountingSql, /if v_booking\.selected_category is not null then/);
-  assert.match(accountingSql, /v_materials_paise := 0/);
-  assert.match(accountingSql, /v_collection_paise is distinct from \(v_labour_paise\+v_fee_captured_paise\)/);
-  assert.match(accountingSql, /elsif v_booking\.selected_category is null and v_payment_verified/);
+test('accounting reconciliation uses immutable bill for new bookings and archive for historical bookings', () => {
+  assert.match(accountingSql, /from srk_private\.legacy_booking_financial_evidence/);
+  assert.match(accountingSql, /v_bill\.labour_amount_paise/);
+  assert.doesNotMatch(accountingSql, /v_booking\.(?:quote_status|quoted_amount|service_charge|materials_amount)/);
 });
 
-test('refund flow preserves immutable-bill path for new bookings and approved-quote path for legacy bookings', () => {
-  assert.match(refundSql, /if v_booking\.selected_category is not null then/);
-  assert.match(refundSql, /IMMUTABLE_LABOUR_BILL_REQUIRED/);
-  assert.match(refundSql, /v_booking\.quote_status<>'approved'/);
-  assert.match(refundSql, /PAID_AMOUNT_DOES_NOT_MATCH_APPROVED_QUOTE/);
+test('refund and payout settlement use immutable bill/archive rather than quotation approval', () => {
+  assert.match(removalSql, /v_booking\.selected_category IS NOT NULL/);
+  assert.match(removalSql, /v_legacy\.quoted_amount/);
+  assert.doesNotMatch(removalSql, /v_booking\.(?:quote_status|quoted_amount|service_charge|materials_amount)/);
+  assert.doesNotMatch(removalSql, /APPROVED_QUOTE/);
 });
