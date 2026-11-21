@@ -201,34 +201,42 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <input type="hidden" id="bookingLat"><input type="hidden" id="bookingLng">
    <p class="small" id="customerLocationStatus" role="status" aria-live="polite">लोकेशन अभी नहीं चुनी गई है। पता लिखकर भी Google Maps में देखा जा सकेगा।</p>
    <div id="customerMapWrap" style="display:none;margin-top:10px"><iframe id="customerMap" title="बुकिंग लोकेशन का Google Map" width="100%" height="220" style="border:0;border-radius:12px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><a id="customerMapLink" target="_blank" rel="noopener">Google Maps में लोकेशन खोलें</a></div>
-   <label for="service">कौन-सी सर्विस चाहिए?</label>
-   <select id="service" required>
-    <option value="home_wiring">घर की वायरिंग</option>
-    <option value="electrical_repair">इलेक्ट्रिकल रिपेयर</option>
-    <option value="light_fan_fitting">लाइट / फैन फिटिंग</option>
-    <option value="home_repair">होम रिपेयरिंग</option>
-    <option value="other">अन्य</option>
+   <label for="masterCategory">सर्विस Category चुनें</label>
+   <select id="masterCategory" required>
+    <option value="">Category चुनें</option>
+    <option value="electrician">Electrician</option><option value="plumber">Plumber</option>
+    <option value="painter">Painter</option><option value="ac_fridge_technician">AC + Fridge Technician</option>
+    <option value="motor_pump">Motor &amp; Pump</option><option value="cooler">Cooler</option>
    </select>
-   <label for="rateTier">इलेक्ट्रिशियन की श्रेणी चुनें</label>
-   <select id="rateTier" required>
-    <option value="">श्रेणी चुनें</option>
-    <option value="electrical_assistant">Electrical Assistant — 8 घंटे ₹899</option>
-    <option value="skilled_electrician">Skilled Electrician — 8 घंटे ₹1,199</option>
-    <option value="expert_electrician">Expert Electrician — 8 घंटे ₹1,599</option>
-    <option value="premium_electrical_specialist">Premium Electrical Specialist — 8 घंटे ₹1,999</option>
-   </select>
-   <label for="durationHours">काम के लिए अनुमानित समय</label>
-   <select id="durationHours" required>
-    <option value="">अवधि चुनें (1–8 घंटे)</option>
-    <option value="1">1 घंटा</option><option value="2">2 घंटे</option>
-    <option value="3">3 घंटे</option><option value="4">4 घंटे</option>
-    <option value="5">5 घंटे</option><option value="6">6 घंटे</option>
-    <option value="7">7 घंटे</option><option value="8">8 घंटे</option>
-   </select>
+   <label for="service">कौन-सी Service चाहिए?</label>
+   <select id="service" required><option value="">पहले Category चुनें</option></select>
+   <label for="rateTier">Technician Skill / Rate Level</label>
+   <select id="rateTier" required><option value="">पहले Service चुनें</option></select>
+   <div id="masterDurationControls">
+    <label for="durationHours">काम की अनुमानित अवधि (घंटे)</label>
+    <input id="durationHours" type="number" min="1" max="1200" step="1" value="1" required>
+    <small class="small">Hourly सेवा में 1 घंटे से 50 दिन (1,200 घंटे) तक अवधि चुन सकते हैं। वास्तविक बिल server timer से बनेगा।</small>
+   </div>
+   <div id="masterTeamControls">
+    <label for="masterTechnicianCount">कितने Technician चाहिए? (1–10)</label>
+    <input id="masterTechnicianCount" type="number" min="1" max="10" step="1" value="1">
+    <label style="display:flex;align-items:center;gap:8px"><input id="masterHelperIncluded" type="checkbox" style="width:18px;height:18px"> हर Technician के साथ एक अलग Helper भी चाहिए</label>
+    <small class="small">उदाहरण: 2 Technician + Helper चुनने पर 2 अलग Helper (कुल 4 कर्मचारी) की व्यवस्था होगी।</small>
+   </div>
+   <div id="masterQuantityControls" hidden>
+    <label for="masterServiceQuantity">कितनी Unit / Item?</label>
+    <input id="masterServiceQuantity" type="number" min="1" max="100" step="1" value="1">
+   </div>
+   <div id="masterRateLoadStatus" class="small" role="status" aria-live="polite">सक्रिय Rate Catalogue लोड हो रहा है…</div>
+   <div class="card" style="margin:10px 0;padding:12px">
+    <b>Active Master Rate List</b>
+    <p class="small">Hourly सेवाओं में 8 घंटे का तुलना वेतन: Technician, Helper और दोनों का कुल अलग-अलग दिखेगा। Fixed सेवाओं में प्रति Unit की दर दिखेगी। केवल Admin द्वारा Active की गई दरें बुक की जा सकती हैं।</p>
+    <div id="customerMasterRateList">Rate List लोड हो रही है…</div>
+   </div>
    <section class="card" id="labourEstimatePanel" aria-live="polite" style="margin:12px 0;border:1px solid #cfe0f5;background:#f5f9ff">
     <div class="small">आपका अनुमानित मेहनताना</div>
     <div id="labourEstimateAmount" style="font-size:26px;font-weight:850;color:#0b5ed7;margin:4px 0">श्रेणी और अवधि चुनें</div>
-    <div id="labourEstimateBreakdown" class="small">अनुमान चुनी गई श्रेणी की 8 घंटे की दर और अवधि के आधार पर है।</div>
+    <div id="labourEstimateBreakdown" class="small">अनुमान Active Master Rate, Technician संख्या, Helper और अवधि/Quantity के आधार पर है।</div>
    </section>
    <p class="small">यह केवल अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ग्राहक की चुनी श्रेणी से अलग इलेक्ट्रिशियन नहीं भेजा जाएगा। सामान/पार्ट्स का खर्च मेहनताने से अलग itemized रहेगा।</p>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
@@ -819,17 +827,84 @@ let pendingAmount = 0;
 let pendingBookingId = null;
 let paymentBusy = false;
 document.getElementById('year').textContent = new Date().getFullYear();
-const customerRateCard = { electrical_assistant: 89900, skilled_electrician: 119900, expert_electrician: 159900, premium_electrical_specialist: 199900 };
-function updateLabourEstimate() {
-  const tier=document.getElementById('rateTier')?.value, hours=Number(document.getElementById('durationHours')?.value);
-  const amount=document.getElementById('labourEstimateAmount'), detail=document.getElementById('labourEstimateBreakdown');
-  if(!tier||!customerRateCard[tier]||!Number.isInteger(hours)||hours<1||hours>8){amount.textContent='श्रेणी और अवधि चुनें';detail.textContent='अनुमान चुनी गई श्रेणी की 8 घंटे की दर और अवधि के आधार पर है।';return;}
-  const paise=Math.floor(customerRateCard[tier]*hours/8+0.5);
-  amount.textContent='₹'+(paise/100).toFixed(2);
-  detail.textContent=hours+' घंटे × चुनी गई श्रेणी की दर। अंतिम रकम वास्तविक सर्वर-रिकॉर्डेड समय से बनेगी।';
+let customerMasterRates=[];
+const customerMasterCategoryLabels={electrician:'Electrician',plumber:'Plumber',painter:'Painter',ac_fridge_technician:'AC + Fridge Technician',motor_pump:'Motor & Pump',cooler:'Cooler'};
+function customerMasterMoney(paise){return '₹'+(Number(paise||0)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function customerSelectedMasterRate(){
+ const service=document.getElementById('service')?.value,level=document.getElementById('rateTier')?.value;
+ return customerMasterRates.find(r=>r.service_code===service&&r.level_code===level)||null;
 }
-document.getElementById('rateTier')?.addEventListener('change',updateLabourEstimate);
-document.getElementById('durationHours')?.addEventListener('change',updateLabourEstimate);
+function renderCustomerMasterServices(){
+ const category=document.getElementById('masterCategory')?.value,service=document.getElementById('service'),level=document.getElementById('rateTier');
+ if(!service||!level)return;
+ const rows=customerMasterRates.filter(r=>r.category_code===category);
+ service.innerHTML='<option value="">Service चुनें</option>'+[...new Map(rows.map(r=>[r.service_code,r])).values()].map(r=>'<option value="'+customerEsc(r.service_code)+'">'+customerEsc(r.service_name)+' ('+customerEsc(r.billing_model==='hourly'?'Hourly':'Fixed / '+r.unit_label)+')</option>').join('');
+ level.innerHTML='<option value="">Rate Level चुनें</option>';
+ updateMasterBookingControls();
+}
+function renderCustomerMasterRateList(){
+ const box=document.getElementById('customerMasterRateList');if(!box)return;
+ if(!customerMasterRates.length){box.textContent='अभी कोई Service Rate Admin द्वारा Active नहीं की गई है। Rate Configuration पूरी होने पर यहाँ दरें दिखेंगी।';return;}
+ box.innerHTML='<div class="scroll"><table><thead><tr><th>Category / Service / Level</th><th>Technician 8h</th><th>Helper 8h</th><th>Combined 8h</th></tr></thead><tbody>'+
+ customerMasterRates.map(r=>{
+  const hourly=r.billing_model==='hourly';
+  return '<tr><td><b>'+customerEsc(customerMasterCategoryLabels[r.category_code]||r.category_code)+'</b><br>'+customerEsc(r.service_name)+'<br><small>'+customerEsc(r.level_label)+'</small></td>'+
+   '<td>'+(hourly?customerMasterMoney(Number(r.technician_hourly_paise)*8):'—')+'</td>'+
+   '<td>'+(hourly?customerMasterMoney(Number(r.helper_hourly_paise)*8):'—')+'</td>'+
+   '<td>'+(hourly?customerMasterMoney((Number(r.technician_hourly_paise)+Number(r.helper_hourly_paise))*8):customerMasterMoney(r.fixed_labour_paise)+' / '+customerEsc(r.unit_label))+'</td></tr>';
+ }).join('')+'</tbody></table></div>';
+}
+function updateMasterBookingControls(){
+ const rate=customerSelectedMasterRate(),hourly=rate?.billing_model==='hourly';
+ const duration=document.getElementById('masterDurationControls'),team=document.getElementById('masterTeamControls'),quantity=document.getElementById('masterQuantityControls');
+ if(duration)duration.hidden=!hourly;
+ if(team)team.hidden=!hourly;
+ if(quantity)quantity.hidden=!!hourly||!rate;
+ const qty=document.getElementById('masterServiceQuantity');if(qty)qty.required=!!rate&&!hourly;
+ const hours=document.getElementById('durationHours');if(hours)hours.required=!!hourly;
+ const helper=document.getElementById('masterHelperIncluded');if(helper&&!hourly)helper.checked=false;
+ updateLabourEstimate();
+}
+async function loadCustomerMasterRates(){
+ const status=document.getElementById('masterRateLoadStatus');if(status)status.textContent='Active Rate Catalogue लोड हो रहा है…';
+ try{
+  const {data,error}=await customerSb.rpc('srk_customer_list_active_service_rates');if(error)throw error;
+  customerMasterRates=Array.isArray(data)?data:[];
+  renderCustomerMasterRateList();
+  const category=document.getElementById('masterCategory')?.value;
+  if(category)renderCustomerMasterServices();
+  if(status)status.textContent=customerMasterRates.length+' Active Rate Levels उपलब्ध';
+  updateLabourEstimate();
+ }catch(e){if(status)status.textContent='Rate List अभी लोड नहीं हो सकी। कृपया Refresh करें।';}
+}
+function updateMasterRateLevels(){
+ const serviceCode=document.getElementById('service')?.value,level=document.getElementById('rateTier');
+ const rows=customerMasterRates.filter(r=>r.service_code===serviceCode);
+ if(level)level.innerHTML='<option value="">Rate Level चुनें</option>'+rows.map(r=>'<option value="'+customerEsc(r.level_code)+'">'+customerEsc(r.level_label)+'</option>').join('');
+ updateMasterBookingControls();
+}
+function updateLabourEstimate(){
+ const rate=customerSelectedMasterRate(),amount=document.getElementById('labourEstimateAmount'),detail=document.getElementById('labourEstimateBreakdown');
+ if(!rate){amount.textContent='Service और Rate Level चुनें';detail.textContent='अनुमान Active Master Rate के अनुसार निकलेगा।';return;}
+ let paise=0,summary='';
+ if(rate.billing_model==='hourly'){
+  const hours=Number(document.getElementById('durationHours')?.value),technicians=Number(document.getElementById('masterTechnicianCount')?.value),helper=!!document.getElementById('masterHelperIncluded')?.checked;
+  if(!Number.isInteger(hours)||hours<1||hours>1200||!Number.isInteger(technicians)||technicians<1||technicians>10){amount.textContent='अवधि / Technician संख्या जाँचें';detail.textContent='1–1200 घंटे और 1–10 Technician चुनें।';return;}
+  const hourly=Number(rate.technician_hourly_paise)+(helper?Number(rate.helper_hourly_paise):0);
+  paise=Math.round(hourly*technicians*hours);
+  summary=technicians+' Technician'+(helper?' + '+technicians+' Helper':'')+' × '+hours+' घंटे';
+ }else{
+  const quantity=Number(document.getElementById('masterServiceQuantity')?.value);
+  if(!Number.isInteger(quantity)||quantity<1||quantity>100){amount.textContent='Quantity चुनें';detail.textContent='1–100 Unit चुनें।';return;}
+  paise=Number(rate.fixed_labour_paise)*quantity;summary=quantity+' '+rate.unit_label;
+ }
+ amount.textContent=customerMasterMoney(paise);
+ detail.textContent=rate.service_name+' · '+rate.level_label+' · '+summary+'। यह अनुमान है; अंतिम राशि सर्वर के नियमों के अनुसार बनेगी।';
+}
+document.getElementById('masterCategory')?.addEventListener('change',renderCustomerMasterServices);
+document.getElementById('service')?.addEventListener('change',updateMasterRateLevels);
+document.getElementById('rateTier')?.addEventListener('change',updateMasterBookingControls);
+for(const id of ['durationHours','masterTechnicianCount','masterHelperIncluded','masterServiceQuantity'])document.getElementById(id)?.addEventListener('input',updateLabourEstimate);
 function initCustomerMenuShell(){
  const dashboard=document.getElementById('customer-dashboard');
  const home=document.getElementById('customerMenuHome');
@@ -2237,6 +2312,7 @@ async function customerLogout() {
 }
 if (customerCfg.SUPABASE_URL && customerCfg.SUPABASE_ANON_KEY && window.supabase?.createClient) {
   customerSb = window.supabase.createClient(customerCfg.SUPABASE_URL, customerCfg.SUPABASE_ANON_KEY);
+  Promise.resolve().then(()=>loadCustomerMasterRates()).catch(()=>{});
   customerSb.auth.onAuthStateChange((event) => {
     if(event==='SIGNED_IN'||event==='SIGNED_OUT'||event==='USER_DELETED'){
       customerActionGeneration++;
@@ -2476,14 +2552,23 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   const bookingGeneration=customerActionGeneration;
   const isCurrent=()=>bookingGeneration===customerActionGeneration;
   const method = value('payment');
-  const tier = document.getElementById('rateTier').selectedOptions[0]?.textContent || '';
-  const hours = Number(value('durationHours'));
-  const rate8h = customerRateCard[value('rateTier')];
-  const estimatePaise = Number.isInteger(hours) && hours >= 1 && hours <= 8 && rate8h
-    ? Math.floor(rate8h * hours / 8 + 0.5) : null;
+  const selectedRate=customerSelectedMasterRate();
+  const tier=selectedRate?.level_label||'';
+  const serviceName=selectedRate?.service_name||'';
+  const hourly=selectedRate?.billing_model==='hourly';
+  const hours=Number(value('durationHours'));
+  const technicianCount=hourly?Number(value('masterTechnicianCount')):1;
+  const helperIncluded=hourly&&document.getElementById('masterHelperIncluded')?.checked===true;
+  const quantity=hourly?1:Number(value('masterServiceQuantity'));
+  let estimatePaise=null;
+  if(selectedRate&&hourly&&Number.isInteger(hours)&&hours>=1&&hours<=1200&&Number.isInteger(technicianCount)&&technicianCount>=1&&technicianCount<=10){
+   estimatePaise=Math.round((Number(selectedRate.technician_hourly_paise)+(helperIncluded?Number(selectedRate.helper_hourly_paise):0))*technicianCount*hours);
+  }else if(selectedRate&&!hourly&&Number.isInteger(quantity)&&quantity>=1&&quantity<=100){
+   estimatePaise=Number(selectedRate.fixed_labour_paise)*quantity;
+  }
   const terms = document.getElementById('bookingTermsAccepted');
   if (!terms?.checked) { alert('बुकिंग भेजने से पहले जरूरी शर्तें पढ़कर स्वीकार करें।'); terms?.focus(); return; }
-  if(estimatePaise===null){alert('कृपया इलेक्ट्रिशियन की श्रेणी और 1 से 8 घंटे की अवधि चुनें।');return;}
+  if(estimatePaise===null){alert('कृपया Active Master Service, Rate Level और सही अवधि / Quantity चुनें।');return;}
   if(!customerSb){alert('बुकिंग से पहले ग्राहक OTP लॉगिन करें।');return;}
   let customerSession;
   try{
@@ -2504,7 +2589,8 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   const priorFeeText=priorFeePaise>0
     ? '\\nपुरानी Cancellation Fee (अलग मद): ₹'+(priorFeePaise/100).toFixed(2)+'\\n'+priorFeeLines+'\\nअभी का संयुक्त अनुमान: ₹'+((estimatePaise+priorFeePaise)/100).toFixed(2)
     : '\\nपुरानी Cancellation Fee: ₹0.00';
-  if(!confirm('बुकिंग की पुष्टि करें\\n\\nश्रेणी: '+tier+'\\nअवधि: '+hours+' घंटे\\nअनुमानित मेहनताना: ₹'+(estimatePaise/100).toFixed(2)+priorFeeText+'\\nभुगतान तरीका: '+method+'\\n\\nपुरानी फीस अलग line items में रहेगी। यह मेहनताना अनुमान अंतिम बिल की सीमा नहीं है। वास्तविक समय के अनुसार मेहनताना बनेगा और सामान/पार्ट्स अलग होंगे। क्या बुकिंग भेजें?'))return;
+  const workSummary=hourly?(technicianCount+' Technician'+(helperIncluded?' + '+technicianCount+' Helper':'')+' · '+hours+' घंटे'):quantity+' '+(selectedRate?.unit_label||'Unit');
+  if(!confirm('बुकिंग की पुष्टि करें\\n\\nCategory: '+(customerMasterCategoryLabels[value('masterCategory')]||value('masterCategory'))+'\\nService: '+serviceName+'\\nRate Level: '+tier+'\\nटीम / मात्रा: '+workSummary+'\\nअनुमानित मेहनताना: ₹'+(estimatePaise/100).toFixed(2)+priorFeeText+'\\nभुगतान तरीका: '+method+'\\n\\nपुरानी फीस अलग line items में रहेगी। Hourly काम का अंतिम बिल वास्तविक server timer से बनेगा। सामान/पार्ट्स अलग होंगे। क्या बुकिंग भेजें?'))return;
   if(!isCurrent())return;
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
@@ -2519,8 +2605,13 @@ document.getElementById('booking').addEventListener('submit', async function (e)
     bookingHeaders.Authorization = 'Bearer ' + latestSession.access_token;
     const bookingPayload = {
       customer_name: value('name'), phone: value('phone'), state: value('state'), district: value('district'), pincode: value('pin'),
-      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null, service_type: document.getElementById('service').selectedOptions[0]?.textContent || '', selected_category: value('service'), selected_duration_hours: Number(value('durationHours')), 
-      selected_rate_tier: value('rateTier'),
+      address: value('address'), location_lat: value('bookingLat') || null, location_lng: value('bookingLng') || null,
+      service_type: serviceName,
+      srk_service_code: value('service'), srk_rate_level_code: value('rateTier'),
+      srk_duration_minutes: hourly ? hours*60 : null,
+      srk_service_quantity: quantity,
+      srk_required_technician_count: technicianCount,
+      srk_helper_included: helperIncluded,
       work_details: [value('place'), value('details')].filter(Boolean).join(' | '), payment_method: method
     };
     const requestKey = customerBookingRequestKey(bookingPayload, latestSession.user.id);
