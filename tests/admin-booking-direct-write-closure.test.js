@@ -27,16 +27,10 @@ test('location RPC is Main-Admin-only, row-locked, validated and records before/
   assert.match(migration, /revoke all on function public\.srk_admin_update_booking_customer_location\(uuid,text,text,text,text\) from public,anon/i);
 });
 
-test('legacy quote mutation RPC remains guarded for compatibility but is no longer exposed by Admin UI', () => {
-  const start = migration.indexOf('function public.srk_admin_update_legacy_booking_quote');
-  const end = migration.indexOf('$function$;', start);
-  const fn = migration.slice(start, end);
-  assert.match(fn, /auth\.uid\(\) is null or not public\.is_srk_admin\(\)/);
-  assert.match(fn, /for update/i);
-  assert.match(fn, /NEW_CATEGORY_BOOKING_USES_SERVER_WORKFLOW/);
-  assert.match(fn, /PAID_OR_ONLINE_BOOKING_QUOTE_IS_LOCKED/);
-  assert.match(fn, /CUSTOMER_APPROVED_QUOTE_IS_IMMUTABLE/);
-  assert.match(fn, /QUOTE_MUST_MATCH_LABOUR_PLUS_MATERIALS/);
-  assert.match(migration, /revoke update on table public\.service_bookings from authenticated/i);
-  assert.match(migration, /revoke update \(status,quoted_amount,amount_paid,payment_status,address,district,state,pincode\)/i);
+test('legacy quote editor RPC is dropped and Admin UI has no quotation or manual customer-payment controls', () => {
+  assert.match(migration,/DROP FUNCTION IF EXISTS public\\.srk_admin_update_legacy_booking_quote\\(uuid,numeric\\)/);
+  assert.doesNotMatch(migration,/create or replace function public\\.srk_admin_update_legacy_booking_quote/);
+  assert.doesNotMatch(admin,/quoted_amount|quote_status|service_charge|materials_amount|srk_admin_record_manual_payment/);
+  assert.doesNotMatch(migration,/p_quoted_amount|QUOTE_MUST_MATCH_LABOUR_PLUS_MATERIALS/);
 });
+
