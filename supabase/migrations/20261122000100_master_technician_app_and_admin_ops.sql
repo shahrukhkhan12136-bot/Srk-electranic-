@@ -46,7 +46,7 @@ BEGIN
   WHERE w.booking_id=p_booking_id AND w.status IN ('running','lunch_paused') ORDER BY w.id
  LOOP PERFORM srk_private.srk_normalize_technician_workday_lunch(v_workday_id);END LOOP;
  SELECT COALESCE(jsonb_agg(jsonb_build_object(
-  'workday_id',w.id,'technician_id',w.technician_id,'work_date',w.work_date,
+  'workday_id',w.id,'technician_id',w.technician_id,'technician_name',(SELECT a.full_name FROM public.srk_technician_applications a WHERE a.technician_id=w.technician_id AND a.status='approved' ORDER BY a.submitted_at DESC LIMIT 1),'work_date',w.work_date,
   'status',w.status,'start_requested_at',w.start_requested_at,'customer_approved_at',w.customer_approved_at,
   'accumulated_work_seconds',CASE WHEN w.status='running' THEN w.accumulated_work_seconds+
     greatest(extract(epoch FROM (clock_timestamp()-w.running_started_at)),0)
