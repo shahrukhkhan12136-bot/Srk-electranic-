@@ -323,18 +323,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                     const Text('अपनी जरूरत के अनुसार सेवा चुनें।'),
                     const SizedBox(height: 12),
                     SrkServiceCategoryPicker(
-                      onSelection: ({
-                        required String categoryId,
-                        required String categoryTitle,
-                        String? subcategoryId,
-                        String? subcategoryTitle,
-                        String? taskTitle,
-                      }) {
-                        final selection = [
-                          categoryTitle,
-                          if (subcategoryTitle != null) subcategoryTitle,
-                          if (taskTitle != null) taskTitle,
-                        ].join(' • ');
+                      onSelection: (serviceSelection) {
+                        final selection = serviceSelection.displayName;
                         setState(() => _selectedServicePreview = selection);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('चयन हुआ: $selection')),
