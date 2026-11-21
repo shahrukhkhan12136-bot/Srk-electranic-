@@ -33,7 +33,8 @@ test('timer supports pause, resume, stop and daily one-hour automatic lunch paus
 test('daily normal and overtime work are calculated independently with 1.5x overtime', () => {
   assert.match(migration, /v_normal:=least\(v_elapsed,28800\)/);
   assert.match(migration, /v_overtime:=greatest\(v_elapsed-28800,0\)/);
-  assert.match(migration, /v_overtime_amount:=floor\(v_w\.technician_hourly_paise_snapshot\*v_w\.overtime_work_seconds\*1\.5\/3600\+0\.5\)/);
+  assert.match(migration, /v_tech_overtime_amount:=floor\(v_w\.technician_hourly_paise_snapshot\*v_w\.overtime_work_seconds\*1\.5\/3600\+0\.5\)/);
+  assert.match(migration, /v_helper_overtime_amount:=CASE WHEN v_w\.helper_included_snapshot/);
 });
 
 test('customer must stop every active Technician and select one of the three daily decisions', () => {
