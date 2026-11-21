@@ -587,3 +587,11 @@
 - [ ] Frontend picker remains preview-only until verified-skill dispatch and booking payload are available.
 
 - [x] Static source review caught and corrected Flutter test view sizing to use TestFlutterView physicalSize/devicePixelRatio properties (commit 07b915e). Test execution is still pending.
+
+
+## 2M. Widget test CI wiring (2026-11-21)
+
+- [x] Normalized both widget-test view setup blocks to use `TestFlutterView.physicalSize` and `devicePixelRatio` properties (commit 4a16073).
+- [x] Added `flutter test` to the Customer app CI sequence after dependency resolution and Dart analysis, before the debug APK build (commit e696098).
+- [x] Re-fetched both files and verified the test command is present in the Customer job and absent from no other app job changes.
+- [ ] Workflow has not been dispatched; no test/analyzer/build result is claimed.
