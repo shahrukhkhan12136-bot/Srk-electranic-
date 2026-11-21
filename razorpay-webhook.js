@@ -57,7 +57,7 @@ async function updateBooking(orderId, payment) {
   if (booking.payment_status === "refunded") return "payment_refunded";
 
   // Only customer-selected category bookings with an immutable server bill
-  // may be settled. Legacy quote-based bookings are retired from new checkout.
+  // may be settled. Legacy bookings are retired from new checkout.
   if (!booking.selected_category) return "legacy_booking_retired";
   if (booking.payment_status === "paid") return booking.razorpay_payment_id === payment.id ? "already_processed" : "payment_conflict";
   if (booking.status !== "completed") return "booking_not_payable";
