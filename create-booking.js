@@ -187,6 +187,50 @@ const work_details = clean(body.work_details, 2000);
       return json(400, { success: false, error: "भुगतान राशि सही नहीं है।" });
     }
 
+    if (!isMasterBooking) {
+      rate8hPaise = legacyRateCard[selected_rate_tier];
+      estimatedLabourPaise = Math.floor((rate8hPaise * selected_duration_hours) / 8 + 0.5);
+    }
+    const requestFingerprint = crypto.createHash("sha256").update(JSON.stringify({
+      customer_user_id, customer_name, phone, state, district, pincode, address,
+      location_lat, location_lng, service_type: isMasterBooking ? masterServiceCode : service_type, selected_category, selected_rate_tier,
+      selected_duration_hours, work_details, payment_method,
+      ...(isMasterBooking ? {
+        srk_service_code: masterServiceCode, srk_rate_level_code: masterRateLevelCode,
+        srk_duration_minutes: masterDurationMinutes, srk_service_quantity: masterServiceQuantity,
+        srk_required_technician_count: masterRequiredTechnicians
+      } : {})
+    })).digest("hex");
+    const findByRequestKey = () => supabase(
+      "service_bookings?select=id,customer_user_id,customer_request_fingerprint,srk_estimated_labour_paise,srk_rate_version_snapshot,srk_billing_model_snapshot,srk_technician_hourly_paise_snapshot,srk_helper_hourly_paise_snapshot,srk_fixed_labour_paise_snapshot&customer_request_key=eq." + encodeURIComponent(idempotencyKey),
+      { method: "GET" }
+    );
+    const existingRows = await findByRequestKey();
+    const existing = Array.isArray(existingRows) ? existingRows[0] : null;
+    if (existing) {
+      if (existing.customer_user_id !== customer_user_id || existing.customer_request_fingerprint !== requestFingerprint) {
+        return json(409, { success: false, error: "यह बुकिंग अनुरोध पहचान पहले अलग जानकारी के साथ इस्तेमाल हो चुकी है। नई बुकिंग शुरू करें।" });
+      }
+      const priorOffers = await supabase(
+        isMasterBooking
+          ? "srk_technician_dispatch_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(existing.id)
+          : "job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(existing.id)
+      );
+      const priorOfferRows = Array.isArray(priorOffers) ? priorOffers : [];
+      const priorAmount = existing.srk_estimated_labour_paise ?? estimatedLabourPaise;
+      return json(200, { success: true, booking_id: existing.id, replayed: true,
+        estimate: { amount_paise: priorAmount, amount_rupees: (priorAmount / 100).toFixed(2),
+          rate8h_paise: rate8hPaise, rate_card_version: existing.srk_rate_version_snapshot || rateCardVersion,
+          ...(isMasterBooking ? { billing_model: existing.srk_billing_model_snapshot,
+            technician_hourly_paise: existing.srk_technician_hourly_paise_snapshot,
+            helper_hourly_paise: existing.srk_helper_hourly_paise_snapshot,
+            technician_8h_paise: existing.srk_technician_hourly_paise_snapshot == null ? null : Number(existing.srk_technician_hourly_paise_snapshot) * 8,
+            helper_8h_paise: existing.srk_helper_hourly_paise_snapshot == null ? null : Number(existing.srk_helper_hourly_paise_snapshot) * 8,
+            combined_8h_paise: existing.srk_technician_hourly_paise_snapshot == null ? null : (Number(existing.srk_technician_hourly_paise_snapshot) + Number(existing.srk_helper_hourly_paise_snapshot)) * 8,
+            fixed_labour_paise: existing.srk_fixed_labour_paise_snapshot } : {}) },
+        offers_created: priorOfferRows.length, match_level: priorOfferRows[0]?.match_level || null,
+        message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
+    }
     if (isMasterBooking) {
       const rateRows = await supabase("rpc/srk_customer_get_service_rate", {
         method: "POST",
@@ -225,37 +269,6 @@ const work_details = clean(body.work_details, 2000);
     } else {
       rate8hPaise = legacyRateCard[selected_rate_tier];
       estimatedLabourPaise = Math.floor((rate8hPaise * selected_duration_hours) / 8 + 0.5);
-    }
-    const requestFingerprint = crypto.createHash("sha256").update(JSON.stringify({
-      customer_user_id, customer_name, phone, state, district, pincode, address,
-      location_lat, location_lng, service_type, selected_category, selected_rate_tier,
-      selected_duration_hours, work_details, payment_method,
-      ...(isMasterBooking ? {
-        srk_service_code: masterServiceCode, srk_rate_level_code: masterRateLevelCode,
-        srk_duration_minutes: masterDurationMinutes, srk_service_quantity: masterServiceQuantity,
-        srk_required_technician_count: masterRequiredTechnicians
-      } : {})
-    })).digest("hex");
-    const findByRequestKey = () => supabase(
-      "service_bookings?select=id,customer_user_id,customer_request_fingerprint,srk_estimated_labour_paise,srk_rate_version_snapshot,srk_billing_model_snapshot,srk_technician_hourly_paise_snapshot,srk_helper_hourly_paise_snapshot,srk_fixed_labour_paise_snapshot&customer_request_key=eq." + encodeURIComponent(idempotencyKey),
-      { method: "GET" }
-    );
-    const existingRows = await findByRequestKey();
-    const existing = Array.isArray(existingRows) ? existingRows[0] : null;
-    if (existing) {
-      if (existing.customer_user_id !== customer_user_id || existing.customer_request_fingerprint !== requestFingerprint) {
-        return json(409, { success: false, error: "यह बुकिंग अनुरोध पहचान पहले अलग जानकारी के साथ इस्तेमाल हो चुकी है। नई बुकिंग शुरू करें।" });
-      }
-      const priorOffers = await supabase("job_offers?select=id,match_level&booking_id=eq." + encodeURIComponent(existing.id));
-      const priorOfferRows = Array.isArray(priorOffers) ? priorOffers : [];
-      return json(200, { success: true, booking_id: existing.id, replayed: true,
-        estimate: { amount_paise: existing.srk_estimated_labour_paise ?? estimatedLabourPaise, amount_rupees: ((existing.srk_estimated_labour_paise ?? estimatedLabourPaise) / 100).toFixed(2), rate8h_paise: rate8hPaise, rate_card_version: existing.srk_rate_version_snapshot || rateCardVersion,
-          ...(isMasterBooking ? { billing_model: existing.srk_billing_model_snapshot || masterRate.billing_model,
-            technician_hourly_paise: existing.srk_technician_hourly_paise_snapshot ?? masterRate.technician_hourly_paise,
-            helper_hourly_paise: existing.srk_helper_hourly_paise_snapshot ?? masterRate.helper_hourly_paise,
-            fixed_labour_paise: existing.srk_fixed_labour_paise_snapshot ?? masterRate.fixed_labour_paise } : {}) },
-        offers_created: priorOfferRows.length, match_level: priorOfferRows[0]?.match_level || null,
-        message: "पहले से सेव की गई यही बुकिंग मिली है; नई डुप्लीकेट बुकिंग नहीं बनाई गई।" });
     }
     let inserted;
     try {
