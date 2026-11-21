@@ -8,15 +8,15 @@
 
 ---
 
-## त्वरित प्रोजेक्ट प्रगति — 15 नवम्बर 2026
+## त्वरित प्रोजेक्ट प्रगति — 21 नवम्बर 2026
 
-- **65% पूरा:** 56 / 86 मुख्य चेकलिस्ट आइटम।
-- **35% बाकी:** 30 / 86 मुख्य चेकलिस्ट आइटम।
+- **68% पूरा:** 62 / 91 मुख्य चेकलिस्ट आइटम।
+- **32% बाकी:** 29 / 91 मुख्य चेकलिस्ट आइटम।
 - यह प्रतिशत ऊपर के वर्तमान 9 मुख्य sections के checkbox count पर आधारित है; यह Production readiness, समय, लागत या code completion का प्रतिशत नहीं है।
 - बाकी मदों में isolated runtime/database tests, Main Production schema parity, browser/mobile visual QA और release/owner approval शामिल हैं।
-- **GPT-1 का अलग कार्यक्षेत्र:** Customer (10), Electrician (10), Welcome Screen/Founder Photo (8) — कुल 28 मदों में 22 पूर्ण, 6 शेष: **79% पूरा / 21% बाकी**। यह वर्तमान sections 1, 2 और 6 के checkbox पुनर्गणना पर आधारित है। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
+- **GPT-1 का अलग कार्यक्षेत्र:** Customer (11), Electrician/Shared Technician (11), Welcome Screen/Founder Photo (6) — कुल 28 मदों में 22 पूर्ण, 6 शेष: **79% पूरा / 21% बाकी**। यह वर्तमान sections 1, 2 और 6 के checkbox पुनर्गणना पर आधारित है। यह checklist checkbox-count आधारित implementation progress है; runtime/visual QA और Production readiness अलग gates हैं। GPT-2 का प्रतिशत इससे अलग है।
 - Admin Panel के शीर्ष पर पूरे प्रोजेक्ट का कार्ड और GPT-2 का अलग कार्ड पहले से दर्ज हैं; GPT-1 का प्रतिशत इस checklist/progress log में अलग दिखाया जाएगा।
-- **GPT नंबर 2 का अलग कार्यक्षेत्र:** Admin/Support Staff (13), Payment/Accounting (10), Main Database audit/parity (16) — कुल 39 मदों में 27 पूर्ण, 12 शेष: **69% पूरा / 31% बाकी**। GPT-1 के Customer/Electrician कार्य इसमें शामिल नहीं हैं।
+- **GPT नंबर 2 का अलग कार्यक्षेत्र:** Admin/Support Staff (14), Payment/Accounting (11), Main Database audit/parity (17) — कुल 42 मदों में 30 पूर्ण, 12 शेष: **71% पूरा / 29% बाकी**। GPT-1 के Customer/Electrician कार्य इसमें शामिल नहीं हैं।
 - Admin Panel में पूरे प्रोजेक्ट के कार्ड के नीचे GPT-2 का अलग प्रगति कार्ड भी दिखाया गया है।
 
 ---
@@ -24,7 +24,7 @@
 
 ## 0. नवीनतम समेकित स्थिति — 21 नवम्बर 2026
 
-यह checkpoint पुराने 15/17 नवम्बर progress percentages और पुराने pending snapshots को supersede करता है। ऊपर के 65%/69% आंकड़े पुराने checkbox snapshot हैं; इन्हें वर्तमान completion या release readiness न मानें। नया प्रतिशत तभी बदलेगा जब पूरा checklist पुनर्गणित हो।
+यह checkpoint 21 नवम्बर के वर्तमान checkbox snapshot को दर्ज करता है: 68% overall और 71% GPT-2। यह source checklist progress है, Production readiness नहीं।
 
 ### Source implementation इस staging branch में जोड़ा
 
