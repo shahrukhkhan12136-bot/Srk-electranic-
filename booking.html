@@ -1374,6 +1374,61 @@ async function reportCustomerMasterRating(ratingId){
  if(error||!data){alert('Report जमा नहीं हुई। यह केवल उस Review के लिए संभव है जो आपके बारे में है।');return;}
  alert('Review Report Admin को भेज दी गई है।');await loadCustomerMasterRatings();
 }
+function customerMasterMoneyPaise(value){return '₹'+(Number(value||0)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+async function customerRespondMasterWorkdayStart(workdayId,response){
+ if(!customerSb||!workdayId||!['approved','rejected'].includes(response))return;
+ if(!confirm(response==='approved'?'क्या Technician को काम शुरू करने की अनुमति देनी है? मंजूरी के बाद Timer शुरू होगा।':'क्या अभी काम शुरू करने की अनुमति नहीं देनी है?'))return;
+ const {data,error}=await customerSb.rpc('srk_customer_respond_technician_workday_start',{p_workday_id:workdayId,p_response:response});
+ if(error||!data?.success){alert('Workday Start का निर्णय सुरक्षित नहीं हुआ।');return;}
+ await loadCustomerBookings();
+}
+async function customerDecideMasterWorkday(bookingId,workDate,decision){
+ if(!customerSb||!bookingId||!workDate||!['tomorrow','completed','replace_technician'].includes(decision))return;
+ let replacedTechnicianId=null;
+ if(decision==='replace_technician'){
+  replacedTechnicianId=document.getElementById('customerReplaceTech_'+bookingId+'_'+workDate)?.value||null;
+  if(!replacedTechnicianId){alert('जिस Technician को बदलना है, उसे चुनें।');return;}
+ }
+ const labels={tomorrow:'कल का शेड्यूल स्वीकार करें',completed:'काम पूरा हो गया है, अब इलेक्ट्रिशियन की जरूरत नहीं',replace_technician:'इनसे काम नहीं लेना है, हमें दूसरा इलेक्ट्रिशियन चाहिए'};
+ if(!confirm('आपका निर्णय: '+labels[decision]+'?'))return;
+ const {data,error}=await customerSb.rpc('srk_customer_decide_workday',{p_booking_id:bookingId,p_work_date:workDate,p_decision:decision,p_replaced_technician_id:replacedTechnicianId});
+ if(error||!data?.success){alert('दैनिक Workday निर्णय सुरक्षित नहीं हुआ। सभी Active Technician के आज के Timer रुके हैं या नहीं, जाँचें।');return;}
+ await loadCustomerBookings();
+}
+function renderCustomerMasterWorkdayMarkup(bookingId,workdays,requiredCount){
+ if(!Array.isArray(workdays)||!workdays.length)return '<div class="job"><b>Master Workday Timer</b><p class="small">Assigned Technician काम शुरू करने की अनुमति माँगेगा। Customer की मंजूरी से पहले Timer शुरू नहीं होगा।</p></div>';
+ const grouped=new Map();workdays.forEach(w=>{if(!grouped.has(w.work_date))grouped.set(w.work_date,[]);grouped.get(w.work_date).push(w);});
+ return '<div class="job"><b>Master Workday — हर Technician का अलग Timer</b>'+[...grouped.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([date,rows])=>{
+  const decision=rows.find(w=>w.customer_decision)?.customer_decision||null;
+  const pending=rows.filter(w=>w.status==='start_pending');
+  const active=rows.filter(w=>['running','paused','lunch_paused'].includes(w.status));
+  const stopped=rows.filter(w=>w.status==='stopped');
+  const statusRows=rows.map(w=>'<p class="small"><b>Technician:</b> '+customerEsc(w.technician_id)+' · <b>स्थिति:</b> '+customerEsc(w.status)+' · <b>समय:</b> '+customerEsc(formatCustomerTimer(w.accumulated_work_seconds||0))+'</p>').join('');
+  let action='';
+  if(pending.length)action+=pending.map(w=>'<div class="job"><b>Technician काम शुरू करने की अनुमति माँग रहा है।</b><p class="small">'+customerEsc(w.technician_id)+'</p><button type="button" onclick="customerRespondMasterWorkdayStart(\''+customerEsc(w.workday_id)+'\',\'approved\')">काम शुरू करने की मंजूरी दें</button> <button type="button" onclick="customerRespondMasterWorkdayStart(\''+customerEsc(w.workday_id)+'\',\'rejected\')">अभी मंजूरी न दें</button></div>').join('');
+  if(active.some(w=>w.status==='running'))action+='<p class="small">काम का Timer चल रहा है। पहला 8 घंटे सामान्य दर पर और उसके बाद उसी दिन 1.5x Overtime लागू होगा।</p>';
+  if(active.some(w=>w.status==='lunch_paused'))action+='<p class="small">Lunch Break चल रहा है; 1 घंटे बाद Timer अपने-आप Resume होगा।</p>';
+  if(decision)action+='<p><b>आपका दैनिक निर्णय:</b> '+customerEsc(decision==='tomorrow'?'कल का शेड्यूल स्वीकार किया':decision==='completed'?'काम पूरा घोषित किया':'दूसरा Technician माँगा')+'</p>';
+  else if(stopped.length&&stopped.length>=Number(requiredCount||1)&&stopped.length===rows.length){
+   action+='<div class="job"><b>आज का काम रोक दिया गया है। अब अगला निर्णय चुनें:</b><p class="small">सभी Active Technician के Timer रुकने के बाद ही इनमें से एक विकल्प चुनें।</p><button type="button" onclick="customerDecideMasterWorkday(\''+customerEsc(bookingId)+'\',\''+customerEsc(date)+'\',\'tomorrow\')">कल का शेड्यूल स्वीकार करें</button><button type="button" onclick="customerDecideMasterWorkday(\''+customerEsc(bookingId)+'\',\''+customerEsc(date)+'\',\'completed\')">काम पूरा हो गया है, अब इलेक्ट्रिशियन की जरूरत नहीं</button><label for="customerReplaceTech_'+customerEsc(bookingId)+'_'+customerEsc(date)+'">किस Technician को बदलना है?</label><select id="customerReplaceTech_'+customerEsc(bookingId)+'_'+customerEsc(date)+'">'+stopped.map(w=>'<option value="'+customerEsc(w.technician_id)+'">'+customerEsc(w.technician_id)+'</option>').join('')+'</select><button type="button" onclick="customerDecideMasterWorkday(\''+customerEsc(bookingId)+'\',\''+customerEsc(date)+'\',\'replace_technician\')">इनसे काम नहीं लेना है, हमें दूसरा इलेक्ट्रिशियन चाहिए</button></div>';
+  }else if(stopped.length)action+='<p class="small">दैनिक निर्णय से पहले सभी Active Technician के Timer रोकना जरूरी है।</p>';
+  return '<div class="job"><b>काम की तारीख: '+customerEsc(date)+'</b>'+statusRows+action+'</div>';
+ }).join('')+'</div>';
+}
+function renderCustomerMasterFinalBillMarkup(row,bill){
+ if(!bill)return '';
+ const money=customerMasterMoneyPaise;
+ const items=Array.isArray(bill.material_items)?bill.material_items:[];
+ const itemsHtml=items.length?'<p><b>Customer-approved Materials:</b></p>'+items.map(i=>'<p class="small">'+customerEsc(i.name)+' · '+customerEsc(i.quantity)+' × '+money(i.unit_price_paise)+' = '+money(i.line_total_paise)+'</p>').join(''):'';
+ const paid=String(row.payment_status||'').toLowerCase()==='paid';
+ const payment=paid?'<p><b>Payment:</b> Verified &amp; Paid</p>':String(row.payment_method||'').toLowerCase().includes('razorpay')?'<button type="button" onclick="customerPayMasterBooking(\''+customerEsc(row.id)+'\')">🔒 Final Bill Razorpay से भुगतान करें</button>':String(row.payment_method||'').toLowerCase().includes('cash')?'<p class="small">यह Cash Booking है। Final Due राशि Technician को नकद दें; Admin verification के बाद Paid स्थिति अपडेट होगी।</p>':'';
+ return '<div class="job"><b>Master Final Bill</b><p>Labour: <b>'+money(bill.labour_amount_paise)+'</b></p><p>Materials: <b>'+money(bill.materials_amount_paise)+'</b></p>'+itemsHtml+'<p>Taxable Value: '+money(bill.taxable_value_paise)+'</p><p>CGST: '+money(bill.cgst_paise)+' · SGST: '+money(bill.sgst_paise)+' · IGST: '+money(bill.igst_paise)+'</p><p>Total GST: '+money(bill.total_tax_paise)+'</p><p><b>Total Due: '+money(bill.total_due_paise)+'</b></p><p class="small">Rate Version: '+customerEsc(bill.rate_version||'—')+' · GST Treatment: '+customerEsc(bill.tax_treatment||'unregistered')+'</p>'+payment+'</div>';
+}
+async function customerPayMasterBooking(bookingId){
+ if(!bookingId||paymentBusy)return;
+ pendingBookingId=bookingId;
+ await startRazorpayPayment();
+}
 async function loadCustomerBookings() {
   const request = ++customerBookingRefreshRequest;
   const isCurrent = () => request === customerBookingRefreshRequest;
@@ -1392,7 +1447,7 @@ async function loadCustomerBookings() {
       return;
     }
     const { data, error } = await customerSb.from('service_bookings')
-      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,address,state,district,pincode,location_lat,location_lng')
+      .select('id,service_type,status,payment_status,payment_method,assigned_electrician_id,created_at,amount_paid,payment_verified_at,completion_approval_status,completion_requested_at,work_start_approval_status,work_timer_elapsed_seconds,work_started_at,work_timer_running,selected_category,selected_duration_hours,srk_service_category_code,srk_service_skill_code,srk_service_code,srk_rate_level_code,srk_rate_version_snapshot,srk_billing_model_snapshot,srk_duration_minutes,srk_service_quantity,srk_required_technician_count,srk_helper_included_snapshot,srk_estimated_labour_paise,address,state,district,pincode,location_lat,location_lng')
       .eq('customer_user_id', session.user.id)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -1433,6 +1488,14 @@ async function loadCustomerBookings() {
     timelineResults.forEach(({bookingId,result})=>{
       if(!result.error) timelineMap.set(bookingId,Array.isArray(result.data)?result.data:[]);
     });
+    const workdayMap=new Map();
+    const workdayResults=await Promise.all(data.filter(row=>row.srk_service_category_code&&row.srk_billing_model_snapshot==='hourly').map(async row=>{
+      try{return {bookingId:row.id,result:await customerSb.rpc('srk_customer_get_technician_workdays',{p_booking_id:row.id})};}
+      catch(error){return {bookingId:row.id,result:{error}};}
+    }));
+    if(!isCurrent())return;
+    workdayResults.forEach(({bookingId,result})=>{if(!result.error)workdayMap.set(bookingId,Array.isArray(result.data)?result.data:[]);});
+
     const refundMap=new Map();
     if(!refundResult.error){
       (refundResult.data||[]).forEach(item=>refundMap.set(item.booking_id,item));
@@ -1449,9 +1512,10 @@ async function loadCustomerBookings() {
       });
     }
     const billMap=new Map();
-    await Promise.all(data.filter(row=>row.status==='completed'&&row.selected_category).map(async row=>{
+    await Promise.all(data.filter(row=>row.status==='completed'&&(row.selected_category||row.srk_service_category_code)).map(async row=>{
       try {
-        const {data:bill,error}=await customerSb.rpc('srk_customer_get_labour_bill',{p_booking_id:row.id});
+        const rpc=row.srk_service_category_code?'srk_customer_get_master_final_bill':'srk_customer_get_labour_bill';
+        const {data:bill,error}=await customerSb.rpc(rpc,{p_booking_id:row.id});
         if(!error&&bill)billMap.set(row.id,bill);
       } catch (error) {
         // A bill transport failure must not hide the customer's booking history.
@@ -1460,6 +1524,8 @@ async function loadCustomerBookings() {
     if (!isCurrent()) return;
     box.innerHTML = data.map(row => {
       const contact = callMap.get(row.id);
+      const isMasterBooking=Boolean(row.srk_service_category_code);
+      const masterWorkdays=workdayMap.get(row.id)||[];
       const phone = String(contact?.electrician_phone || '').replace(/\D/g, '');
       const canCall = Boolean(contact) && /^[0-9]{10,15}$/.test(phone);
       const events=timelineMap.get(row.id)||[];
@@ -1496,10 +1562,10 @@ async function loadCustomerBookings() {
           '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-response="approved" onclick="customerRespondWorkStart(this.dataset.bookingId,this.dataset.response)">काम शुरू करने की मंजूरी दें</button> '+
           '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-response="rejected" onclick="customerRespondWorkStart(this.dataset.bookingId,this.dataset.response)">अभी मंजूरी न दें</button></div>'
         : '';
-      const timerMarkup=row.selected_category&&row.status==='in_progress'
+      const timerMarkup=isMasterBooking&&row.srk_billing_model_snapshot==='hourly'?renderCustomerMasterWorkdayMarkup(row.id,masterWorkdays,row.srk_required_technician_count):row.selected_category&&row.status==='in_progress'
         ? '<div class="job"><b>काम का टाइमर</b><p id="customerTimer_'+customerEsc(row.id)+'" data-running="'+(row.work_timer_running?'1':'0')+'" data-started="'+customerEsc(row.work_started_at||'')+'" data-accumulated="'+customerEsc(row.work_timer_elapsed_seconds||0)+'">'+customerEsc(formatCustomerTimer(row.work_timer_elapsed_seconds||0))+'</p><small>यह लाइव प्रदर्शन अनुमानित है; अंतिम बिल सर्वर के रिकॉर्ड समय से बनेगा।</small></div>'
         : '';
-      const sosMarkup=row.selected_category&&row.status==='in_progress'
+      const sosMarkup=(isMasterBooking||row.selected_category)&&row.status==='in_progress'
         ? '<div class="job" id="customerSosPanel_'+customerEsc(row.id)+'" style="border:2px solid #b91c1c;background:#fff7f7"><b style="color:#b91c1c">🚨 तत्काल सहायता (SOS)</b><p class="small">खतरे या मारपीट में Admin और अधिकृत Support को अलर्ट भेजें। ऐप पुलिस को अपने-आप कॉल या संदेश नहीं भेजेगा।</p><button type="button" id="customerSosOpen_'+customerEsc(row.id)+'" onclick="openCustomerSosReasons(\''+customerEsc(row.id)+'\')" style="background:#b91c1c;color:white">SOS विकल्प खोलें</button><div id="customerSosChoice_'+customerEsc(row.id)+'" hidden><label for="customerSosReason_'+customerEsc(row.id)+'">तत्काल सहायता का कारण</label><select id="customerSosReason_'+customerEsc(row.id)+'"><option value="">कारण चुनें</option><option value="customer_at_risk">ग्राहक को इलेक्ट्रिशियन से खतरा</option><option value="electrician_at_risk">इलेक्ट्रिशियन को ग्राहक से खतरा</option><option value="violence_or_other_emergency">मारपीट या अन्य आपात स्थिति</option></select><button type="button" id="customerSosSend_'+customerEsc(row.id)+'" onclick="submitCustomerSosAlert(\''+customerEsc(row.id)+'\')" disabled style="background:#991b1b;color:white">🚨 SOS भेजें</button><button type="button" onclick="cancelCustomerSosSelection(\''+customerEsc(row.id)+'\')">वापस</button></div><p id="customerSosStatus_'+customerEsc(row.id)+'" class="small" role="status" aria-live="assertive"></p></div>'
         : '';
       const cancellationFeeItems=cancellationFeeMap.get(row.id)||[];
@@ -1510,7 +1576,7 @@ async function loadCustomerBookings() {
           ).join('')+'</div>'
         : '';
       const finalPayTotal= bill ? Number(bill.labour_amount_paise)/100 + reservedFeePaise/100 : 0;
-      const finalBillMarkup=bill
+      const finalBillMarkup=isMasterBooking?renderCustomerMasterFinalBillMarkup(row,bill):bill
         ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>नई सेवा का मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p>पुरानी Cancellation Fee: <b>'+customerEsc(formatCustomerMoney(reservedFeePaise/100))+'</b></p><p>कुल देय राशि: <b>'+customerEsc(formatCustomerMoney(finalPayTotal))+'</b></p><p class="small">मेहनताना और पुरानी cancellation fees अलग-अलग दर्ज हैं। सामान/पार्ट्स इस labour bill में शामिल नहीं हैं।</p>'+
           (String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'&&row.payment_status!=='paid'
             ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+finalPayTotal+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 कुल राशि Razorpay से भुगतान करें</button>'
@@ -1519,7 +1585,7 @@ async function loadCustomerBookings() {
               : '')
           +'</div>'
         : '';
-      const refundLifecycleEligible=row.selected_category==null||row.status==='completed';
+      const refundLifecycleEligible=!isMasterBooking||row.status==='completed';
       const canRequestRefund=refundLifecycleEligible
         && String(row.payment_status||'').toLowerCase()==='paid'
         && Number(row.amount_paid||0)>0
