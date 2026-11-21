@@ -1,11 +1,12 @@
 BEGIN;
-SELECT plan(8);
+SELECT plan(9);
 SELECT has_table('public','srk_master_company_settlements','company settlement evidence table exists');
 SELECT has_table('public','srk_master_payout_requests','Master payout request table exists');
 SELECT has_table('public','srk_master_payout_request_items','payout request item link exists');
 SELECT has_function('public','srk_master_wallet_summary',ARRAY[]::text[],'Technician wallet summary RPC exists');
 SELECT has_function('public','srk_technician_request_master_payout',ARRAY['text','text','text'],'Technician payout request RPC exists');
 SELECT has_function('public','srk_admin_confirm_master_company_settlement',ARRAY['uuid','text','bigint','text'],'Admin settlement evidence RPC exists');
+SELECT has_function('public','srk_admin_review_master_payout_request',ARRAY['uuid','text','text'],'Admin payout review RPC exists');
 SELECT has_function('public','srk_admin_mark_master_payout_paid',ARRAY['uuid','text','text','text'],'Admin payout completion RPC exists');
 SELECT ok((SELECT relrowsecurity FROM pg_class WHERE oid='public.srk_master_payout_requests'::regclass),'payout requests have RLS enabled');
 SELECT * FROM finish();
