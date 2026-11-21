@@ -45,6 +45,7 @@ test('customer rate lookup returns only active effective rates and Admin writes 
   assert.match(migration, /r\.effective_from<=clock_timestamp\(\)/);
   assert.match(migration, /public\.is_srk_admin\(\)/);
   assert.match(migration, /srk_admin_upsert_service_rate/);
+  assert.match(migration, /SERVICE_IDENTITY_AND_BILLING_MODEL_ARE_IMMUTABLE_AFTER_RATE_HISTORY/);
   assert.match(migration, /srk_admin_list_service_rates/);
 });
 
