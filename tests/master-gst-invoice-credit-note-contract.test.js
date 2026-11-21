@@ -45,6 +45,7 @@ test('Migration SQL delimiters balance',()=>{
 test('Razorpay and manual payment paths use tax-inclusive immutable totals',()=>{
  assert.match(sql,/t\.total_due_paise<>p_amount_paise/);
  assert.match(sql,/VALUES\(p_booking_id,p_method,t\.total_due_paise\/100\.0/);
+ assert.match(sql,/manual_recorded',t\.total_due_paise/);
  assert.match(createOrder,/srk_booking_tax_snapshots/);
  assert.match(verify,/srk_booking_tax_snapshots/);
  assert.match(webhook,/srk_booking_tax_snapshots/);
