@@ -71,7 +71,7 @@ class SrkServiceCategory {
 
 /// Approved catalogue revision. IDs remain local keys, not deployed backend IDs.
 /// Keep the legacy constant name to avoid breaking existing app references.
-const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.7';
+const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.8';
 
 /// Six approved top-level categories, in the owner's requested order.
 ///
@@ -105,21 +105,80 @@ const List<SrkServiceCategory> srkServiceCatalog = [
       SrkServiceOption(id: 'other_electrical', name: 'Other Electrical Work', displayName: 'अन्य इलेक्ट्रिकल काम'),
     ],
     skillLevels: [
-      SrkServiceOption(name: 'Basic', rates: [
-        SrkServiceRate(label: 'मजदूरी', amount: '₹100', unit: 'प्रति घंटा'),
-      ]),
-      SrkServiceOption(name: 'Expert Residential', rates: [
-        SrkServiceRate(label: 'बिना Helper', amount: '₹1,000', unit: '8 घंटे'),
-        SrkServiceRate(label: 'Helper सहित', amount: '₹1,500', unit: '8 घंटे', helperAmount: '₹62.50 प्रति घंटा अतिरिक्त'),
-      ]),
-      SrkServiceOption(name: 'Factory / Large Project', rates: [
-        SrkServiceRate(label: 'बिना Helper', amount: '₹400', unit: 'प्रति घंटा'),
-        SrkServiceRate(label: 'Helper सहित', amount: '₹550', unit: 'प्रति घंटा', helperAmount: '₹150 प्रति घंटा अतिरिक्त'),
-      ]),
-      SrkServiceOption(name: 'Master', rates: [
-        SrkServiceRate(label: 'बिना Helper', amount: '₹700', unit: 'प्रति घंटा'),
-        SrkServiceRate(label: 'Helper सहित', amount: '₹950', unit: 'प्रति घंटा', helperAmount: '₹250 प्रति घंटा अतिरिक्त'),
-      ]),
+      SrkServiceOption(
+        name: 'Basic',
+        tasks: [
+          SrkServiceTask(id: 'basic_bulb_led', name: 'बल्ब और LED लगाना'),
+          SrkServiceTask(id: 'basic_tube_light', name: 'ट्यूब लाइट लगाना'),
+          SrkServiceTask(id: 'basic_fan_install_remove', name: 'पंखा लगाना और उतारना'),
+          SrkServiceTask(id: 'basic_switch_socket', name: 'स्विच और सॉकेट बदलना'),
+          SrkServiceTask(id: 'basic_holder_board', name: 'होल्डर और बोर्ड लगाना'),
+          SrkServiceTask(id: 'basic_minor_wiring', name: 'छोटी-मोटी वायरिंग ठीक करना'),
+          SrkServiceTask(id: 'basic_extension_board', name: 'एक्सटेंशन बोर्ड का काम'),
+          SrkServiceTask(id: 'basic_door_bell', name: 'डोर बेल लगाना'),
+          SrkServiceTask(id: 'basic_fault_check', name: 'सामान्य बिजली की खराबी जाँचना'),
+          SrkServiceTask(id: 'basic_small_home_electrical', name: 'छोटे घरेलू इलेक्ट्रिकल काम'),
+        ],
+        rates: [
+          SrkServiceRate(label: 'मजदूरी', amount: '₹100', unit: 'प्रति घंटा'),
+        ],
+      ),
+      SrkServiceOption(
+        name: 'Expert Residential',
+        tasks: [
+          SrkServiceTask(id: 'expert_home_new_wiring', name: 'पूरे घर की नई वायरिंग'),
+          SrkServiceTask(id: 'expert_old_wiring_replace', name: 'पुरानी वायरिंग बदलना'),
+          SrkServiceTask(id: 'expert_mcb_db', name: 'MCB और डिस्ट्रीब्यूशन बोर्ड का काम'),
+          SrkServiceTask(id: 'expert_inverter_battery', name: 'इन्वर्टर और बैटरी कनेक्शन'),
+          SrkServiceTask(id: 'expert_earthing_check', name: 'अर्थिंग की जाँच'),
+          SrkServiceTask(id: 'expert_fault_finding', name: 'बिजली की खराबी खोजना'),
+          SrkServiceTask(id: 'expert_motor_pump_connection', name: 'मोटर और पंप कनेक्शन'),
+          SrkServiceTask(id: 'expert_shop_office_wiring', name: 'दुकान और ऑफिस की वायरिंग'),
+          SrkServiceTask(id: 'expert_load_wire_mcb_selection', name: 'लोड के हिसाब से वायर और MCB का चयन'),
+        ],
+        rates: [
+          SrkServiceRate(label: 'बिना Helper', amount: '₹1,000', unit: '8 घंटे'),
+          SrkServiceRate(label: 'Helper सहित', amount: '₹1,500', unit: '8 घंटे', helperAmount: '₹62.50 प्रति घंटा अतिरिक्त'),
+        ],
+      ),
+      SrkServiceOption(
+        name: 'Factory / Large Project',
+        tasks: [
+          SrkServiceTask(id: 'factory_full_electrical_wiring', name: 'फैक्ट्री की पूरी इलेक्ट्रिकल वायरिंग'),
+          SrkServiceTask(id: 'factory_company_wiring', name: 'बड़ी कंपनियों की वायरिंग'),
+          SrkServiceTask(id: 'factory_industrial_building_wiring', name: 'औद्योगिक भवनों की वायरिंग'),
+          SrkServiceTask(id: 'factory_three_phase_system', name: 'थ्री-फेज इलेक्ट्रिकल सिस्टम'),
+          SrkServiceTask(id: 'factory_large_distribution_panel', name: 'बड़े डिस्ट्रीब्यूशन पैनल'),
+          SrkServiceTask(id: 'factory_motor_control_panel', name: 'इंडस्ट्रियल मोटर कंट्रोल पैनल'),
+          SrkServiceTask(id: 'factory_star_delta_starter', name: 'स्टार-डेल्टा स्टार्टर'),
+          SrkServiceTask(id: 'factory_automatic_control_panel', name: 'ऑटोमैटिक कंट्रोल पैनल'),
+          SrkServiceTask(id: 'factory_large_load_fault_check', name: 'बड़े लोड की खराबी की जाँच'),
+          SrkServiceTask(id: 'factory_project_team_supervision', name: 'बड़े प्रोजेक्ट की इलेक्ट्रिकल टीम का काम'),
+        ],
+        rates: [
+          SrkServiceRate(label: 'बिना Helper', amount: '₹400', unit: 'प्रति घंटा'),
+          SrkServiceRate(label: 'Helper सहित', amount: '₹550', unit: 'प्रति घंटा', helperAmount: '₹150 प्रति घंटा अतिरिक्त'),
+        ],
+      ),
+      SrkServiceOption(
+        name: 'Master',
+        tasks: [
+          SrkServiceTask(id: 'master_project_planning_supervision', name: 'बड़े इलेक्ट्रिकल प्रोजेक्ट की योजना और निगरानी'),
+          SrkServiceTask(id: 'master_complex_system_inspection', name: 'जटिल इलेक्ट्रिकल सिस्टम का निरीक्षण'),
+          SrkServiceTask(id: 'master_industrial_panel_inspection', name: 'औद्योगिक पैनल और सिस्टम की तकनीकी जाँच'),
+          SrkServiceTask(id: 'master_large_load_supply_check', name: 'बड़े लोड और सप्लाई सिस्टम की जाँच'),
+          SrkServiceTask(id: 'master_automation_inspection', name: 'ऑटोमेशन सिस्टम का निरीक्षण'),
+          SrkServiceTask(id: 'master_electrical_drawing_design', name: 'इलेक्ट्रिकल ड्राइंग और डिजाइन समझना'),
+          SrkServiceTask(id: 'master_safety_quality_check', name: 'सुरक्षा और गुणवत्ता की जाँच'),
+          SrkServiceTask(id: 'master_team_management', name: 'पूरी इलेक्ट्रिकल टीम का प्रबंधन'),
+          SrkServiceTask(id: 'master_testing_commissioning', name: 'प्रोजेक्ट की टेस्टिंग और कमीशनिंग'),
+          SrkServiceTask(id: 'master_technical_problem_solving', name: 'तकनीकी समस्या का समाधान और सुपरविजन'),
+        ],
+        rates: [
+          SrkServiceRate(label: 'बिना Helper', amount: '₹700', unit: 'प्रति घंटा'),
+          SrkServiceRate(label: 'Helper सहित', amount: '₹950', unit: 'प्रति घंटा', helperAmount: '₹250 प्रति घंटा अतिरिक्त'),
+        ],
+      ),
     ],
   ),
   SrkServiceCategory(
