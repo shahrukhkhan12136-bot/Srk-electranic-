@@ -230,11 +230,11 @@ BEGIN
   FOR v_expired IN
     UPDATE public.srk_technician_dispatch_offers
       SET status='expired',responded_at=clock_timestamp()
-    WHERE dispatch_request_id=v_req.id AND status='offered' AND expires_at<=clock_timestamp()
-    RETURNING id,technician_id
+    WHERE status='offered' AND expires_at<=clock_timestamp()
+    RETURNING id,dispatch_request_id,booking_id,technician_id
   LOOP
     INSERT INTO public.srk_technician_dispatch_events(dispatch_request_id,booking_id,technician_id,offer_id,event_type)
-    VALUES(v_req.id,p_booking_id,v_expired.technician_id,v_expired.id,'offer_expired');
+    VALUES(v_expired.dispatch_request_id,v_expired.booking_id,v_expired.technician_id,v_expired.id,'offer_expired');
   END LOOP;
 
   SELECT o.id INTO v_offer_id FROM public.srk_technician_dispatch_offers o
@@ -318,7 +318,7 @@ DECLARE v_uid uuid:=auth.uid(); v_offer public.srk_technician_dispatch_offers%ro
   v_technician_id uuid; v_req public.srk_technician_dispatch_requests%rowtype; v_next jsonb;
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'TECHNICIAN_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
-  IF p_offer_id IS NULL OR p_response NOT IN ('accepted','declined') THEN
+  IF p_offer_id IS NULL OR p_response IS NULL OR p_response NOT IN ('accepted','declined') THEN
     RAISE EXCEPTION 'INVALID_TECHNICIAN_OFFER_RESPONSE' USING ERRCODE='22023';
   END IF;
   SELECT id INTO v_technician_id FROM public.srk_technicians
