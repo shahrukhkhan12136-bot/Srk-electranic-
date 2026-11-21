@@ -45,8 +45,8 @@ void main() {
     });
 
     test('picker labels, IDs and task lists come from the shared catalogue', () {
-      for (var i = 0; i < srkServiceCatalog.length; i++) {
-        final source = srkServiceCatalog[i];
+      for (var i = 0; i < catalog.srkServiceCatalog.length; i++) {
+        final source = catalog.srkServiceCatalog[i];
         final picker = srkServiceCategories[i];
         expect(picker.id, source.id);
         expect(picker.title, source.displayName);
