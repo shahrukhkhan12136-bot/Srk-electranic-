@@ -394,3 +394,17 @@
 - AC/Fridge category के अंदर Fridge booking flow निश्चित है; उसके अन्दर के sub-options केवल उपलब्ध approved catalog के अनुसार दिखेंगे—AC वाले विकल्प वहाँ नहीं दोहराने हैं।
 
 **Implementation guardrail:** छह top-level category cards/list और ऊपर दिए गए AC/Fridge navigation को frontend में जोड़ा जा सकता है; लेकिन जिन categories के rates या sub-options final नहीं हैं, उनके लिए मनगढ़ंत rate/subcategory नहीं दिखानी है। Existing booking form/lifecycle को preserve करके category-specific fields उसी flow में न्यूनतम रूप से जोड़े जाएँ। Master Requirements document को भी बाद में इस recovered approved catalog से reconcile करना होगा।
+
+
+## 2F. सुरक्षित Customer/Technician UI cleanup — लागू (2026-11-21)
+
+- [x] Customer booking form से optional **customer suggested amount** input हटाया; request payload में `customer_suggested_amount` भेजना बंद किया। Existing `/api/create-booking` endpoint इस field को optional स्वीकार करता है, इसलिए required payload contract नहीं बदला। पुराने records/backend columns untouched हैं।
+- [x] Customer booking history से legacy customer-suggested-amount display हटाया; booking list query से केवल इसी UI के लिए लिया जा रहा field हटाया।
+- [x] Technician app के offer price panel से legacy customer-suggested-amount display हटाया। Existing quote/material information और booking lifecycle को अभी नहीं छेड़ा, क्योंकि work-start/payment RPCs quote approval पर निर्भर हैं।
+- [x] Customer booking form में OTP-verified account phone पहले से auto-fill होता है; अब field read-only है ताकि user अलग/unverified phone number बदलकर न भेजे। Name field, address, GPS, date/time, service details और existing booking submission सुरक्षित रखे।
+- [x] Source re-fetch verification: Customer SHA `fb919b0e2eb17c791d79875933cda4bbdab9b646`; Technician SHA `502657a78a42777fb21b38ab5a554554c17b905c`. Re-fetch में customer suggested amount field/display absent, technician suggested-price display absent, verified phone read-only और existing booking form मौजूद मिले।
+- [ ] Flutter format/analyze/build/Android device tests अभी नहीं चले; source changes को compile/test evidence मिलने तक verified build न मानें।
+- [ ] Quote/counter-offer UI removal अभी **Blocked** है: existing work-start, cash confirmation और Razorpay order/verify/webhook paths quote approval/amount checks पर निर्भर हैं। Backend lifecycle replacement contract मिलने के बाद ही दोनों apps से quote UI/actions हटाएँ।
+- [ ] Six-category catalog को मौजूदा form में जोड़ने से पहले backend category-specific dispatch/payload support verify/contract करना बाकी है। छह categories और AC/helper flow की approved details §2E-1 में दर्ज हैं; अधूरे rates/subcategories अनुमान से नहीं भरेंगे।
+
+**इस चरण में:** केवल Customer/Technician Flutter source और इसी feature branch की checklist बदली गई। Existing booking flow rebuild नहीं हुआ; backend, database, migrations, production settings, Admin web panel और main branch untouched हैं।
