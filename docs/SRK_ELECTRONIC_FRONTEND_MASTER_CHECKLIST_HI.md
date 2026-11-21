@@ -651,3 +651,15 @@
 - [ ] Backend owner से canonical catalogue contract मिलने पर duplicated navigation data को वास्तविक shared model से replace करना है; parity test को तब ID/label/task-level contract test में बदलें।
 
 **सीमा:** कोई live booking, payment, backend, database या dispatch behavior नहीं बदला।
+
+
+## 2R. Technician app verified-skill offer contract audit (2026-11-21)
+- [x] Re-fetched current Technician Flutter source. Profile query reads only `id, display_name, state, district, pincode, active, verification_status`; it does not fetch normalized verified category/subcategory/task skills.
+- [x] Offer inbox/details come from existing job-offer and RPC responses; UI displays service text but does not perform verified-skill eligibility checks.
+- [x] Legacy free-text `electrician_profiles.skills` is not proof of Admin-approved skill and must not be used as a client-side authorization rule.
+- [x] Added backend handoff contract requiring server-authoritative verified skill IDs, expiry/active state, exact offer-to-skill matching, atomic accept re-check, and server-side authorization for assigned work/status/payment actions.
+- [x] AC and Fridge remain separate; specialist AC gas/refrigerant and sealed-system fridge tasks require their exact verified task skills.
+- [x] Defined fail-closed frontend behavior: unknown/missing skill IDs or unverified/expired/revoked skills cannot enable offers/work; backend must return explicit no-eligible outcome.
+- [ ] Backend owner must publish exact deployed profile fields, RPC names, request/response JSON and version before Flutter adds skill parsing or profile selection fields.
+- [ ] After contract publication: add typed model, verified-services read-only panel, safe offer matching display and tests for pending/rejected/expired/revoked skills, AC/Fridge isolation and accept races.
+- [ ] No live offer filtering, schema/RPC changes, database, backend, production, payment or payout code was changed in this frontend audit.
