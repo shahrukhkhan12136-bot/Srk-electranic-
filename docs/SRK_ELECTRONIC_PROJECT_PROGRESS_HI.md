@@ -2007,6 +2007,6 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 ### Regression test परिणाम
 - Refund source regression workflow सफल: Final Bill refund contract tests पास।
 - Main source regression workflow में payment webhook mismatch test का mock पहले गलत था; mock को DB finalizer rejection पर आधारित किया और उसके बाद पूरा source regression step सफल हुआ।
-- Finalizer exact order-link assertion जोड़ने के बाद नवीनतम source regression run का test step सफल हुआ; workflow cleanup/समापन की पुष्टि अलग से करनी है।
+- Finalizer exact order-link assertion और refund null-safe order comparison के बाद नवीनतम source regression workflow (commit `a4b6fe72`) सफलतापूर्वक पूरा हुआ। Refund source regression workflow भी उसी commit पर सफल हुआ।
 - कोई live refund/payment या Netlify deployment नहीं हुआ। Production release अभी रोका हुआ है।
 
