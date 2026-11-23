@@ -2009,4 +2009,13 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Main source regression workflow में payment webhook mismatch test का mock पहले गलत था; mock को DB finalizer rejection पर आधारित किया और उसके बाद पूरा source regression step सफल हुआ।
 - Finalizer exact order-link assertion और refund null-safe order comparison के बाद नवीनतम source regression workflow (commit `a4b6fe72`) सफलतापूर्वक पूरा हुआ। Refund source regression workflow भी उसी commit पर सफल हुआ।
 - कोई live refund/payment या Netlify deployment नहीं हुआ। Production release अभी रोका हुआ है।
+## 17.137 — Razorpay Create Order Final-Bill Revision Race Guard (23 Nov 2026)
 
+- Create Order handler के post-lock Database RPC response को अब तीनों immutable snapshot values से मिलाया जाता है: amount_paise, final_bill_id, और final_bill_revision। पहले amount और bill ID जाँचे जा रहे थे, revision number की explicit तुलना नहीं थी।
+- अगर handler द्वारा पढ़ी Final Bill revision और DB-created payment attempt revision अलग हों, तो Razorpay API को Order बनाने के लिए call नहीं किया जाएगा।
+- ऐसे mismatch पर payment attempt को service RPC srk_service_mark_razorpay_order_failure से निश्चित failed state में बंद किया जाता है (final_bill_snapshot_changed, p_uncertain=false), ताकि अधूरा creating attempt अगली payment कोशिश को अनिश्चितकाल तक block न करे।
+- Razorpay Order notes में Final Bill revision भी दर्ज होगी।
+- tests/labour-payment-handlers.test.cjs में same bill ID/amount लेकिन अलग revision वाला regression case जोड़ा; test यह भी जाँचता है कि Razorpay Order नहीं बनता और stale attempt निश्चित failure के रूप में बंद होता है।
+- मुख्य Supabase schema में बदलाव आवश्यक नहीं था; यह Feature Branch source/test hardening है।
+- Latest source commit: 2d9b192b1ece7e2fbd00d30f7249d77d15975ea3; regression test commit: 6c1bc73196dd6e8bee5111b6dd3863a1ed824f8d.
+- इस नवीनतम test commit के लिए GitHub Actions run result अभी सत्यापित नहीं है। कोई Netlify deploy या live Razorpay transaction नहीं किया गया।
