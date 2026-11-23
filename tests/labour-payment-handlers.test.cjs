@@ -1,6 +1,8 @@
 const test=require("node:test");
 const assert=require("node:assert/strict");
 const crypto=require("node:crypto");
+const fs=require("node:fs");
+const path=require("node:path");
 
 process.env.SUPABASE_URL="https://supabase.test";
 process.env.SUPABASE_SERVICE_ROLE_KEY="service-role-test";
@@ -178,4 +180,11 @@ test("webhook requires provider event ID for safe deduplication",async()=>{
  const result=await webhook(event(raw,{"x-razorpay-signature":signature}));
  assert.equal(result.statusCode,400);
  assert.equal(calls.length,0);
+});
+
+test("payment finalizer requires an exact non-null Booking-to-Order link and immutable bill revision",()=>{
+ const migration=fs.readFileSync(path.join(__dirname,"../supabase/migrations/20261123091500_require_exact_booking_order_link_in_razorpay_finalizer.sql"),"utf8");
+ assert.match(migration,/razorpay_order_id is distinct from p_razorpay_order_id/);
+ assert.match(migration,/v_bill\.revision_no is distinct from v_attempt\.final_bill_revision/);
+ assert.match(migration,/round\(v_bill\.total_amount\*100\)::bigint<>v_attempt\.amount_paise/);
 });
