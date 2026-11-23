@@ -328,7 +328,9 @@ function settlementStatusLabel(x){return ({matched:'Matched',mismatch:'Mismatch'
 async function loadRazorpaySettlements(){
  const status=document.getElementById('settlementSyncStatus'),body=document.getElementById('razorpaySettlementRows');
  status.textContent='Settlement records लोड हो रहे हैं…';
- const {data,error}=await sb.from('srk_razorpay_settlements').select('id,razorpay_settlement_id,settlement_status,gross_amount_paise,fee_amount_paise,tax_amount_paise,provider_net_amount_paise,utr,bank_credit_amount_paise,bank_credit_at,bank_reference,reconciliation_status,provider_created_at').order('provider_created_at',{ascending:false}).limit(100);
+ const fromInput=document.getElementById('settlementFrom'),toInput=document.getElementById('settlementTo');
+ if(fromInput&&!fromInput.value){const end=new Date(),start=new Date(Date.now()-29*86400000);const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');fromInput.value=fmt(start);toInput.value=fmt(end);}
+ const {data,error}=await sb.from('srk_razorpay_settlements').select('id,razorpay_settlement_id,settlement_status,gross_amount_paise,fee_amount_paise,tax_amount_paise,provider_net_amount_paise,utr,bank_credit_amount_paise,bank_credit_at,bank_reference,reconciliation_status,reconciliation_note,provider_created_at').order('provider_created_at',{ascending:false}).limit(100);
  if(error){status.textContent='Settlement records नहीं पढ़े जा सके: '+error.message;return;}
  razorpaySettlementRows=Array.isArray(data)?data:[];
  body.innerHTML=razorpaySettlementRows.map(x=>'<tr><td>'+esc(x.razorpay_settlement_id)+'<br><small>'+esc(x.settlement_status)+'</small></td><td>'+settlementMoney(x.gross_amount_paise)+'</td><td>'+settlementMoney(x.fee_amount_paise)+'</td><td>'+settlementMoney(x.tax_amount_paise)+'</td><td>'+settlementMoney(x.provider_net_amount_paise)+'</td><td>'+esc(x.utr||'—')+'</td><td>'+settlementMoney(x.bank_credit_amount_paise)+'<br><small>'+esc(x.bank_reference||'')+'</small></td><td>'+esc(settlementStatusLabel(x.reconciliation_status))+'</td><td><button type="button" class="alt" onclick="selectRazorpaySettlement(\''+esc(x.id)+'\')">Bank मिलान</button></td></tr>').join('')||'<tr><td colspan="9">अभी कोई Settlement रिकॉर्ड नहीं है।</td></tr>';
@@ -348,8 +350,8 @@ async function syncRazorpaySettlements(){
  const status=document.getElementById('settlementSyncStatus');
  const from=document.getElementById('settlementFrom').value,to=document.getElementById('settlementTo').value;
  if(!from||!to||from>to){status.textContent='From और To तारीख सही भरें।';return;}
- const start=Math.floor(new Date(from+'T00:00:00Z').getTime()/1000);
- const end=Math.floor(new Date(to+'T23:59:59Z').getTime()/1000);
+ const start=Math.floor(new Date(from+'T00:00:00').getTime()/1000);
+ const end=Math.floor(new Date(to+'T23:59:59').getTime()/1000);
  if(!Number.isFinite(start)||!Number.isFinite(end)||end-start>90*86400){status.textContent='एक बार में अधिकतम 90 दिनों का समय चुना जा सकता है।';return;}
  const {data:{session}}=await sb.auth.getSession();
  if(!session?.access_token){status.textContent='Admin session समाप्त है। दोबारा लॉगिन करें।';return;}
