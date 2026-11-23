@@ -2102,3 +2102,12 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Arithmetic SQL test (illustrative 1.5 hours, AC Technician ₹250/hr + Helper ₹150/hr, 15% commission, materials ₹500): Technician gross ₹375, commission ₹56.25, net ₹318.75; Helper gross ₹225, commission ₹33.75, net ₹191.25; labour ₹600; Customer total ₹1,100; Company commission ₹90; combined worker net ₹510. Materials are excluded from commission. The test ran as a pure calculation query and inserted no records.
 - Trigger path inspected: earning rows created at bill issue are not credited while Booking remains unpaid; after successful payment, `srk_on_booking_payment_completed` posts eligible earnings through idempotent ledger keys. This matches the intended payment-before-wallet-credit flow.
 - No production/test customer data was inserted. Full transaction/locking and end-to-end tests still require isolated fixture-based testing; no real payment or payout occurred.
+
+## 17.146 — Wallet & Manual Payout Allocation Static Audit (23 Nov 2026)
+
+- Reviewed constraints on `srk_worker_earnings`, `srk_worker_wallet_ledger`, `srk_worker_payout_requests`, and `srk_worker_payout_earning_allocations`.
+- Earnings enforce non-negative gross/commission/net, commission <= gross, and exact net = gross - commission; worker role is Technician/Helper; commission rate 0–100; payment method and settlement/payout status enums constrained.
+- Wallet ledger enforces non-negative amount, signed balance effect magnitude equals amount, two-decimal precision, allowed entry types, and unique idempotency/transaction codes.
+- Payout allocation enforces positive two-decimal amount, valid FKs, and unique (payout_request_id, earning_id); Admin mark-paid RPC allocates against traceable online earning/refund-adjustment balances and cash-commission refund credits only. Cash job earnings are not paid twice from the online wallet; outstanding cash commission debt reduces wallet availability.
+- Payout workflow locks Worker Profile and payout/earning rows, reserves requested/under-review/approved amounts, blocks held refund/dispute earnings, and requires Admin payment reference/UTR before marking manual payout paid. Actual bank/UPI/PhonePe transfer remains manual.
+- Static constraints/function inspection passed. No live payout rows or worker accounts exist, so concurrency and end-to-end payout tests are still pending.
