@@ -4343,3 +4343,12 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - इस समय GST की सटीक दर इस निर्णय में निर्दिष्ट नहीं है; इसलिए उसे hard-code नहीं करना है। वास्तविक invoice/settlement statement के अनुसार GST दर्ज किया जाएगा।
 - जब तक मालिक अलग से मंजूरी न दें, 2% + GST को Customer के Bill, Technician/Helper की earning या Company Commission से स्वतः deduct/pass-through नहीं करना है। इसे Razorpay settlement cost के रूप में अलग track करना है।
 
+## 5.11 — Razorpay Payment Amount और Final Bill Matching
+
+- Customer के Online/UPI/Card भुगतान में Razorpay Order की रकम उसी Booking के वर्तमान issued/approved Final Bill की पूरी `total_amount` होगी: Labour + Materials - Discount + Tax (यदि लागू)।
+- Razorpay की 2% + लागू GST Processing Fee को Customer Final Bill में अपने-आप नहीं जोड़ना है और न ही उसे Technician/Helper की कमाई या SRK ELECTRONIC की 15% Labour-only Company Commission में मिलाना है। वास्तविक provider fee/tax को Razorpay Settlement Reconciliation में अलग दर्ज करना है।
+- Payment Order के साथ Final Bill ID और revision number snapshot सुरक्षित रहेगा। Payment Finalization तभी होगी जब Razorpay captured amount/currency, saved Order Attempt और वही Final Bill revision आपस में मेल खाएँ।
+- Customer OTP session, Booking ownership, selected online payment method, completed Booking और valid Final Bill server-side जाँचे जाएँ। Razorpay webhook signature और event ID deduplication अनिवार्य है।
+- Payment Captured होने के बाद Supabase atomic finalizer Booking को Paid करता है; Booking transaction, Technician/Helper earnings और wallets server-side triggers से पोस्ट होते हैं। Razorpay Route/split payout नहीं होगा।
+- यह policy approved है। Feature Branch पर source और Supabase groundwork मौजूद है; tests चलाना, review, Netlify deployment, provider webhook configuration और live test payment अभी अलग release gates हैं।
+
