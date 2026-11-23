@@ -85,14 +85,14 @@ exports.handler=async event=>{
   const attempt=one(await rpc("srk_service_start_razorpay_payment_order",{
    p_booking_id:bookingId,p_customer_user_id:customerId,p_idempotency_key:idempotencyKey,p_lock_token:lockToken
   }));
-  if(!attempt?.id||attempt.amount_paise!==bill.amountPaise||attempt.final_bill_id!==bill.id){
-   throw new Error("Server did not create a matching final-bill payment attempt");
+  if(!attempt?.id||attempt.amount_paise!==bill.amountPaise||attempt.final_bill_id!==bill.id||attempt.final_bill_revision!==bill.revision_no){
+   throw new Error("Server did not create a payment attempt for the exact final-bill revision");
   }
   let order;
   try{
    order=await rp("orders",{method:"POST",body:JSON.stringify({
     amount:attempt.amount_paise,currency:"INR",receipt:attempt.receipt,
-    notes:{booking_id:bookingId,final_bill_id:bill.id,service:"SRK ELECTRONIC",billing_basis:"final_bill_total"}
+    notes:{booking_id:bookingId,final_bill_id:bill.id,final_bill_revision:bill.revision_no,service:"SRK ELECTRONIC",billing_basis:"final_bill_total"}
    })});
    if(!order||!/^order_[A-Za-z0-9]+$/.test(order.id||"")||order.amount!==attempt.amount_paise||order.currency!=="INR"||order.status!=="created"){
     const invalid=new Error("Razorpay returned an order that did not match the saved payment attempt");
