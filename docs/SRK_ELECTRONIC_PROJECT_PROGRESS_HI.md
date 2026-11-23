@@ -2027,3 +2027,12 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Main Supabase RPC contract पुनः जाँचा: order start/attach/failure/finalize और refund reconcile RPC केवल service_role execute कर सकता है; Admin refund preparation authenticated call पर Admin guard के साथ उपलब्ध है। Webhook inbox schema में payment और refund दोनों event fields मौजूद हैं।
 - Feature Branch source commit: 02bf199e572b4ae9a6b57f13b75d80f4e9a24caf; test commit: 0b57af81989c81ca5bc4e33afd66694e4c489254।
 - नवीनतम test run अभी उपलब्ध/सत्यापित नहीं है। कोई Netlify deploy, live Razorpay payment/refund या bank settlement नहीं हुआ।
+## 17.139 — Razorpay Settlement Bank-Evidence Integrity Guard (23 Nov 2026)
+
+- Settlement schema audit में पाया कि Admin reconciliation RPC तो matched स्थिति के लिए processed settlement, provider net amount, bank credit amount/date और bank reference जाँचता था, लेकिन table-level CHECK में bank reference, Admin verifier और verified timestamp अनिवार्य नहीं थे। इससे भविष्य के service-role import/ingestion path में अधूरा row सीधे matched हो सकता था।
+- Main Supabase पर migration 20261123083000_require_complete_bank_evidence_for_matched_razorpay_settlements लागू की गई। अब reconciliation_status=matched के लिए settlement_status=processed, provider_net_amount_paise, bank_credit_amount_paise, bank_credit_at, कम-से-कम 4 अक्षर का bank_reference, verified_by और verified_at सभी आवश्यक हैं।
+- Constraint VALIDATED है। मौजूदा settlement rows 0 हैं; invalid matched rows 0। इसलिए कोई वास्तविक settlement data बदला नहीं।
+- ACL पुनः जाँचा: anon को settlement SELECT नहीं; authenticated को INSERT/UPDATE नहीं; service_role को INSERT उपलब्ध है। Settlement और item/history tables पर Admin read policies payments.read permission से gated हैं।
+- Feature Branch migration commit: 19d152a9296f9cfa8383132f8d1156109318d890।
+- Repository tree में अभी Razorpay Settlement import/webhook handler और Admin settlement UI मौजूद नहीं मिले। Database schema और manual bank reconciliation RPC तैयार हैं, लेकिन Razorpay API/report ingestion, item-level provider reconciliation और UI अभी implementation बाकी हैं।
+- कोई live settlement/bank credit record नहीं है; वास्तविक bank matching या provider API test नहीं किया गया। कोई Netlify deploy नहीं हुआ।
