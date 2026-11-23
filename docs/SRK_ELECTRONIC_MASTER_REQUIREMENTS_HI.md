@@ -4320,3 +4320,16 @@ Audit सीमा: पहले checklist item का source-level inspection �
 9. Razorpay account/merchant onboarding, settlement bank account, actual fee schedule, settlement timing तथा production webhook delivery को provider dashboard/records से verify करना आवश्यक है। Route या split-payment feature को भविष्य में भी बिना मालिक की स्पष्ट नई मंजूरी enable नहीं करना है।
 10. यह व्यावसायिक नियम Netlify Razorpay Functions, Supabase payment/order/webhook records, Finance Dashboard, Worker Wallet/Ledger, Payout Requests, Admin Panel और reconciliation reports—सभी में समान रूप से लागू होगा। मौजूदा Netlify/Supabase code को इस नियम के अनुरूप audit और सुरक्षित रूप से migrate करना होगा; केवल इस checklist entry से implementation complete होने का दावा नहीं किया जाएगा।
 
+## 17.134 — Razorpay Merchant Settlement Reconciliation Database Groundwork (23 Nov 2026)
+
+- मुख्य Supabase Production प्रोजेक्ट में Razorpay Route या automatic split payout के बिना **merchant settlement reconciliation** के लिए दो tables जोड़ी गईं:
+  - `srk_razorpay_settlements`: Razorpay settlement ID/status, gross amount, provider fee, tax, adjustment, provider-reported net amount, UTR, processing timestamps और अलग से actual company-bank credit/reconciliation status।
+  - `srk_razorpay_settlement_items`: settlement के payment/refund/fee/tax/adjustment line items और उपलब्ध booking/transaction references।
+- Settlement reconciliation history के लिए `srk_razorpay_settlement_reconciliation_history` बनाई गई। Insert/update पर before/after financial reconciliation values और actor type का history record बनता है।
+- Admin bank reconciliation RPC `srk_admin_reconcile_razorpay_settlement` जोड़ी गई। यह `payouts.manage` permission माँगती है, processed settlement पर ही काम करती है, bank credit amount/date/reference और कारण दर्ज करती है, तथा “matched” तभी स्वीकार करती है जब bank credit provider-reported net settlement amount से बिल्कुल मेल खाए। Mismatch को चुपचाप matched नहीं किया जा सकता।
+- तीनों tables पर RLS enabled है; Anonymous SELECT बंद, authenticated direct INSERT बंद, और Admin SELECT केवल `payments.read` permission policy के माध्यम से है। Writes server-side service role या नियंत्रित Admin RPC से होते हैं। RPC execute: authenticated true, anon false।
+- Razorpay fees/tax और Company Commission अलग-अलग fields/ledgers में रहेंगे। Provider fee को Worker earning या 15% Company Commission से स्वतः नहीं घटाया जाएगा। किसी GST/accounting module का निर्माण नहीं किया गया।
+- यह database groundwork है; अभी settlement webhook/API import, Admin UI, actual Razorpay Dashboard/Bank statement reconciliation और live end-to-end test लागू/सत्यापित नहीं हैं। कोई settlement या bank credit record गढ़कर insert नहीं किया गया।
+- **Netlify compatibility audit:** Feature Branch के मौजूदा `create-order.js`, `verify-payment.js` और `razorpay-webhook.js` अभी पुराने payment flow/fields और ऐसे RPC references पर निर्भर हैं जो मुख्य Supabase schema में उपलब्ध नहीं मिले (जैसे `srk_link_payment_order`, `srk_service_finalize_captured_payment`, `srk_service_get_labour_bill_for_payment`)। इसलिए इन्हें वर्तमान Production DB से सीधे जोड़ना सुरक्षित नहीं है। इन functions को नई final-bill, payment-order-attempt, webhook-event और manual-payout architecture के अनुसार बदलना और tests चलाना बाकी है।
+- कोई Netlify deployment, GitHub Main merge, live Razorpay transaction, Route transfer या वास्तविक Worker payout नहीं किया गया।
+
