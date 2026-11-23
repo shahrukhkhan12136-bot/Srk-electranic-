@@ -98,7 +98,7 @@ begin
      provider_created_at,provider_processed_at,source,provider_payload,updated_at)
   values
     (v_settlement_ref,v_status,'INR',case when jsonb_array_length(p_recon_items)>0 then v_gross else null end,
-     v_fees,v_tax,v_amount,v_utr,v_created_at,null,
+     v_fees,v_tax,v_amount,v_utr,v_created_at,case when v_status='processed' then v_created_at else null end,
      p_source,jsonb_build_object('id',v_settlement_ref,'entity','settlement',
        'amount',v_amount,'status',v_status,'fees',v_fees,'tax',v_tax,'utr',v_utr,
        'created_at',p_settlement->'created_at'),now())
