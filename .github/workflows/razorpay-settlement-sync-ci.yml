@@ -9,6 +9,7 @@ on:
       - "netlify/functions/razorpay-settlement-sync.js"
       - "tests/razorpay-settlement-sync.test.cjs"
       - "package.json"
+      - "supabase/migrations/*settlement*.sql"
       - ".github/workflows/razorpay-settlement-sync-ci.yml"
   pull_request:
     branches:
