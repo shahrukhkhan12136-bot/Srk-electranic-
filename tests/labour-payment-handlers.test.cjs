@@ -161,7 +161,7 @@ test("webhook verifies signature, stores deduplicated event, and finalizes throu
 });
 
 test("webhook refuses captured amount mismatch and preserves exception for reconciliation",async()=>{
- const {calls}=setupFetch({capturedAmount:119800});
+ const {calls}=setupFetch({capturedAmount:119800,finalizeResult:{success:false}});
  const payload={event:"payment.captured",payload:{payment:{entity:{id:PAYMENT_ID,order_id:ORDER_ID,status:"captured",currency:"INR",amount:119800}}}};
  const raw=JSON.stringify(payload);
  const signature=crypto.createHmac("sha256",process.env.RAZORPAY_WEBHOOK_SECRET).update(raw).digest("hex");
