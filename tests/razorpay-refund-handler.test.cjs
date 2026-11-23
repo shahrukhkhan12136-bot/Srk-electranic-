@@ -50,6 +50,12 @@ test("refund webhook verifies HMAC and deduplicates through the private webhook 
   assert.doesNotMatch(handler, /srk_service_capture_razorpay_refund_event/);
 });
 
+test("refund webhook requires provider status to match the signed event type", () => {
+  assert.match(handler, /"refund\.created":"pending","refund\.processed":"processed","refund\.failed":"failed"/);
+  assert.match(handler, /refund\.status!==expectedStatus/);
+  assert.match(handler, /Refund event payload invalid or inconsistent with its event type/);
+});
+
 test("provider failure and pending outcomes remain distinct and do not falsely mark the booking refunded", () => {
   assert.match(handler, /\["pending","processed","failed"\]/);
   assert.match(migration, /srk_booking_refund_requests/);
