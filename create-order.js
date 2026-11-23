@@ -1,3 +1,4 @@
+const crypto=require("crypto");
 const SUPABASE_URL=process.env.SUPABASE_URL;
 const SUPABASE_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY;
 const RAZORPAY_KEY_ID=process.env.RAZORPAY_KEY_ID||process.env.APIKEY;
@@ -59,7 +60,7 @@ exports.handler=async event=>{
  try{
   const body=JSON.parse(event.body||"{}");bookingId=body.booking_id;
   if(!uuid(bookingId))return json(400,{success:false,error:"बुकिंग ID सही नहीं है।"});
-  let rows=await db("service_bookings?select=id,phone,customer_user_id,payment_method,payment_status,status& id=eq.".replace(" ","")+encodeURIComponent(bookingId)+"&limit=1");
+  let rows=await db("service_bookings?select=id,phone,customer_user_id,payment_method,payment_status,status&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
   let booking=rows?.[0];
   if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
   const customerId=await verifyCustomerSession(event.headers?.authorization||event.headers?.Authorization||"",booking);
