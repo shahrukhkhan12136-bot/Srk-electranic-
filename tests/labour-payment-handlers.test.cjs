@@ -90,9 +90,12 @@ test("create-order rejects a payment attempt created against a newer final bill 
  const attempt={...baseAttempt(),final_bill_revision:2};
  const {calls}=setupFetch({attempt});
  const result=await createOrder(event({booking_id:BOOKING_ID},{authorization:AUTH}));
- assert.equal(result.statusCode,502);
+ assert.equal(result.statusCode,409);
  assert.equal(calls.some(x=>x.url.includes("api.razorpay.com/v1/orders")&&x.method==="POST"),false);
  assert.ok(calls.some(x=>x.url.includes("/rpc/srk_service_start_razorpay_payment_order")));
+ const failure=calls.find(x=>x.url.includes("/rpc/srk_service_mark_razorpay_order_failure"));
+ assert.equal(failure.body.p_failure_code,"final_bill_snapshot_changed");
+ assert.equal(failure.body.p_uncertain,false);
 });
 
 test("create-order fails closed when no issued final bill exists",async()=>{
