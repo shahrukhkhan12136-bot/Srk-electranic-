@@ -43,9 +43,11 @@ exports.handler=async event=>{
  const from=new Date(fromSeconds*1000),to=new Date(toSeconds*1000);
  if(!Number.isFinite(from.getTime())||!Number.isFinite(to.getTime())||toSeconds-fromSeconds>90*86400)
   return json(400,{success:false,error:"Settlement sync window must not exceed 90 days."});
+ let adminVerified=false;
  try{
   // The caller's JWT must pass the existing Admin Finance read permission gate.
   await supabaseRpc("srk_admin_finance_dashboard",{p_period:"month",p_anchor_date:isoDate(new Date())},match[1]);
+  adminVerified=true;
 
   const settlements=[];
   for(let skip=0;skip<10000;skip+=100){
@@ -87,8 +89,9 @@ exports.handler=async event=>{
   return json(200,{success:true,settlements_seen:settlements.length,settlements_imported:imported.length,
    recon_months:reconByMonth.size,results:imported});
  }catch(error){
-  const status=error.status===401||error.status===403?403:500;
+  const denied=!adminVerified&&(error.status===401||error.status===403);
+  const status=denied?403:500;
   console.error("Razorpay settlement sync failed:",error.status||error.name||"Unknown",error.providerCode||"");
-  return json(status,{success:false,error:status===403?"Admin permission denied.":"Settlement sync failed; no success is assumed.",provider_code:error.providerCode||undefined});
+  return json(status,{success:false,error:denied?"Admin permission denied.":"Settlement sync failed; no success is assumed.",provider_code:error.providerCode||undefined});
  }
 };
