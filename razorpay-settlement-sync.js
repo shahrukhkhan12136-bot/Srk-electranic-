@@ -46,7 +46,7 @@ exports.handler=async event=>{
  let adminVerified=false;
  try{
   // The caller's JWT must pass the existing Admin Finance read permission gate.
-  await supabaseRpc("srk_admin_finance_dashboard",{p_period:"month",p_anchor_date:isoDate(new Date())},match[1]);
+  await supabaseRpc("srk_admin_finance_dashboard",{p_period:"monthly",p_anchor_date:isoDate(new Date())},match[1]);
   adminVerified=true;
 
   const settlements=[];
