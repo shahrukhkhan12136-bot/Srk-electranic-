@@ -86,7 +86,14 @@ exports.handler=async event=>{
    p_booking_id:bookingId,p_customer_user_id:customerId,p_idempotency_key:idempotencyKey,p_lock_token:lockToken
   }));
   if(!attempt?.id||attempt.amount_paise!==bill.amountPaise||attempt.final_bill_id!==bill.id||attempt.final_bill_revision!==bill.revision_no){
-   throw new Error("Server did not create a payment attempt for the exact final-bill revision");
+   if(attempt?.id){
+    try{await rpc("srk_service_mark_razorpay_order_failure",{
+     p_attempt_id:attempt.id,p_failure_code:"final_bill_snapshot_changed",
+     p_failure_description:"Payment attempt did not match the final bill snapshot read by the order handler; no Razorpay order was created",
+     p_uncertain:false
+    });}catch(_){}
+   }
+   const e=new Error("Server did not create a payment attempt for the exact final-bill revision");e.httpStatus=409;throw e;
   }
   let order;
   try{
