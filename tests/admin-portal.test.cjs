@@ -94,3 +94,43 @@ test('Admin Finance report does not conflate legacy commission with reconciled P
   assert.ok(html.includes('Electrician Share (settlement नहीं)'));
   assert.ok(html.includes('Period में बने Pending Payout'));
 });
+
+test('Admin Razorpay settlement panel is navigable and shows provider fee, tax, net and bank evidence separately', () => {
+  assert.ok(html.includes('id="adminRazorpaySettlements"'));
+  assert.ok(html.includes('href="#adminRazorpaySettlements"'));
+  assert.ok(html.includes('id="settlementFrom"'));
+  assert.ok(html.includes('id="settlementTo"'));
+  assert.ok(html.includes('id="razorpaySettlementRows"'));
+  assert.ok(html.includes('fee_amount_paise'));
+  assert.ok(html.includes('tax_amount_paise'));
+  assert.ok(html.includes('provider_net_amount_paise'));
+  assert.ok(html.includes('bank_credit_amount_paise'));
+  assert.ok(html.includes('Bank UTR / Reference'));
+});
+
+test('Admin settlement import sends only the signed-in Admin JWT and a bounded date range to the Netlify function', () => {
+  assert.ok(html.includes("fetch('/.netlify/functions/razorpay-settlement-sync'"));
+  assert.ok(html.includes("'Authorization':'Bearer '+session.access_token"));
+  assert.ok(html.includes('end-start>90*86400'));
+  assert.ok(html.includes('await loadRazorpaySettlements()'));
+  assert.ok(!html.includes('SUPABASE_SERVICE_ROLE_KEY'));
+  assert.ok(!html.includes('RAZORPAY_KEY_SECRET'));
+});
+
+test('Admin bank reconciliation calls the protected RPC with exact paise and requires confirmation and note', () => {
+  assert.ok(html.includes("sb.rpc('srk_admin_reconcile_razorpay_settlement'"));
+  assert.ok(html.includes('p_bank_credit_amount_paise:Math.round(amount*100)'));
+  assert.ok(html.includes('p_bank_credit_at:new Date(at).toISOString()'));
+  assert.ok(html.includes('p_bank_reference:reference'));
+  assert.ok(html.includes('p_reconciliation_status:status'));
+  assert.ok(html.includes('p_note:note'));
+  assert.ok(html.includes("if(!confirm('क्या आपने Bank Statement"));
+  assert.ok(html.includes('note.length<10'));
+});
+
+test('Admin settlement table is read-only and does not directly mutate reconciliation tables', () => {
+  assert.ok(html.includes("sb.from('srk_razorpay_settlements').select("));
+  assert.ok(!html.includes("sb.from('srk_razorpay_settlements').update("));
+  assert.ok(!html.includes("sb.from('srk_razorpay_settlement_items').insert("));
+  assert.ok(html.includes("reconciliation_note,provider_created_at"));
+});
