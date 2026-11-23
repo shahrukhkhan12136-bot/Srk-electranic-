@@ -8,7 +8,7 @@ test("settlement sync is POST-only and requires an authenticated Admin permissio
  assert.match(source,/event\.httpMethod!=="POST"/);
  assert.ok(source.includes("auth.match("));
  assert.match(source,/srk_admin_finance_dashboard/);
- assert.match(source,/p_period:"month"/);
+ assert.match(source,/p_period:"monthly"/);
  assert.match(source,/adminVerified=true/);
 });
 
