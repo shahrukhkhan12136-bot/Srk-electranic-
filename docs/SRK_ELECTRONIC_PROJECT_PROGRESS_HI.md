@@ -1990,3 +1990,23 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - **Tests अभी execute नहीं हुए**; GitHub Actions run evidence उपलब्ध नहीं। Source changes Feature Branch पर हैं, Main में merge नहीं किए गए।
 - कोई Netlify deploy, live Razorpay transaction, actual bank settlement या worker payout नहीं किया गया। Production readiness का दावा नहीं है।
 
+## 17.136 — Razorpay Refund और Final-Bill Link Hardening (23 Nov 2026)
+
+### Refund flow को वर्तमान Database से मिलाया
+- Audit में पता चला कि पुराने Netlify Refund Handler ऐसे RPC names बुला रहा था जो मुख्य Supabase Database में मौजूद नहीं थे। उसे वर्तमान RPC contract से मिलाया।
+- Netlify source `razorpay-refund.js` अब Admin JWT के साथ `srk_admin_prepare_booking_refund(p_request_id)` call करता है; provider result को service-role-only `srk_service_reconcile_booking_refund` से दर्ज करता है।
+- Refund Webhook अब Razorpay HMAC + Event ID deduplication और मौजूदा private `srk_razorpay_webhook_events` inbox इस्तेमाल करता है; non-confirmed provider outcome को सफल Refund नहीं बताता।
+- मुख्य Database में `srk_admin_prepare_booking_refund` को legacy quote fields से हटाकर paid Razorpay Order + Final Bill ID/revision + exact captured amount snapshot से बाँधा।
+- Current backend Refund preparation **पूरे Booking payment की full refund** तक सीमित है। Partial refund policy/logic को user approval के बिना नहीं माना गया है।
+- अगर उसी Booking के Worker payout पहले ही paid हो चुके हैं, Refund preparation स्वतः आगे नहीं बढ़ती; Admin reconciliation जरूरी है।
+- Razorpay finalizer में SQL NULL comparison guard सुधारा: Booking का `razorpay_order_id` अब supplied Order ID से exact match होना चाहिए (`IS DISTINCT FROM`), और Final Bill revision भी exact match होना चाहिए।
+- दोनों SQL changes मुख्य Supabase में लागू हुए और उनके migration files Feature Branch में रखे गए:
+  - `20261123090000_align_razorpay_refund_preparation_with_final_bill_snapshot.sql`
+  - `20261123091500_require_exact_booking_order_link_in_razorpay_finalizer.sql`
+
+### Regression test परिणाम
+- Refund source regression workflow सफल: Final Bill refund contract tests पास।
+- Main source regression workflow में payment webhook mismatch test का mock पहले गलत था; mock को DB finalizer rejection पर आधारित किया और उसके बाद पूरा source regression step सफल हुआ।
+- Finalizer exact order-link assertion जोड़ने के बाद नवीनतम source regression run का test step सफल हुआ; workflow cleanup/समापन की पुष्टि अलग से करनी है।
+- कोई live refund/payment या Netlify deployment नहीं हुआ। Production release अभी रोका हुआ है।
+
