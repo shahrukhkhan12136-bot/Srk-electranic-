@@ -94,6 +94,16 @@ exports.handler=async event=>{
     amount:attempt.amount_paise,currency:"INR",receipt:attempt.receipt,
     notes:{booking_id:bookingId,final_bill_id:bill.id,service:"SRK ELECTRONIC",billing_basis:"final_bill_total"}
    })});
+   if(!order||!/^order_[A-Za-z0-9]+$/.test(order.id||"")||order.amount!==attempt.amount_paise||order.currency!=="INR"||order.status!=="created"){
+    const invalid=new Error("Razorpay returned an order that did not match the saved payment attempt");
+    invalid.httpStatus=409;
+    try{await rpc("srk_service_mark_razorpay_order_failure",{
+     p_attempt_id:attempt.id,p_failure_code:"provider_order_response_mismatch",
+     p_failure_description:"Provider order response did not match the saved INR final bill amount",
+     p_uncertain:true
+    });}catch(_){}
+    throw invalid;
+   }
   }catch(error){
    try{await rpc("srk_service_mark_razorpay_order_failure",{
     p_attempt_id:attempt.id,p_failure_code:String(error.status||"network_error"),
