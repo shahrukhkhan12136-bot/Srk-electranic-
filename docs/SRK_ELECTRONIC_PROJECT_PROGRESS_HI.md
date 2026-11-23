@@ -2019,3 +2019,11 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - मुख्य Supabase schema में बदलाव आवश्यक नहीं था; यह Feature Branch source/test hardening है।
 - Latest source commit: 2d9b192b1ece7e2fbd00d30f7249d77d15975ea3; regression test commit: 6c1bc73196dd6e8bee5111b6dd3863a1ed824f8d.
 - इस नवीनतम test commit के लिए GitHub Actions run result अभी सत्यापित नहीं है। कोई Netlify deploy या live Razorpay transaction नहीं किया गया।
+## 17.138 — Razorpay Refund Webhook Event/Status Consistency (23 Nov 2026)
+
+- Refund webhook अब signed event type और refund entity status का परस्पर मिलान करता है: refund.created = pending, refund.processed = processed, refund.failed = failed।
+- यदि provider-signed payload में event name और refund.status अलग हों, तो payload अस्वीकार होगा और उसे किसी refund state में reconcile नहीं किया जाएगा।
+- Refund regression test में event/status consistency assertion जोड़ा गया।
+- Main Supabase RPC contract पुनः जाँचा: order start/attach/failure/finalize और refund reconcile RPC केवल service_role execute कर सकता है; Admin refund preparation authenticated call पर Admin guard के साथ उपलब्ध है। Webhook inbox schema में payment और refund दोनों event fields मौजूद हैं।
+- Feature Branch source commit: 02bf199e572b4ae9a6b57f13b75d80f4e9a24caf; test commit: 0b57af81989c81ca5bc4e33afd66694e4c489254।
+- नवीनतम test run अभी उपलब्ध/सत्यापित नहीं है। कोई Netlify deploy, live Razorpay payment/refund या bank settlement नहीं हुआ।
