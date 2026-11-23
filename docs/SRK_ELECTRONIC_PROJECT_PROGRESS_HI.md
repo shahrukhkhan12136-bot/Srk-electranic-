@@ -1966,3 +1966,27 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Netlify config API routes और `Cache-Control: no-store` दिखाता है; service worker network-first है और केवल landing assets cache करता है, API responses cache नहीं करता। GitHub Vercel status current feature head पर build-rate-limit failure दिखाता है; Netlify deployed SHA/account state उपलब्ध नहीं, इसलिए production deployment सत्यापित नहीं। कोई manual deploy नहीं किया।
 - Cancellation pgTAP run `43527007387` में 27 assertions चले लेकिन test plan 26 था; उसी कारण run FAIL हुआ। Test file का plan अब 27 किया और current source SHA से verify किया; इस नए commit पर rerun अभी उपलब्ध नहीं, इसलिए pgTAP को PASS न मानें। Previous Admin/refund source regression runs SUCCESS थे, पर वे live DB/RLS/browser E2E tests नहीं हैं।
 - Feature branch और main का commit history diverged है (feature branch में main से बहुत अधिक unique commits और main में 16 unique commits); direct merge सुरक्षित नहीं। कोई production deploy, provider purchase, live booking/payment, credentials change या DB migration apply नहीं की गई।
+
+## 17.135 — Razorpay Final-Bill Payment Backend Refactor (23 Nov 2026)
+
+### मुख्य Supabase Production Database
+- `srk_razorpay_payment_orders` में `final_bill_id` और `final_bill_revision` snapshots जोड़े।
+- Server-only RPCs जोड़े:
+  - `srk_service_start_razorpay_payment_order`: authenticated customer/booking, selected Online/UPI/Card method, completed Booking, active payment-order lock और issued Final Bill की पूरी `total_amount` (Labour + Materials - Discount + Tax) जाँचकर order attempt बनाता है।
+  - `srk_service_attach_razorpay_order`: lock token और Booking state जाँचकर Razorpay Order ID को attempt तथा Booking से atomically link करता है।
+  - `srk_service_mark_razorpay_order_failure`: निश्चित provider failure को failed और अनिश्चित network outcome को reconciliation_required बनाता है।
+  - `srk_service_finalize_razorpay_payment`: captured amount/currency, order attempt, Customer, Booking state और उसी Final Bill revision को verify करके payment को paid करता है। Existing booking triggers transaction record और worker earning/wallet posting संभालते हैं।
+- Webhook event table में sanitized `event_payload` field जोड़ा।
+- चारों RPCs SECURITY DEFINER हैं; execute केवल service_role को, authenticated/anon को नहीं। Verification में anon/authenticated execute false और service_role true मिला।
+- Finalizer में null/invalid identifiers तथा दूसरे Payment ID से duplicate link रोकने की अतिरिक्त validation जोड़ी।
+
+### Feature Branch Netlify Function source
+- Root source `create-order.js`, `verify-payment.js`, `razorpay-webhook.js` update किए; Netlify wrappers `netlify/functions/*.js` इन्हीं root handlers को import करते हैं।
+- Create Order अब legacy quote या labour-only RPC का उपयोग नहीं करता; approved/issued Final Bill total को paise में order amount बनाता है, order-attempt table में persist करता है, और order lock/attach/failure state का उपयोग करता है।
+- Verify Payment अब HMAC signature के साथ Razorpay API से captured payment fetch करता है और service-only atomic Final Bill finalizer call करता है।
+- Payment Webhook HMAC, Razorpay Event ID deduplication, private webhook inbox और atomic finalizer का उपयोग करता है; unmatched/invalid event को exception में रखकर retry/reconciliation response देता है।
+- Razorpay की 2% + लागू GST processing fee Customer Final Bill में स्वतः नहीं जोड़ी जाती; यह provider settlement cost है और अलग reconciliation में रहेगी। Company 15% commission केवल Labour पर अलग है।
+- `tests/labour-payment-handlers.test.cjs` को नए full-Final-Bill flow, material inclusion, order locking, captured-payment verification और webhook deduplication cases के लिए बदला।
+- **Tests अभी execute नहीं हुए**; GitHub Actions run evidence उपलब्ध नहीं। Source changes Feature Branch पर हैं, Main में merge नहीं किए गए।
+- कोई Netlify deploy, live Razorpay transaction, actual bank settlement या worker payout नहीं किया गया। Production readiness का दावा नहीं है।
+
