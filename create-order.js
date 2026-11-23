@@ -60,12 +60,13 @@ exports.handler=async event=>{
  try{
   const body=JSON.parse(event.body||"{}");bookingId=body.booking_id;
   if(!uuid(bookingId))return json(400,{success:false,error:"बुकिंग ID सही नहीं है।"});
-  let rows=await db("service_bookings?select=id,phone,customer_user_id,payment_method,payment_status,status&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
+  let rows=await db("service_bookings?select=id,phone,customer_user_id,payment_method,payment_status,status,razorpay_order_id&id=eq."+encodeURIComponent(bookingId)+"&limit=1");
   let booking=rows?.[0];
   if(!booking)return json(404,{success:false,error:"बुकिंग नहीं मिली।"});
   const customerId=await verifyCustomerSession(event.headers?.authorization||event.headers?.Authorization||"",booking);
   if(!isOnlineMethod(booking.payment_method))return json(409,{success:false,error:"इस बुकिंग में Online/UPI/Card भुगतान नहीं चुना गया है।"});
   if(booking.status!=="completed"||["paid","completed","refunded"].includes(String(booking.payment_status||"").toLowerCase()))return json(409,{success:false,error:"यह बुकिंग अभी भुगतान के लिए उपलब्ध नहीं है।"});
+  if(booking.razorpay_order_id)return json(409,{success:false,error:"इस बुकिंग पर पुराना Razorpay Order जुड़ा है। Admin reconciliation के बाद ही नया Order बनेगा।"});
   let bill=await latestFinalBill(bookingId);
   const reused=await reusableAttempt(bookingId,bill);
   if(reused)return json(200,{success:true,key_id:RAZORPAY_KEY_ID,order_id:reused.id,amount:reused.amount,currency:reused.currency});
@@ -97,7 +98,7 @@ exports.handler=async event=>{
    try{await rpc("srk_service_mark_razorpay_order_failure",{
     p_attempt_id:attempt.id,p_failure_code:String(error.status||"network_error"),
     p_failure_description:"Razorpay order creation outcome: "+(error.status?"provider rejected request":"network outcome uncertain"),
-    p_uncertain:!error.status
+    p_uncertain:!Number.isInteger(error.status)||error.status>=500||error.status===408
    });}catch(_){}
    throw error;
   }
