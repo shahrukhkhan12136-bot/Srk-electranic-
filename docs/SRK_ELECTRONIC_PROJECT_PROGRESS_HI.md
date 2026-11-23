@@ -2049,3 +2049,11 @@ Feature branch recursive Git tree तथा संबंधित migrations क
 - Feature branch commits include handler, Netlify wrapper, tests, workflow and migration files. No Netlify deployment was performed. Actual Razorpay API sync, real settlement records and bank reconciliation remain untested because there are no live settlement records; Admin UI is not built.
 - Deployment से पहले Netlify environment में `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` मौजूद होने की पुष्टि आवश्यक है। Existing Razorpay credentials को दोबारा माँगा/दिखाया नहीं गया। किसी secret की वर्तमान Netlify value इस कार्य में पढ़ी या बदली नहीं गई।
 - Provider docs: Settlement list and recon API details are documented in Razorpay official API reference. See the official docs links in the accompanying project report.
+
+## 17.141 — Settlement Sync Error Classification + Final CI (23 Nov 2026)
+
+- Settlement sync में Admin JWT permission failure और Razorpay API credential/provider failure को अलग-अलग classify किया गया। केवल Finance permission gate fail होने पर Admin permission denied लौटेगा; उसके बाद Razorpay/DB failure को Admin denial बताकर छिपाया नहीं जाएगा।
+- Regression test में Admin permission gate, provider API pagination, exact settlement recon filtering, secret-safe logging और failure handling assertions शामिल हैं।
+- Final source commits: handler fix `1e3a3a8e2e67504614bcf411760fbf21eff17128`; test fix `f4984fc5a89dfd463433e3dbb48a68a7a40496d2`.
+- Latest verification: Razorpay settlement sync source checks **45139656095 SUCCESS**; full SRK source regression suite **45139655991 SUCCESS**. पहले की failed CI attempts में केवल गलत test assertion था; उसे ठीक करके दोनों नवीनतम workflows सफलतापूर्वक पूरे हुए।
+- अभी भी कोई live API sync, live Settlement/UTR, actual bank credit verification, Netlify deployment या Admin UI नहीं है। Credentials की मौजूदगी/values इस turn में verify या change नहीं की गई।
