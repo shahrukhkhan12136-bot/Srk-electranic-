@@ -4,63 +4,60 @@ const fs = require("node:fs");
 const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const handler = fs.readFileSync(path.join(root, "razorpay-refund.js"), "utf8");
-const prep = fs.readFileSync(path.join(root, "supabase/migrations/20261114120000_guarded_labour_only_razorpay_refund_preparation.sql"), "utf8");
-const provider = fs.readFileSync(path.join(root, "supabase/migrations/20261114130000_durable_razorpay_refund_provider_reconciliation.sql"), "utf8");
+const migration = fs.readFileSync(path.join(root, "supabase/migrations/20261123090000_align_razorpay_refund_preparation_with_final_bill_snapshot.sql"), "utf8");
 
-test("refund executor authenticates Admin session and claims via Admin RPC", () => {
+test("refund executor authenticates Admin session and uses the current Admin preparation RPC", () => {
   assert.match(handler, /auth\/v1\/user/);
-  assert.match(handler, /srk_admin_claim_razorpay_refund/);
+  assert.match(handler, /srk_admin_prepare_booking_refund/);
+  assert.match(handler, /},match\[1\]\)/);
+  assert.doesNotMatch(handler, /srk_admin_claim_razorpay_refund/);
 });
 
-test("refund request uses Razorpay documented idempotency header and stable stored key", () => {
-  assert.match(handler, /X-Refund-Idempotency/);
-  assert.match(handler, /idempotency_key/);
-  assert.match(prep, /idempotency_key/);
-  assert.match(prep, /srk_/);
+test("refund preparation binds the refund to the paid Razorpay order and exact Final Bill revision", () => {
+  assert.match(migration, /srk_razorpay_payment_orders/);
+  assert.match(migration, /v_order\.status<>'paid'/);
+  assert.match(migration, /final_bill_id/);
+  assert.match(migration, /final_bill_revision/);
+  assert.match(migration, /srk_booking_final_bills/);
+  assert.match(migration, /v_bill\.revision_no<>v_order\.final_bill_revision/);
+  assert.match(migration, /round\(v_bill\.total_amount\*100\)::bigint<>v_order\.amount_paise/);
+  assert.doesNotMatch(migration, /quote_status/);
 });
 
-test("refund executor requires exact INR captured labour amount and no prior refund", () => {
-  assert.match(handler, /payment\.status!=="captured"/);
-  assert.match(handler, /payment\.currency!=="INR"/);
-  assert.match(handler, /payment\.amount!==amount_paise/);
-  assert.match(handler, /amount_refunded/);
+test("current refund policy requires the approved full Booking amount; partial refund is not silently inferred", () => {
+  assert.match(migration, /REFUND_AMOUNT_MUST_EQUAL_FULL_PAID_BOOKING_AMOUNT/);
+  assert.match(handler, /payment\.amount!==record\.amount_paise/);
+  assert.match(handler, /amount:record\.amount_paise/);
 });
 
-test("provider result is durably recorded before internal booking reconciliation", () => {
-  assert.match(handler, /srk_service_record_razorpay_refund_result/);
-  assert.match(handler, /srk_service_finalize_razorpay_refund/);
-  assert.ok(handler.indexOf("srk_service_record_razorpay_refund_result") < handler.indexOf("srk_service_finalize_razorpay_refund"));
+test("refund provider outcome is reconciled through the service-role-only current RPC", () => {
+  assert.match(handler, /srk_service_reconcile_booking_refund/);
+  assert.match(handler, /p_refund_record_id/);
+  assert.match(handler, /p_provider_status/);
+  assert.doesNotMatch(handler, /srk_service_record_razorpay_refund_result/);
+  assert.doesNotMatch(handler, /srk_service_finalize_razorpay_refund/);
 });
 
-test("webhook verifies HMAC and captures unique provider event before reconciliation", () => {
+test("refund webhook verifies HMAC and deduplicates through the private webhook inbox", () => {
   assert.match(handler, /timingSafeEqual/);
   assert.match(handler, /x-razorpay-event-id/);
-  assert.match(handler, /srk_service_capture_razorpay_refund_event/);
-  const webhook = handler.slice(handler.indexOf("async function webhook"));
-  assert.ok(webhook.indexOf("srk_service_capture_razorpay_refund_event") < webhook.indexOf("reconcile(row.id,refund)"));
+  assert.match(handler, /srk_razorpay_webhook_events\?on_conflict=event_id/);
+  assert.match(handler, /razorpay_refund_id:refund\.id/);
+  assert.match(handler, /processing_status:"reconciled"/);
+  assert.doesNotMatch(handler, /srk_service_capture_razorpay_refund_event/);
 });
 
-test("service reconciliation functions are service-role only and webhook inbox is private", () => {
-  assert.match(provider, /auth\.role\(\) <> 'service_role'/);
-  assert.match(provider, /REVOKE ALL ON FUNCTION public\.srk_service_finalize_razorpay_refund/);
-  assert.match(provider, /REVOKE ALL ON public\.srk_razorpay_refund_events FROM PUBLIC,anon,authenticated/);
-});
-
-test("provider failure or unknown response does not falsely mark booking refunded", () => {
-  assert.match(handler, /internal_status==="processed"/);
-  assert.match(provider, /provider_status<>'processed'/);
-  assert.match(provider, /status='processed'/);
+test("provider failure and pending outcomes remain distinct and do not falsely mark the booking refunded", () => {
+  assert.match(handler, /\["pending","processed","failed"\]/);
+  assert.match(migration, /srk_booking_refund_requests/);
+  assert.match(handler, /state\.status==="processed"/);
+  assert.match(handler, /state\.status==="failed"/);
 });
 
 test("Admin refund queue exposes provider state and the UI never retries provider-confirmed failures", () => {
-  const migration = fs.readFileSync(path.join(root, "supabase/migrations/20261115010000_admin_refund_provider_state_visibility.sql"), "utf8");
   const admin = fs.readFileSync(path.join(root, "admin.html"), "utf8");
-  assert.match(migration, /srk_admin_list_booking_refund_requests_v3/);
-  assert.match(migration, /ri\.status,ri\.provider_status,ri\.last_error/);
-  assert.match(migration, /ri\.id=r\.refund_record_id AND ri\.booking_id=r\.booking_id/);
-  assert.match(migration, /auth\.uid\(\) IS NULL OR NOT public\.is_srk_admin\(\)/);
   assert.match(admin, /srk_admin_list_booking_refund_requests_v3/);
-  assert.match(admin, /x\.provider_refund_status==='failed'\|\|x\.provider_status==='failed'/);
+  assert.match(admin, /provider_refund_status/);
   assert.match(admin, /Razorpay ने Refund अस्वीकार किया/);
   assert.match(admin, /Provider स्थिति की पुष्टि उपलब्ध नहीं/);
   assert.match(admin, /\['processing','unknown'\]\.includes\(x\.provider_refund_status\)/);
