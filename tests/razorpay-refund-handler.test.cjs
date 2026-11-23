@@ -19,8 +19,10 @@ test("refund preparation binds the refund to the paid Razorpay order and exact F
   assert.match(migration, /final_bill_id/);
   assert.match(migration, /final_bill_revision/);
   assert.match(migration, /srk_booking_final_bills/);
-  assert.match(migration, /v_bill\.revision_no<>v_order\.final_bill_revision/);
+  assert.match(migration, /v_bill\.revision_no is distinct from v_order\.final_bill_revision/);
   assert.match(migration, /round\(v_bill\.total_amount\*100\)::bigint<>v_order\.amount_paise/);
+  const nullGuard = fs.readFileSync(path.join(root, "supabase/migrations/20261123093000_harden_refund_booking_order_null_comparison.sql"), "utf8");
+  assert.match(nullGuard, /v_booking\.razorpay_order_id is distinct from v_order\.razorpay_order_id/);
   assert.doesNotMatch(migration, /quote_status/);
 });
 
