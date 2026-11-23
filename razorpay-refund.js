@@ -98,10 +98,12 @@ async function webhook(event){
   if(!["refund.created","refund.processed","refund.failed"].includes(eventName))
    return json(200,{success:true,ignored:true});
   const refund=payload.payload?.refund?.entity;
+  const expectedStatus={"refund.created":"pending","refund.processed":"processed","refund.failed":"failed"}[eventName];
   if(!refund||!/^rfnd_[A-Za-z0-9]+$/.test(refund.id||"")
     ||!/^pay_[A-Za-z0-9]+$/.test(refund.payment_id||"")
-    ||!Number.isSafeInteger(refund.amount)||refund.amount<1||refund.currency!=="INR")
-   return json(400,{success:false,error:"Refund event payload invalid."});
+    ||!Number.isSafeInteger(refund.amount)||refund.amount<1||refund.currency!=="INR"
+    ||refund.status!==expectedStatus)
+   return json(400,{success:false,error:"Refund event payload invalid or inconsistent with its event type."});
 
   const safePayload={event:eventName,refund:{id:refund.id,payment_id:refund.payment_id,
    status:refund.status,amount:refund.amount,currency:refund.currency}};
