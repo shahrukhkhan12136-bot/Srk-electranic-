@@ -9,6 +9,7 @@ test("settlement sync is POST-only and requires an authenticated Admin permissio
  assert.ok(source.includes("auth.match("));
  assert.match(source,/srk_admin_finance_dashboard/);
  assert.match(source,/p_period:"month"/);
+ assert.match(source,/adminVerified=true/);
 });
 
 test("settlement sync uses bounded date windows and paginates both provider APIs",()=>{
@@ -29,5 +30,6 @@ test("settlement sync does not expose provider credentials or assume successful 
  assert.match(source,/SUPABASE_SERVICE_ROLE_KEY/);
  assert.match(source,/RAZORPAY_KEY_SECRET/);
  assert.match(source,/no success is assumed/);
+ assert.match(source,/const denied=!adminVerified/);
  assert.doesNotMatch(source,/console\.log\([^\n]*(RAZORPAY_KEY|SERVICE_ROLE)/);
 });
