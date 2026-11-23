@@ -1,0 +1,35 @@
+name: Razorpay settlement sync source checks
+
+on:
+  push:
+    branches:
+      - feature/platform-fee-cash-online-cycle
+    paths:
+      - "razorpay-settlement-sync.js"
+      - "netlify/functions/razorpay-settlement-sync.js"
+      - "tests/razorpay-settlement-sync.test.cjs"
+      - "package.json"
+      - ".github/workflows/razorpay-settlement-sync-ci.yml"
+  pull_request:
+    branches:
+      - feature/platform-fee-cash-online-cycle
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  settlement-source-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+      - name: Check settlement handler syntax
+        run: |
+          node --check razorpay-settlement-sync.js
+          node --check netlify/functions/razorpay-settlement-sync.js
+      - name: Run settlement source regression tests
+        run: npm run test:settlement
