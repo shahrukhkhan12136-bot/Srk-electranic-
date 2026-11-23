@@ -33,3 +33,4 @@ jobs:
           npm run test:customer-menu
           npm run test:electrician-portal
           npm run test:admin-portal
+          npm run test:settlement
