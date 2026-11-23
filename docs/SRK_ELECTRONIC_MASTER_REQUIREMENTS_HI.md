@@ -4304,3 +4304,19 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **Background:** बगीचे वाला पुराना background नहीं रखना; उसे बदलकर साफ़-सुथरा, premium और professional Founder-portrait background देना है। Background का चयन portrait के साथ harmonious और uncluttered हो।
 - **Preserve:** Founder का वही पहचाने जाने वाला चेहरा/लुक और काली शर्ट की styling; photorealistic, professional portrait। कोई text, logo, badge या अतिरिक्त व्यक्ति नहीं जोड़ना।
 - **Status:** स्पष्ट निर्देश Master Requirements में सुरक्षित। Image-generation tool की उपलब्धता/limit खुलने पर इसी specification से image edit बनानी है; तब तक इसे pending रखें और कोई गलत/वैकल्पिक फोटो publish न करें।
+
+## 5.9 — Razorpay Single-Settlement और Admin Manual Payout Policy
+
+**मालिक द्वारा स्वीकृत निर्णय — 23 नवम्बर 2026**
+
+1. SRK ELECTRONIC में Razorpay Route, Route Transfers, split settlements या Technician/Helper के लिए automatic marketplace split payment का उपयोग नहीं होगा। Razorpay से अलग-अलग Technicians/Helpers को payment बाँटने की सुविधा उपलब्ध न होने की स्थिति में भी यही Manual Payout Model लागू रहेगा।
+2. Customer का पूरा सफल Online Payment (booking का देय कुल भुगतान) SRK ELECTRONIC के Razorpay merchant account में प्राप्त होगा। Razorpay अपनी लागू processing/settlement fees और लागू GST/अन्य वैध charges काटकर शेष राशि कंपनी के registered bank account में settle करेगा। वास्तविक gross payment, Razorpay fee/tax, net settlement, settlement reference और settlement date अलग-अलग reconcile किए जाएँगे। Razorpay की fee को SRK ELECTRONIC की Company Commission न समझें।
+3. Company Commission वर्तमान में labour/service amount पर 15% है (materials पर नहीं); Admin द्वारा भविष्य में अधिकृत बदलाव के लिए मौजूदा versioned commission-setting नियम लागू होंगे। प्रत्येक Booking/Earning में लागू commission rate और रकम का immutable snapshot रहेगा। Razorpay fee और Company Commission की accounting अलग होगी; Razorpay fee को Technician/Helper earnings या Company Commission में स्वतः न मिलाएँ।
+4. Customer Online Payment मिलने के बाद Technician और Helper की कमाई उनके अलग-अलग Worker Wallet/Ledger में दर्ज होगी। कोई automatic bank/UPI transfer या Razorpay Route split नहीं होगा।
+5. Technician और Helper अपने-अपने payout request भेजेंगे। Admin पात्रता, wallet balance, outstanding cash commission/debt, refund/dispute holds और उपलब्ध settlement funds जाँचकर अपने नियंत्रण वाले बैंक/UPI/PhonePe माध्यम से प्रत्येक व्यक्ति को अलग-अलग manually payout करेगा।
+6. प्रत्येक manual payout के लिए payee Worker ID, booking/earning references, gross/net amount, अनुमत deductions/adjustments, payment method, bank/UPI destination का सुरक्षित संदर्भ, UTR/transaction reference, payout date/time, Admin ID और status दर्ज होंगे। संवेदनशील बैंक/UPI विवरण सामान्य Admin screens या logs में अनावश्यक रूप से उजागर न हों।
+7. Admin के सफल भुगतान और वैध UTR/reference दर्ज होने पर ही payout को Paid किया जाएगा। Duplicate payout रोकने के लिए idempotency और Worker-level balance reservation/locking लागू होगी। Failed, pending या disputed transfer को Paid नहीं दिखाना है।
+8. Razorpay payment verification और webhook केवल Customer की पूरी Booking Payment को सत्यापित/रिकॉर्ड करेंगे; वे Technician/Helper payout नहीं करेंगे। Razorpay settlement और SRK ELECTRONIC के manual payouts अलग reconciliation workflows होंगे।
+9. Razorpay account/merchant onboarding, settlement bank account, actual fee schedule, settlement timing तथा production webhook delivery को provider dashboard/records से verify करना आवश्यक है। Route या split-payment feature को भविष्य में भी बिना मालिक की स्पष्ट नई मंजूरी enable नहीं करना है।
+10. यह व्यावसायिक नियम Netlify Razorpay Functions, Supabase payment/order/webhook records, Finance Dashboard, Worker Wallet/Ledger, Payout Requests, Admin Panel और reconciliation reports—सभी में समान रूप से लागू होगा। मौजूदा Netlify/Supabase code को इस नियम के अनुरूप audit और सुरक्षित रूप से migrate करना होगा; केवल इस checklist entry से implementation complete होने का दावा नहीं किया जाएगा।
+
