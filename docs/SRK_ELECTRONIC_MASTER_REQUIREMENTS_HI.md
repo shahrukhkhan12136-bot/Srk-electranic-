@@ -4333,3 +4333,13 @@ Audit सीमा: पहले checklist item का source-level inspection �
 - **Netlify compatibility audit:** Feature Branch के मौजूदा `create-order.js`, `verify-payment.js` और `razorpay-webhook.js` अभी पुराने payment flow/fields और ऐसे RPC references पर निर्भर हैं जो मुख्य Supabase schema में उपलब्ध नहीं मिले (जैसे `srk_link_payment_order`, `srk_service_finalize_captured_payment`, `srk_service_get_labour_bill_for_payment`)। इसलिए इन्हें वर्तमान Production DB से सीधे जोड़ना सुरक्षित नहीं है। इन functions को नई final-bill, payment-order-attempt, webhook-event और manual-payout architecture के अनुसार बदलना और tests चलाना बाकी है।
 - कोई Netlify deployment, GitHub Main merge, live Razorpay transaction, Route transfer या वास्तविक Worker payout नहीं किया गया।
 
+## 5.10 — Razorpay Processing Fee Rate
+
+**मालिक द्वारा स्वीकृत शुल्क जानकारी — 23 नवम्बर 2026**
+
+- Razorpay की बताई गई Processing Fee दर **2% + लागू GST** है।
+- यह Razorpay Provider/Gateway Fee है; SRK ELECTRONIC की 15% Company Commission से पूरी तरह अलग है।
+- Settlement reconciliation में वास्तविक Razorpay fee और उस fee पर लगा वास्तविक GST अलग-अलग दर्ज होगा। अनुमानित दर से वास्तविक Settlement/Bank Credit को override नहीं करना है; Razorpay की Settlement Report/Dashboard और बैंक रिकॉर्ड authoritative होंगे।
+- इस समय GST की सटीक दर इस निर्णय में निर्दिष्ट नहीं है; इसलिए उसे hard-code नहीं करना है। वास्तविक invoice/settlement statement के अनुसार GST दर्ज किया जाएगा।
+- जब तक मालिक अलग से मंजूरी न दें, 2% + GST को Customer के Bill, Technician/Helper की earning या Company Commission से स्वतः deduct/pass-through नहीं करना है। इसे Razorpay settlement cost के रूप में अलग track करना है।
+
