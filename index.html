@@ -258,7 +258,7 @@ function renderCustomerIdentity(user) {
   avatar.hidden = true;
   avatar.removeAttribute('src');
   fallback.hidden = false;
-  if (typeof photo === 'string' && /^https:\\/\\//i.test(photo)) {
+  if (typeof photo === 'string' && /^https:\/\//i.test(photo)) {
     avatar.onload = () => { avatar.hidden = false; fallback.hidden = true; };
     avatar.onerror = () => { avatar.hidden = true; fallback.hidden = false; };
     avatar.src = photo;
