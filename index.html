@@ -253,7 +253,8 @@ async function syncCustomerSession() {
     document.getElementById('customerSignedIn').textContent = 'लॉगिन: ' + (session.user.phone || 'सत्यापित मोबाइल');
     setCustomerTab('home');
     await loadCustomerBookings();
-
+  } else {
+    const publicHome=document.getElementById('customerPublicHomeContent');if(publicHome)publicHome.hidden=false;
   }
 }
 function setCustomerTab(tab){document.querySelectorAll('[data-customer-panel]').forEach(el=>{el.hidden=el.dataset.customerPanel!==tab;});const publicHome=document.getElementById('customerPublicHomeContent');if(publicHome)publicHome.hidden=tab!=='home';document.querySelectorAll('[data-customer-tab]').forEach(el=>el.classList.toggle('active',el.dataset.customerTab===tab));document.getElementById('customerMoreMenu').hidden=true;document.getElementById('customerMoreButton').setAttribute('aria-expanded','false');if(tab==='bookings'||tab==='wallet')loadCustomerBookings();if(tab==='profile'&&customerSb)customerSb.auth.getSession().then(({data})=>{document.getElementById('customerProfilePhone').textContent=data.session?.user?.phone||'उपलब्ध नहीं';});}
