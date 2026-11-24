@@ -11,15 +11,17 @@
 <style>
 :root{--navy:#071a2b;--blue:#0b5ed7;--gold:#ffbd45;--paper:#f4f7fb;--ink:#142235}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--paper);color:var(--ink)}
-header{background:linear-gradient(135deg,#071a2b,#123f68);color:white;padding:20px 18px 26px;border-radius:0 0 26px 26px}
-.top{display:flex;flex-direction:column;align-items:center;gap:13px}.founder-photo{display:block;width:min(100%,390px);height:auto;flex:0 1 auto;object-fit:contain;border-radius:16px;border:3px solid var(--gold);box-shadow:0 5px 18px #0005}.brand-side{display:flex;align-items:center;justify-content:center;gap:10px;min-width:0;text-align:center}.brand-icon{display:none}.brand-copy h1{font-size:21px;margin:0;letter-spacing:.3px}.brand-copy p{margin:4px 0 0;color:#d7e7f6;font-size:12px}
-.hero{margin-top:18px;padding:17px 18px 20px;background:linear-gradient(105deg,#ffbd45,#ffe2a0);color:#142235;clip-path:polygon(0 0,100% 0,96% 100%,3% 92%);border-radius:13px}.hero h2{font-size:25px;line-height:1.2;margin:0 0 7px}.hero p{max-width:520px;line-height:1.5;margin:0;color:#253449}
+header{background:linear-gradient(135deg,#071a2b,#123f68);color:white;padding:8px 12px 10px;border-radius:0 0 20px 20px}
+.top{display:flex;flex-direction:column;align-items:center;gap:0}.founder-photo{display:block;width:auto;height:clamp(190px,42svh,350px);max-width:100%;flex:0 1 auto;object-fit:contain;object-position:center;border:0;border-radius:0;box-shadow:none}.brand-side{display:none}.brand-icon{display:none}
+.hero{margin-top:5px;padding:8px 13px 10px;background:linear-gradient(105deg,#ffbd45,#ffe2a0);color:#142235;clip-path:polygon(0 0,100% 0,98% 100%,2% 94%);border-radius:9px}.hero h2{font-size:clamp(17px,4.5vw,22px);line-height:1.15;margin:0 0 3px}.hero p{max-width:520px;line-height:1.25;margin:0;color:#253449;font-size:11px}
 .dashboard-brandline{display:flex;align-items:center;gap:11px;margin:0 0 14px;padding:10px 12px;background:linear-gradient(105deg,#071a2b,#16466e);color:white;clip-path:polygon(0 0,100% 0,97% 100%,2% 92%);border-radius:12px}.dashboard-founder{width:76px;height:96px;object-fit:contain;object-position:center;border-radius:8px;border:2px solid var(--gold);background:#fff;flex:0 0 76px}.dashboard-logo{display:none}.dashboard-message{font-weight:800;font-size:15px;line-height:1.25}.dashboard-sub{font-size:11px;color:#d7e7f6;margin-top:3px}
-@media(max-width:380px){.founder-photo{width:min(100%,330px);height:auto}.brand-copy h1{font-size:17px}.hero h2{font-size:22px}.dashboard-founder{width:66px;height:84px;flex-basis:66px}}
-.wrap{max-width:760px;margin:auto;padding:18px}.section-title{font-size:19px;margin:10px 0 14px}
+@media(max-width:380px){.founder-photo{height:clamp(175px,40svh,310px)}.hero h2{font-size:18px}.dashboard-founder{width:66px;height:84px;flex-basis:66px}.actions{gap:7px;margin-top:7px}.actions .btn{padding:9px 10px;font-size:13px}}
+@media(max-height:700px){.founder-photo{height:34svh}.hero{padding:6px 11px 7px}.hero p{font-size:10px}.actions{margin-top:6px}.actions .btn{padding:8px 10px}#customer-login.panel{padding:8px;margin-top:6px}#customer-login .small{margin:1px 0 3px}#customer-login input{padding:8px 10px}}
+.wrap{max-width:760px;margin:auto;padding:8px 12px}.section-title{font-size:19px;margin:10px 0 14px}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{background:white;border-radius:17px;padding:17px;box-shadow:0 5px 18px #102b4610}
 .icon{font-size:27px}.card h3{font-size:16px;margin:8px 0 5px}.card p{font-size:13px;color:#637184;margin:0;line-height:1.45}
-.panel{background:white;border-radius:18px;padding:18px;margin-top:18px;box-shadow:0 5px 18px #102b4610}
+.panel{background:white;border-radius:14px;padding:11px;margin-top:8px;box-shadow:0 5px 18px #102b4610}
+#customer-login .section-title{font-size:17px;margin:0 0 3px}#customer-login .small{font-size:11px;margin:2px 0 5px}#customer-login label{margin:5px 0 4px}#customer-login input{padding:9px 11px}#customer-login .primary{margin-top:7px;padding:10px 14px}
 label{display:block;font-weight:650;font-size:13px;margin:12px 0 6px}input,select,textarea{width:100%;padding:13px;border:1px solid #d8e0ea;border-radius:11px;font:inherit;background:#fff}
 textarea{min-height:84px;resize:vertical}.btn{display:inline-flex;justify-content:center;align-items:center;gap:8px;text-decoration:none;border:0;border-radius:12px;padding:13px 16px;font-weight:750;font-size:15px;cursor:pointer}
 .primary{background:var(--blue);color:white;width:100%;margin-top:14px}.whatsapp{background:#16a34a;color:white}.call{background:var(--gold);color:#182333}
@@ -37,7 +39,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <header>
  <div class="top">
   <img class="founder-photo" src="/founder(2).webp" alt="SRK ELECTRONIC Founder" fetchpriority="high">
-  <div class="brand-side"><div class="brand-copy"><h1>SRK ELECTRONIC</h1><p>Founder • Shahrukh Khan</p></div><img class="brand-icon" src="/icon.svg" alt="SRK ELECTRONIC Logo"></div>
+  
  </div>
  <div class="hero"><h2>आपकी सेवा में हमेशा तैयार</h2><p>SRK ELECTRONIC — सुरक्षित, तेज़ और भरोसेमंद सेवा, हर ज़रूरत में आपके साथ।</p></div>
  <div class="actions">
