@@ -509,14 +509,26 @@ function srkShowCategory(id){
  document.getElementById('srkFlowClose').onclick=()=>{srkFlow.hidden=true;srkSelectedCategory=null;};
 }
 function srkShowService(index){
- const cat=srkCatalog[srkSelectedCategory],item=cat.services[index];if(!item)return;
+ const cat=srkCatalog[srkSelectedCategory],item=cat?.services[index];if(!item)return;
  let body='';
- if(item.hp){body='<p class="flow-sub">स्वीकृत HP चुनें।</p><div class="flow-options">'+[['0.5 HP','₹500'],['1 HP','₹600'],['1.5 HP','₹650'],['2 HP','₹700'],['3 HP','₹800']].map(([hp,price])=>'<button type="button" class="flow-option" data-srk-hp="'+hp+'"><b>'+hp+'</b><small>'+price+'</small></button>').join('')+'</div>';}
- else if(item.unit){body='<div class="flow-note">प्रति यूनिट ₹500 • टाइमर बंद रहेगा। सामग्री SRK बिल में शामिल नहीं होगी।</div><label for="srkCoolerUnits">कितने Cooler?</label><input id="srkCoolerUnits" type="number" min="1" step="1" value="1" style="margin-top:5px"><p class="flow-sub" id="srkCoolerTotal">कुल सर्विस राशि: ₹500</p>';}
- else {body='<div class="flow-note">'+customerEsc(item.detail)+'<br>Actual Timer Billing; सामग्री ग्राहक स्वयं खरीदेगा और SRK बिल में शामिल नहीं होगी।</div>';}
- srkFlow.innerHTML='<h3>'+cat.icon+' '+customerEsc(item.name)+'</h3>'+body+'<button type="button" class="flow-back" id="srkFlowBack">← सर्विस बदलें</button>';
+ if(item.hp){body='<p class="flow-sub">स्वीकृत HP चुनें।</p><div class="flow-options">'+[['0.5 HP','₹500'],['1 HP','₹600'],['1.5 HP','₹650'],['2 HP','₹700'],['3 HP','₹800']].map(([hp,price])=>'<button type="button" class="flow-option" data-srk-hp="'+hp+'" data-srk-price="'+price.replace('₹','')+'"><b>'+hp+'</b><small>'+price+'</small></button>').join('')+'</div>';}
+ else if(item.unit){body='<div class="flow-note">प्रति यूनिट ₹500 • टाइमर बंद रहेगा। सामग्री SRK बिल में शामिल नहीं होगी।</div><label for="srkCoolerUnits">कितने Cooler?</label><input id="srkCoolerUnits" type="number" min="1" max="50" step="1" value="1" style="margin-top:5px"><p class="flow-sub" id="srkCoolerTotal">कुल सर्विस राशि: ₹500</p>';}
+ else {body='<div class="flow-note">'+customerEsc(item.detail)+'<br>सामग्री ग्राहक स्वयं खरीदेगा और SRK बिल में शामिल नहीं होगी।</div>'+(srkSelectedCategory==='motorpump'?'<div class="flow-note">इस Motor/Pump सर्विस में टाइमर बंद रहेगा।</div>':'<div class="flow-note">समय के अनुसार वास्तविक काम का बिल बनेगा।</div>');}
+ srkFlow.innerHTML='<h3>'+cat.icon+' '+customerEsc(item.name)+'</h3>'+body+'<button type="button" class="btn primary" id="srkContinueBooking" style="width:100%;margin-top:12px">आगे बढ़ें — बुकिंग फॉर्म भरें</button><button type="button" class="flow-back" id="srkFlowBack">← सर्विस बदलें</button>';
  if(item.hp)srkFlow.querySelectorAll('[data-srk-hp]').forEach(btn=>btn.onclick=()=>{srkFlow.querySelectorAll('[data-srk-hp]').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');});
- if(item.unit){const inp=document.getElementById('srkCoolerUnits');inp.oninput=()=>{const n=Math.max(1,Math.floor(Number(inp.value)||1));document.getElementById('srkCoolerTotal').textContent='कुल सर्विस राशि: ₹'+(n*500).toLocaleString('en-IN');};}
+ if(item.unit){const inp=document.getElementById('srkCoolerUnits');inp.oninput=()=>{const n=Math.max(1,Math.min(50,Math.floor(Number(inp.value)||1)));document.getElementById('srkCoolerTotal').textContent='कुल सर्विस राशि: ₹'+(n*500).toLocaleString('en-IN');};}
+ document.getElementById('srkContinueBooking').onclick=()=>{
+  const hpButton=srkFlow.querySelector('[data-srk-hp].selected');
+  if(item.hp&&!hpButton){alert('कृपया Motor/Pump की HP चुनें।');return;}
+  let serviceLabel=cat.name+' — '+item.name,summary='';
+  if(item.hp){serviceLabel+=' ('+hpButton.dataset.srkHp+')';summary='चुनी गई HP: '+hpButton.dataset.srkHp+'; स्वीकृत सर्विस दर: ₹'+hpButton.dataset.srkPrice+'; Motor/Pump टाइमर बंद रहेगा।';}
+  else if(item.unit){const raw=Number(document.getElementById('srkCoolerUnits').value);if(!Number.isInteger(raw)||raw<1||raw>50){alert('कृपया 1 से 50 तक Cooler की सही संख्या चुनें।');return;}serviceLabel+=' ('+raw+' यूनिट)';summary='Cooler की संख्या: '+raw+'; दर: ₹500 प्रति यूनिट; कुल सर्विस राशि: ₹'+(raw*500)+'; टाइमर बंद रहेगा।';}
+  else {summary=(item.detail||'')+'; वास्तविक काम के समय के अनुसार बिल बनेगा।';}
+  const serviceSelect=document.getElementById('service');let option=Array.from(serviceSelect.options).find(o=>o.value===serviceLabel);if(!option){option=document.createElement('option');option.value=serviceLabel;option.textContent=serviceLabel;serviceSelect.appendChild(option);}serviceSelect.value=serviceLabel;
+  const details=document.getElementById('details'),existing=details.value.trim();details.value=[existing,summary,'सामग्री ग्राहक स्वयं खरीदेगा; SRK बिल में शामिल नहीं होगी।'].filter(Boolean).join('\n');
+  document.getElementById('booking').scrollIntoView({behavior:'smooth',block:'start'});
+  const nameInput=document.getElementById('name');if(!nameInput.value.trim())nameInput.focus();
+ };
  document.getElementById('srkFlowBack').onclick=()=>srkShowCategory(srkSelectedCategory);
 }
 document.querySelectorAll('[data-srk-cat]').forEach(btn=>btn.addEventListener('click',()=>srkShowCategory(btn.dataset.srkCat)));
