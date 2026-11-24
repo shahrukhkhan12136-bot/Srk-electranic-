@@ -33,6 +33,18 @@ textarea{min-height:84px;resize:vertical}.btn{display:inline-flex;justify-conten
 .pay-note{background:#fff7e6;border:1px solid #ffe0a3;border-radius:10px;padding:10px;text-align:left;font-size:13px;line-height:1.5;margin:12px 0}.coverage{display:flex;flex-wrap:wrap;gap:8px}.pill{background:#eaf2ff;color:#164b91;padding:8px 11px;border-radius:99px;font-size:13px;font-weight:650}
 footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 @media(min-width:600px){header{padding:30px max(24px,calc((100% - 720px)/2)) 36px}.hero h2{font-size:32px}}
+
+.category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0 14px}
+.category-tile{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:112px;padding:10px 5px;background:linear-gradient(155deg,#fff,#f2f7fc);border:1px solid #dce6f0;border-radius:15px;box-shadow:0 4px 12px #102b4610;color:#17324d;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.category-tile:active{transform:scale(.97)}.cat-art{display:grid;place-items:center;width:43px;height:43px;border-radius:13px;background:linear-gradient(145deg,#e5efff,#fff);font-size:25px;box-shadow:inset 0 0 0 1px #d8e5f4}
+.category-tile b{font-size:11px;line-height:1.2;text-align:center}.category-tile small{font-size:9px;line-height:1.2;color:#66788c;text-align:center}.cat-arrow{position:absolute;right:7px;top:5px;color:#9aaabd;font-size:17px}
+.category-flow{margin:8px 0 14px;padding:13px;border:1px solid #dce6f0;border-radius:15px;background:#fff;box-shadow:0 5px 16px #102b4610}
+.category-flow h3{font-size:16px;margin:0 0 5px;color:#102a43}.category-flow .flow-sub{font-size:12px;color:#68798c;margin:0 0 10px}
+.flow-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.flow-option{border:1px solid #dce6f0;border-radius:11px;background:#f7faff;padding:11px 9px;text-align:left;color:#16324f;font:inherit;font-size:12px;font-weight:700;cursor:pointer;min-height:48px}.flow-option small{display:block;font-weight:400;color:#637184;font-size:10px;margin-top:4px;line-height:1.3}
+.flow-option.selected{border-color:#1764a5;background:#eaf3ff;box-shadow:0 0 0 2px #1764a51a}
+.flow-back{border:0;background:transparent;color:#1764a5;font-weight:700;padding:8px 2px;margin-top:8px;cursor:pointer}
+.flow-note{background:#fff8e8;border:1px solid #f2d89c;border-radius:10px;padding:10px;margin-top:10px;font-size:12px;color:#684b12}
+@media(max-width:370px){.category-grid{gap:6px}.category-tile{min-height:102px;padding:8px 3px}.cat-art{width:38px;height:38px;font-size:22px}.category-tile b{font-size:10px}.category-tile small{font-size:8px}}
 </style>
 </head>
 <body>
@@ -62,7 +74,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
   <p class="small" id="customerAuthMessage" role="status" aria-live="polite"></p>
  </section>
  <section class="panel" id="customer-dashboard" style="display:none">
-  <div class="dashboard-logo-wrap"><img class="dashboard-top-logo" src="/icon.svg" alt="SRK ELECTRONIC Logo"></div><div class="dashboard-brandline"><img class="dashboard-founder" src="/founder(2).webp" alt="Founder"><div><div class="dashboard-message">आपकी सेवा में हमेशा तैयार</div><div class="dashboard-sub">SRK ELECTRONIC — सुरक्षित • तेज़ • भरोसेमंद</div></div></div><div class="category-grid"><div class="category-tile">⚡<b>Electrician</b></div><div class="category-tile">🔧<b>Plumber</b></div><div class="category-tile">🎨<b>Painter</b></div><div class="category-tile">❄️<b>AC & Fridge Technician</b></div><div class="category-tile">⚙️<b>Motor & Pump Technician</b></div><div class="category-tile">🌀<b>Cooler Technician</b></div></div>
+  <div class="dashboard-logo-wrap"><img class="dashboard-top-logo" src="/icon.svg" alt="SRK ELECTRONIC Logo"></div><div class="dashboard-brandline"><img class="dashboard-founder" src="/founder(2).webp" alt="Founder"><div><div class="dashboard-message">आपकी सेवा में हमेशा तैयार</div><div class="dashboard-sub">SRK ELECTRONIC — सुरक्षित • तेज़ • भरोसेमंद</div></div></div><div class="category-grid" id="srkCategoryGrid"><button type="button" class="category-tile" data-srk-cat="electrician"><span class="cat-art">⚡</span><b>Electrician</b><small>Electrical work</small><span class="cat-arrow">›</span></button><button type="button" class="category-tile" data-srk-cat="plumber"><span class="cat-art">🔧</span><b>Plumber</b><small>Plumbing work</small><span class="cat-arrow">›</span></button><button type="button" class="category-tile" data-srk-cat="painter"><span class="cat-art">🎨</span><b>Painter</b><small>Painting work</small><span class="cat-arrow">›</span></button><button type="button" class="category-tile" data-srk-cat="acfridge"><span class="cat-art">❄️</span><b>AC & Fridge</b><small>Repair & installation</small><span class="cat-arrow">›</span></button><button type="button" class="category-tile" data-srk-cat="motorpump"><span class="cat-art">⚙️</span><b>Motor & Pump</b><small>Checking • Inspection • Fitting</small><span class="cat-arrow">›</span></button><button type="button" class="category-tile" data-srk-cat="cooler"><span class="cat-art">🌀</span><b>Cooler</b><small>Cooler service</small><span class="cat-arrow">›</span></button></div><section id="srkCategoryFlow" class="category-flow" hidden aria-live="polite"></section>
   <h2 class="section-title" style="margin-top:0">मेरी बुकिंग</h2>
   <p class="small" id="customerSignedIn"></p>
   <button class="btn primary" type="button" id="customerRefresh">बुकिंग फिर से देखें</button>
@@ -413,6 +425,54 @@ document.getElementById('electricianForm').addEventListener('submit', async func
   } catch (err) { alert(`${err.message}\nआवेदन डेटाबेस में सेव नहीं हुआ है। आपकी भरी हुई जानकारी इसी फॉर्म में सुरक्षित है। कृपया दोबारा कोशिश करें या ऊपर दिए गए कॉल/WhatsApp बटन से संपर्क करें।`); }
   finally { button.disabled = false; button.textContent = 'इलेक्ट्रिशियन आवेदन भेजें'; }
 });
+
+
+const srkCatalog = {
+ electrician:{name:'Electrician',icon:'⚡',services:[
+  {name:'Basic',detail:'Technician ₹100/hour • Helper उपलब्ध नहीं',price:'Technician ₹100/hour; Helper नहीं'},
+  {name:'Residential / Office Wiring',detail:'Technician ₹150/hour • Helper ₹100/hour'},
+  {name:'Factory / Industrial Expert',detail:'Technician ₹300/hour • Helper ₹125/hour'},
+  {name:'Master Electrician',detail:'Technician ₹700/hour • Helper ₹200/hour'}]},
+ plumber:{name:'Plumber',icon:'🔧',services:[
+  {name:'Basic',detail:'Technician ₹100/hour • Helper ₹50/hour'},
+  {name:'Expert',detail:'Technician ₹150/hour • Helper ₹75/hour'},
+  {name:'Master / Industrial',detail:'Technician ₹225/hour • Helper ₹100/hour'}]},
+ painter:{name:'Painter',icon:'🎨',services:[
+  {name:'Basic',detail:'Technician ₹100/hour • Helper ₹50/hour'},
+  {name:'Expert',detail:'Technician ₹150/hour • Helper ₹75/hour'},
+  {name:'Master / Industrial',detail:'Technician ₹225/hour • Helper ₹100/hour'}]},
+ acfridge:{name:'AC & Fridge Technician',icon:'❄️',services:[
+  {name:'AC Repair',detail:'Technician ₹250/hour • Optional Helper ₹150/hour • दोनों ₹400/hour'},
+  {name:'AC Installation',detail:'Technician ₹250/hour • Optional Helper ₹150/hour • दोनों ₹400/hour'},
+  {name:'Fridge Repair',detail:'Technician ₹200/hour • Helper ₹120/hour'}]},
+ motorpump:{name:'Motor & Pump Technician',icon:'⚙️',services:[
+  {name:'Motor Checking',hp:true},{name:'Motor Inspection',hp:true},{name:'Motor Fitting',hp:true},
+  {name:'Pump Checking',hp:true},{name:'Pump Inspection',hp:true},{name:'Pump Fitting',hp:true}]},
+ cooler:{name:'Cooler Technician',icon:'🌀',services:[
+  {name:'Cooler Service',detail:'₹500 प्रति Unit • Timer Disabled',unit:true}]}
+};
+let srkSelectedCategory=null;
+const srkFlow=document.getElementById('srkCategoryFlow');
+function srkShowCategory(id){
+ const cat=srkCatalog[id];if(!cat)return;srkSelectedCategory=id;
+ srkFlow.hidden=false;
+ srkFlow.innerHTML='<h3>'+cat.icon+' '+cat.name+'</h3><p class="flow-sub">अपनी जरूरत के अनुसार सर्विस चुनें</p><div class="flow-options">'+cat.services.map((x,i)=>'<button type="button" class="flow-option" data-srk-service="'+i+'">'+customerEsc(x.name)+(x.detail?'<small>'+customerEsc(x.detail)+'</small>':'<small>HP के अनुसार तय रेट</small>')+'</button>').join('')+'</div><button type="button" class="flow-back" id="srkFlowClose">← सभी कैटेगरी देखें</button>';
+ srkFlow.scrollIntoView({behavior:'smooth',block:'nearest'});
+ srkFlow.querySelectorAll('[data-srk-service]').forEach(btn=>btn.addEventListener('click',()=>srkShowService(+btn.dataset.srkService)));
+ document.getElementById('srkFlowClose').onclick=()=>{srkFlow.hidden=true;srkSelectedCategory=null;};
+}
+function srkShowService(index){
+ const cat=srkCatalog[srkSelectedCategory],item=cat.services[index];if(!item)return;
+ let body='';
+ if(item.hp){body='<p class="flow-sub">स्वीकृत HP चुनें।</p><div class="flow-options">'+[['0.5 HP','₹500'],['1 HP','₹600'],['1.5 HP','₹650'],['2 HP','₹700'],['3 HP','₹800']].map(([hp,price])=>'<button type="button" class="flow-option" data-srk-hp="'+hp+'"><b>'+hp+'</b><small>'+price+'</small></button>').join('')+'</div>';}
+ else if(item.unit){body='<div class="flow-note">प्रति यूनिट ₹500 • टाइमर बंद रहेगा। सामग्री SRK बिल में शामिल नहीं होगी।</div><label for="srkCoolerUnits">कितने Cooler?</label><input id="srkCoolerUnits" type="number" min="1" step="1" value="1" style="margin-top:5px"><p class="flow-sub" id="srkCoolerTotal">कुल सर्विस राशि: ₹500</p>';}
+ else {body='<div class="flow-note">'+customerEsc(item.detail)+'<br>Actual Timer Billing; सामग्री ग्राहक स्वयं खरीदेगा और SRK बिल में शामिल नहीं होगी।</div>';}
+ srkFlow.innerHTML='<h3>'+cat.icon+' '+customerEsc(item.name)+'</h3>'+body+'<button type="button" class="flow-back" id="srkFlowBack">← सर्विस बदलें</button>';
+ if(item.hp)srkFlow.querySelectorAll('[data-srk-hp]').forEach(btn=>btn.onclick=()=>{srkFlow.querySelectorAll('[data-srk-hp]').forEach(x=>x.classList.remove('selected'));btn.classList.add('selected');});
+ if(item.unit){const inp=document.getElementById('srkCoolerUnits');inp.oninput=()=>{const n=Math.max(1,Math.floor(Number(inp.value)||1));document.getElementById('srkCoolerTotal').textContent='कुल सर्विस राशि: ₹'+(n*500).toLocaleString('en-IN');};}
+ document.getElementById('srkFlowBack').onclick=()=>srkShowCategory(srkSelectedCategory);
+}
+document.querySelectorAll('[data-srk-cat]').forEach(btn=>btn.addEventListener('click',()=>srkShowCategory(btn.dataset.srkCat)));
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
