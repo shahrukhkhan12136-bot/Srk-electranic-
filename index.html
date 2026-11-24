@@ -88,7 +88,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 <nav class="customer-bottom-nav" aria-label="मुख्य मेनू"><button type="button" data-customer-tab="home" class="active"><span>⌂</span><small>होम</small></button><button type="button" data-customer-tab="bookings"><span>▣</span><small>My Booking</small></button><button type="button" data-customer-tab="wallet"><span>₹</span><small>वॉलेट</small></button><button type="button" data-customer-tab="help"><span>?</span><small>हेल्प</small></button><button type="button" data-customer-tab="profile"><span>♙</span><small>प्रोफाइल</small></button></nav>
  </section>>
 
- <h2 class="section-title">हमारी सेवाएँ</h2>
+ <div id="customerPublicHomeContent"><h2 class="section-title">हमारी सेवाएँ</h2>
  <div class="grid">
   <article class="card"><div class="icon">⚡</div><h3>घर की वायरिंग</h3><p>नई वायरिंग और इलेक्ट्रिकल फिटिंग से जुड़ी सेवाएँ।</p></article>
   <article class="card"><div class="icon">🔧</div><h3>इलेक्ट्रिकल रिपेयर</h3><p>बिजली और घरेलू इलेक्ट्रिकल समस्याओं की मरम्मत।</p></article>
@@ -157,6 +157,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
    <a class="btn whatsapp" href="https://wa.me/919920904161" target="_blank" rel="noopener">मैसेज करें</a>
   </div>
  </section>
+</div>
 </main>
 <footer>© <span id="year"></span> SRK ELECTRONIC · Shahrukh Khan</footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -255,7 +256,7 @@ async function syncCustomerSession() {
 
   }
 }
-function setCustomerTab(tab){document.querySelectorAll('[data-customer-panel]').forEach(el=>{el.hidden=el.dataset.customerPanel!==tab;});document.querySelectorAll('[data-customer-tab]').forEach(el=>el.classList.toggle('active',el.dataset.customerTab===tab));document.getElementById('customerMoreMenu').hidden=true;document.getElementById('customerMoreButton').setAttribute('aria-expanded','false');if(tab==='bookings'||tab==='wallet')loadCustomerBookings();if(tab==='profile'&&customerSb)customerSb.auth.getSession().then(({data})=>{document.getElementById('customerProfilePhone').textContent=data.session?.user?.phone||'उपलब्ध नहीं';});}
+function setCustomerTab(tab){document.querySelectorAll('[data-customer-panel]').forEach(el=>{el.hidden=el.dataset.customerPanel!==tab;});const publicHome=document.getElementById('customerPublicHomeContent');if(publicHome)publicHome.hidden=tab!=='home';document.querySelectorAll('[data-customer-tab]').forEach(el=>el.classList.toggle('active',el.dataset.customerTab===tab));document.getElementById('customerMoreMenu').hidden=true;document.getElementById('customerMoreButton').setAttribute('aria-expanded','false');if(tab==='bookings'||tab==='wallet')loadCustomerBookings();if(tab==='profile'&&customerSb)customerSb.auth.getSession().then(({data})=>{document.getElementById('customerProfilePhone').textContent=data.session?.user?.phone||'उपलब्ध नहीं';});}
 function toggleCustomerMore(){const menu=document.getElementById('customerMoreMenu');menu.hidden=!menu.hidden;document.getElementById('customerMoreButton').setAttribute('aria-expanded',String(!menu.hidden));}
 async function raiseCustomerSOS(){const status=document.getElementById('customerSOSStatus');if(!customerSb){status.textContent='SOS सेवा के लिए लॉगिन आवश्यक है।';return;}if(!confirm('क्या आप वास्तविक इमरजेंसी SOS अलर्ट भेजना चाहते हैं?'))return;const {data:sessionData}=await customerSb.auth.getSession();if(!sessionData.session){status.textContent='पहले OTP लॉगिन करें।';return;}const note=window.prompt('इमरजेंसी का संक्षिप्त कारण लिखें:','Emergency SOS');if(note===null)return;status.textContent='GPS और इमरजेंसी अलर्ट भेजे जा रहे हैं…';let coords=null;if(navigator.geolocation){coords=await new Promise(resolve=>navigator.geolocation.getCurrentPosition(p=>resolve({latitude:p.coords.latitude,longitude:p.coords.longitude}),()=>resolve(null),{enableHighAccuracy:true,timeout:10000,maximumAge:60000}));}const bookingId=document.getElementById('customerSOSBooking').value||null;const {data,error}=await customerSb.rpc('srk_raise_emergency_alert',{p_booking_id:bookingId,p_alert_type:'safety',p_message:note.trim()||'Emergency SOS',p_latitude:coords?.latitude??null,p_longitude:coords?.longitude??null});if(error){status.textContent='SOS अलर्ट नहीं भेजा गया: '+error.message+'। जरूरत हो तो स्थानीय आपातकालीन सेवा से सीधे संपर्क करें।';return;}status.textContent='SOS अलर्ट दर्ज हुआ। संदर्भ: '+(data?.id||'रिकॉर्ड उपलब्ध')+'. GPS '+(coords?'शामिल है।':'उपलब्ध नहीं था।')+' Admin की प्रतिक्रिया का इंतज़ार करें।';}
 async function customerSendOtp() {
