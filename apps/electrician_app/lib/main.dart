@@ -106,6 +106,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
   final client = Supabase.instance.client;
   Map<String, dynamic>? profile, wallet, paymentCycle;
   List<Map<String, dynamic>> rateCardCategories = [];
+  List<Map<String, dynamic>> payoutRequests = [];
   List<Map<String, dynamic>> offers = [], offerDetails = [], earnings = [], offerPriceDetails = [], bookingDetails = [];
   bool loading = true;
   String? error;
@@ -134,6 +135,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         wallet = null;
         paymentCycle = null;
         rateCardCategories = [];
+        payoutRequests = [];
         return;
       }
 
@@ -240,6 +242,14 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         wallet = null;
         loadWarnings.add('वॉलेट का बैलेंस अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
       }
+
+      try {
+        final payoutRows = await client.rpc('srk_worker_get_my_payout_requests');
+        payoutRequests = List<Map<String, dynamic>>.from(payoutRows as List);
+      } catch (_) {
+        payoutRequests = [];
+        loadWarnings.add('पेआउट रिक्वेस्ट की स्थिति अभी लोड नहीं हो पाई। Refresh करके फिर कोशिश करें।');
+      }
     } catch (_) {
       error = 'टेक्नीशियन डैशबोर्ड लोड नहीं हो सका। आवश्यक Worker API migration लागू होने और इंटरनेट की जाँच करें।';
     } finally {
@@ -249,6 +259,95 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
 
 
 
+
+  String _money(dynamic value) => '₹' + ((value as num?)?.toDouble() ?? double.tryParse(value?.toString() ?? '') ?? 0).toStringAsFixed(2);
+
+  Future<void> openFinancialDetails(Map<String, dynamic> earning) async {
+    final bookingId = earning['booking_id']?.toString();
+    if (bookingId == null || bookingId.isEmpty) return;
+    try {
+      final result = await client.rpc('srk_worker_get_my_booking_financial_details', params: {'p_booking_id': bookingId});
+      final d = Map<String, dynamic>.from(result as Map);
+      if (!mounted) return;
+      final isCash = d['payment_method'] == 'cash';
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('पूरा बिल और कमाई — ' + (d['bill_number']?.toString() ?? bookingId)),
+          content: SizedBox(
+            width: 460,
+            child: SingleChildScrollView(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('ग्राहक का कुल बिल: ' + _money(d['bill_total']), style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('ग्राहक ने वास्तव में दिया: ' + _money(d['customer_paid_amount'])),
+                Text('भुगतान तरीका: ' + (isCash ? 'Cash' : 'Online')),
+                const Divider(),
+                Text('कुल लेबर बिल: ' + _money(d['labour_total'])),
+                Text('कंपनी प्रतिशत: ' + ((d['commission_rate'] as num?)?.toStringAsFixed(2) ?? '0.00') + '%'),
+                Text('कंपनी का कुल हिस्सा: ' + _money(d['company_commission_total'])),
+                Text('सभी Workers की कुल कमाई: ' + _money(d['worker_earnings_total'])),
+                const Divider(),
+                Text('आपका कुल Labour हिस्सा: ' + _money(d['my_gross_allocation'])),
+                Text('आपकी कमाई में कंपनी का हिस्सा: ' + _money(d['my_company_commission'])),
+                Text('आपकी 85% कमाई: ' + _money(d['my_net_earning']), style: const TextStyle(fontWeight: FontWeight.bold)),
+                if (isCash) ...[
+                  Text('आपको ग्राहक से नकद मिला: ' + _money(d['my_net_earning'])),
+                  Text('कंपनी को Wallet में देना बाकी: −' + _money(d['my_cash_commission_due'])),
+                ] else ...[
+                  Text('आपके Wallet में जमा: ' + _money(d['my_wallet_credit'])),
+                ],
+                Text('कंपनी का कुल Cash बकाया: ' + _money(d['cash_commission_outstanding'])),
+                Text('भुगतान स्थिति: ' + (d['payment_status']?.toString() ?? '—')),
+                const Divider(),
+                const Text('बिल के आइटम', style: TextStyle(fontWeight: FontWeight.bold)),
+                ...List<Map<String, dynamic>>.from(d['bill_items'] as List? ?? const []).map((item) =>
+                  Padding(padding: const EdgeInsets.only(top: 5), child: Text(
+                    (item['description']?.toString() ?? item['item_type']?.toString() ?? 'सेवा') +
+                    ' — ' + _money(item['line_total'])
+                  ))
+                ),
+              ],
+            )),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('बंद करें'))],
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('पूरा बिल नहीं खुल सका। Refresh करके फिर कोशिश करें।')));
+    }
+  }
+
+  Future<void> requestAvailablePayout() async {
+    final amount = (wallet?['available_for_payout'] as num?)?.toDouble() ?? 0;
+    if (amount <= 0 || wallet?['payout_blocked'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('अभी Payout के लिए उपलब्ध रकम नहीं है या कमाई समीक्षा में रुकी हुई है।')));
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Payout Request भेजें?'),
+        content: Text('आपकी उपलब्ध रकम ' + _money(amount) + ' का Payout Request Admin को भेजा जाएगा। Admin सत्यापन और वास्तविक बैंक/UPI भुगतान के बाद UTR दर्ज करेगा।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('अभी नहीं')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Request भेजें')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await client.rpc('srk_worker_request_payout', params: {'p_amount': amount});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payout Request Admin को भेज दी गई।')));
+      await load();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payout Request नहीं भेजी गई। उपलब्ध Wallet रकम और बैंक/UPI विवरण जाँचें।')));
+    }
+  }
 
   Future<void> openBookingMap(Map<String,dynamic> booking) async {
     final lat=booking['location_lat'], lng=booking['location_lng'];
@@ -576,9 +675,46 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
               const SizedBox(width: 8),
               Expanded(child: _Metric(label: 'Paid कमाई', value: '₹' + earned.toStringAsFixed(0))),
             ]),
-            Card(child: ListTile(leading: const Icon(Icons.account_balance_wallet_outlined),
-              title: Text('वॉलेट बैलेंस: ₹' + ((wallet?['balance'] as num?)?.toStringAsFixed(2) ?? '0.00')),
-              subtitle: const Text('बैंक पेआउट अभी बंद है; Route onboarding और live approval बाकी है।'))),
+            if (earnings.isNotEmpty) ...[
+              Text('हर बुकिंग का पूरा बिल और कमाई', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              ...earnings.where((e) => e['booking_status'] == 'completed').map((e) => Card(
+                child: ListTile(
+                  leading: const Icon(Icons.receipt_long_outlined),
+                  title: Text(e['service_type']?.toString() ?? 'पूरी हुई बुकिंग'),
+                  subtitle: Text('बुकिंग: ' + (e['booking_id']?.toString() ?? '—') + ' • आपकी कमाई: ' + _money(e['net_earning']) + ' • ' + (e['payment_method']?.toString() ?? 'भुगतान लंबित')),
+                  trailing: IconButton(icon: const Icon(Icons.visibility_outlined), tooltip: 'पूरा बिल देखें', onPressed: () => openFinancialDetails(e)),
+                ),
+              )),
+            ],
+            Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('मेरा Worker Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                Text('Payout के लिए उपलब्ध: ' + _money(wallet?['available_for_payout']), style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('कंपनी का Cash कमीशन बकाया: ' + _money(wallet?['cash_commission_outstanding'])),
+                Text('रुकी हुई कमाई: ' + _money(wallet?['held_earnings'])),
+                if (((wallet?['recovery_debt'] as num?)?.toDouble() ?? 0) > 0)
+                  Text('पुराना Cash कमीशन समायोजित होना बाकी: ' + _money(wallet?['recovery_debt']), style: const TextStyle(color: Colors.red)),
+                const SizedBox(height: 10),
+                SizedBox(width: double.infinity, child: FilledButton.icon(
+                  onPressed: loading || ((wallet?['available_for_payout'] as num?)?.toDouble() ?? 0) <= 0 || wallet?['payout_blocked'] == true ? null : requestAvailablePayout,
+                  icon: const Icon(Icons.account_balance_wallet),
+                  label: const Text('उपलब्ध रकम का Payout Request भेजें'),
+                )),
+              ],
+            ))),
+            if (payoutRequests.isNotEmpty) ...[
+              Text('मेरी Payout Requests', style: Theme.of(context).textTheme.titleLarge),
+              ...payoutRequests.map((r) => Card(child: ListTile(
+                leading: Icon(r['status'] == 'paid' ? Icons.check_circle : Icons.hourglass_top),
+                title: Text(_money(r['approved_amount'] ?? r['requested_amount']) + ' • ' + (r['status']?.toString() ?? '—')),
+                subtitle: Text((r['payout_code']?.toString() ?? '') +
+                  (r['payment_reference']?.toString().isNotEmpty == true ? ' • UTR: ' + r['payment_reference'].toString() : '') +
+                  (r['admin_note']?.toString().isNotEmpty == true ? ' • ' + r['admin_note'].toString() : '')),
+              ))),
+            ],
             const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('ग्राहक का पूरा मोबाइल नंबर केवल आपकी नियुक्त बुकिंग में दिखता है।'))),
           ],
         ]),
