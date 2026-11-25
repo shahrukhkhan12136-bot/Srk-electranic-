@@ -32,3 +32,15 @@ test('Existing legacy payout path is not overwritten',()=>{
 test('SQL migration contains balanced function delimiters',()=>{
  assert.equal((sql.match(/\$\$/g)||[]).length%2,0);
 });
+
+const serviceOnly=fs.readFileSync('supabase/migrations/20261125161000_service_only_master_technician_payouts.sql','utf8');
+test('Master Technician wallet and new payout requests count service net only',()=>{
+ assert.match(serviceOnly,/NEW\.materials_reimbursement_paise:=0/);
+ assert.match(serviceOnly,/NEW\.total_payable_paise:=NEW\.labour_payable_paise/);
+ assert.match(serviceOnly,/'earned_paise',coalesce\(sum\(p\.labour_payable_paise\),0\)/);
+ assert.match(serviceOnly,/'pending_paise',coalesce\(sum\(p\.labour_payable_paise\) FILTER\(WHERE p\.payout_status='pending'\),0\)/);
+ assert.match(serviceOnly,/sum\(labour_payable_paise\)/);
+ assert.match(serviceOnly,/SELECT v_req,id,labour_payable_paise/);
+ assert.doesNotMatch(serviceOnly,/sum\(total_payable_paise\)/);
+ assert.doesNotMatch(serviceOnly,/UPDATE public\.srk_master_technician_payables SET materials_reimbursement_paise/);
+});
