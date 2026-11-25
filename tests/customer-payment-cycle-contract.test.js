@@ -11,6 +11,7 @@ test('Customer payment screen hides Cash and explains Online-only booking cycles
   assert.match(customer, /if \(!onlineOnly\)/);
   assert.match(customer, /केवल Online भुगतान होगा/);
   assert.match(customer, /cycle_unverified/);
+  assert.match(customer, /list\.isNotEmpty\s*\?\s*list\.first\s*:\s*\{'online_required': true, 'cycle_unverified': true\}/);
 });
 
 test('Customer cycle RPC only exposes the signed-in customer own completed booking', () => {
