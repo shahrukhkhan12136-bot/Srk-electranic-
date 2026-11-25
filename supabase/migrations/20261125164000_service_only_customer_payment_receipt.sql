@@ -24,6 +24,9 @@ BEGIN
  IF b.srk_service_category_code IS NOT NULL THEN
   SELECT * INTO f FROM public.srk_booking_final_bills WHERE booking_id=p_booking_id;
   SELECT * INTO p FROM public.srk_master_booking_payments WHERE booking_id=p_booking_id AND payment_status='paid';
+  IF NOT EXISTS(SELECT 1 FROM public.srk_booking_tax_snapshots WHERE booking_id=p_booking_id) THEN
+   RAISE EXCEPTION 'MASTER_TAX_SNAPSHOT_REQUIRED' USING ERRCODE='55000';
+  END IF;
   IF NOT FOUND OR f.id IS NULL OR p.final_bill_id<>f.id
    OR p.amount_paise<>(SELECT t.total_due_paise FROM public.srk_booking_tax_snapshots t WHERE t.booking_id=p_booking_id)
    OR round(b.amount_paid*100)::bigint<>p.amount_paise OR f.subtotal_paise<>f.labour_amount_paise THEN
