@@ -1117,7 +1117,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             initialValue: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
-            items: [1,2,3].map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
+            items: List.generate(10, (i) => i + 1).map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
             onChanged: (v) { setState(() { _technicianCount=v??1; _pricePreview=null; }); },
           ),
           const SizedBox(height: 8),
@@ -1137,9 +1137,8 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
               initialValue: _durationHours,
               decoration: _decoration('काम की कुल अवधि (घंटे / दिन)'),
               items: [
-                const DropdownMenuItem(value: 1, child: Text('1 घंटा')),
-                const DropdownMenuItem(value: 3, child: Text('3 घंटे')),
-                const DropdownMenuItem(value: 8, child: Text('8 घंटे')),
+                ...List.generate(23, (i) => i + 1).map((hours) =>
+                  DropdownMenuItem(value: hours, child: Text('$hours घंटे'))),
                 ...List.generate(60, (i) => i + 1).map((days) =>
                   DropdownMenuItem(value: days * 24, child: Text('$days दिन'))),
               ],
