@@ -66,7 +66,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         _client.from('srk_service_types').select('id,category_id,service_name,sort_order').eq('is_active', true).order('sort_order'),
         _client.from('srk_service_skills').select('id,service_type_id,skill_name,sort_order').eq('is_active', true).order('sort_order'),
         _client.from('srk_skill_levels').select('id,category_id,level_name,sort_order').eq('is_active', true).order('sort_order'),
-        _client.from('srk_service_pricing_rules').select('id,category_id,service_type_id,pricing_unit,technician_rate,helper_rate'),
+        _client.from('srk_service_pricing_rules').select('id,category_id,service_type_id,pricing_unit,technician_rate,helper_rate,effective_from,effective_to'),
         _client.from('srk_service_pricing_hp_tiers').select('pricing_rule_id,motor_hp'),
         _client.from('srk_service_rates').select('category_id,service_type_id,skill_level_id,technician_hourly_rate,helper_hourly_rate,rate_status,effective_from,effective_to').eq('rate_status','approved'),
       ]);
@@ -91,6 +91,13 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     }
   }
 
+  bool _isCurrent(Map<String, dynamic> row) {
+    final now = DateTime.now().toUtc();
+    final from = DateTime.tryParse(row['effective_from']?.toString() ?? '');
+    final to = DateTime.tryParse(row['effective_to']?.toString() ?? '');
+    return (from == null || !from.isAfter(now)) && (to == null || to.isAfter(now));
+  }
+
   List<Map<String, dynamic>> get _availableServices => _services.where((service) {
     if (service['category_id'] != _category?['id']) return false;
     final levelId = _level?['id'];
@@ -98,11 +105,11 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       rate['category_id'] == _category?['id'] &&
       rate['service_type_id'] == service['id'] &&
       rate['skill_level_id'] == levelId &&
-      rate['rate_status'] == 'approved');
+      rate['rate_status'] == 'approved' && _isCurrent(rate));
     final hasFixedRule = _rules.any((rule) =>
       rule['category_id'] == _category?['id'] &&
       rule['service_type_id'] == service['id'] &&
-      ['per_item', 'motor_hp'].contains(rule['pricing_unit']));
+      ['per_item', 'motor_hp'].contains(rule['pricing_unit']) && _isCurrent(rule));
     return hasApprovedRate || hasFixedRule;
   }).toList();
   List<Map<String, dynamic>> get _availableSkills =>
@@ -220,7 +227,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
             setState(() {
               _service = _availableServices.firstWhere((x) => x['id'].toString() == id);
               _skill = null;
-              final matches = _rules.where((x) => x['service_type_id'] == id && x['category_id'] == _category?['id']).toList();
+              final matches = _rules.where((x) => x['service_type_id'] == id && x['category_id'] == _category?['id'] && _isCurrent(x)).toList();
               _rule = matches.isEmpty ? null : matches.first;
               _motorHp = null;
             });
