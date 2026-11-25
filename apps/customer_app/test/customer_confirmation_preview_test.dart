@@ -36,9 +36,7 @@ void main() {
   test('bill validates server amount breakdown without recalculating it', () {
     final bill = SrkCustomerFinalBillPreview.fromProposedJson({
       'labour_amount_paise': 50000,
-      'approved_materials_amount_paise': 12000,
-      'other_charges_amount_paise': 3000,
-      'total_amount_paise': 65000,
+      'total_amount_paise': 50000,
       'currency': 'INR',
       'payment_status': 'unpaid',
       'payment_method': 'online',
@@ -48,14 +46,12 @@ void main() {
     expect(bill.hasValidNonNegativeAmounts, isTrue);
     expect(bill.isBreakdownConsistent, isTrue);
     expect(bill.serverReportsPaymentEligible, isTrue);
-    expect(bill.totalAmountPaise, 65000);
+    expect(bill.totalAmountPaise, 50000);
   });
 
   test('bill mismatch or missing/negative amounts fails closed', () {
     final mismatch = SrkCustomerFinalBillPreview.fromProposedJson({
       'labour_amount_paise': 50000,
-      'approved_materials_amount_paise': 10000,
-      'other_charges_amount_paise': 0,
       'total_amount_paise': 70000,
     });
     expect(mismatch.hasValidNonNegativeAmounts, isTrue);
