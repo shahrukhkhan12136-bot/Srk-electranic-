@@ -37,7 +37,14 @@ returns table (
   final_bill_id uuid,
   final_bill_number text,
   final_bill_total numeric,
-  final_bill_status text
+  final_bill_status text,
+  quote_status text,
+  service_charge numeric,
+  quoted_amount numeric,
+  quote_note text,
+  preferred_date date,
+  preferred_time text,
+  work_details text
 )
 language plpgsql
 stable
@@ -97,7 +104,14 @@ begin
     case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
       then fb.total_amount else null end,
     case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
-      then fb.status else null end
+      then fb.status else null end,
+    b.quote_status,
+    b.service_charge,
+    b.quoted_amount,
+    b.quote_note,
+    b.preferred_date,
+    b.preferred_time::text,
+    b.work_details
   from public.srk_booking_workers bw
   join public.service_bookings b on b.id = bw.booking_id
   left join lateral (
