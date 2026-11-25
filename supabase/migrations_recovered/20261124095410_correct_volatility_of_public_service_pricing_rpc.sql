@@ -1,0 +1,1 @@
+ALTER FUNCTION public.srk_get_public_service_pricing_options(uuid) VOLATILE;

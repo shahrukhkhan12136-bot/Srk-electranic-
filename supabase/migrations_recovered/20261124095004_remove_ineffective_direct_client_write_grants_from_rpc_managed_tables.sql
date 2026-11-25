@@ -1,0 +1,21 @@
+REVOKE INSERT,UPDATE,DELETE ON TABLE
+ public.srk_ai_language_test_cases,
+ public.srk_ai_language_test_results,
+ public.srk_emergency_alerts,
+ public.srk_service_categories,
+ public.srk_service_skills,
+ public.srk_service_types,
+ public.srk_skill_levels,
+ public.srk_support_case_events,
+ public.srk_support_cases,
+ public.srk_system_settings,
+ public.srk_technician_booking_cycle,
+ public.srk_technician_booking_sequence,
+ public.srk_worker_applications,
+ public.srk_worker_document_events,
+ public.srk_worker_documents,
+ public.srk_worker_offline_timer_events,
+ public.srk_worker_schedule_blocks,
+ public.srk_worker_session_events,
+ public.srk_worker_work_sessions
+FROM authenticated;

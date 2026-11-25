@@ -1,0 +1,1 @@
+REVOKE UPDATE,DELETE ON TABLE public.srk_staff_employment_history FROM authenticated;

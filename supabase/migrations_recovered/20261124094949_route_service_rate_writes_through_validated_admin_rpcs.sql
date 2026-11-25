@@ -1,0 +1,1 @@
+REVOKE INSERT,UPDATE,DELETE ON TABLE public.srk_service_rates FROM anon,authenticated;
