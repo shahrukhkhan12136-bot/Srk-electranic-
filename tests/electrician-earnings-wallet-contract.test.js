@@ -19,5 +19,5 @@ test('Electrician earnings and wallet ignore stale responses after auth changes 
   assert.ok(earnings.includes('if(!isCurrent())return;'));
   assert.ok(wallet.includes('const request=++electricianWalletRequest,requestedUserId=user.id;'));
   assert.ok(wallet.includes('request===electricianWalletRequest&&user?.id===requestedUserId'));
-  assert.equal((wallet.match(/if\(!isCurrent\(\)\)return;/g)||[]).length, 3);
+  assert.equal((wallet.match(/if\(!isCurrent\(\)\)return;/g)||[]).length, 4);
 });
