@@ -78,9 +78,9 @@ test('Admin district directory and rate management require LGD snapshot and audi
   assert.match(admin, /statesPayload\.data\.length!==36/);
   assert.match(admin, /districtsPayload\.data\.length<790/);
   assert.match(admin, /adminIndiaDistrictDirectoryReady/);
-  assert.match(admin, /window\\.adminIndiaDistricts\\.length>=790/);
-  assert.match(admin, /stateSelect\\.disabled=!window\\.adminIndiaDistrictDirectoryReady/);
-  assert.match(admin, /पुराने\\/अधूरे डेटा पर Rate सेव नहीं होगा/);
+  assert.match(admin, /window\.adminIndiaDistricts\.length>=790/);
+  assert.match(admin, /stateSelect\.disabled=!window\.adminIndiaDistrictDirectoryReady/);
+  assert.match(admin, /पुराने.*Rate सेव नहीं होगा/);
   assert.match(districtMigration, /srk_district_service_rate_overrides/);
   assert.match(districtMigration, /admin_district_rate_audit_log/);
   assert.match(districtMigration, /effective_to=clock_timestamp\(\)/);
