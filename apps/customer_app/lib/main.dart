@@ -937,6 +937,10 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       if (mounted) setState(() { _pricePreview = null; _priceError = null; _priceBusy = false; });
       return;
     }
+    if (_state.text.trim().isEmpty || _district.text.trim().isEmpty || _pincode.text.trim().length != 6 || _address.text.trim().isEmpty) {
+      setState(() { _priceError = 'पहले राज्य, जिला, 6 अंकों का PIN Code और पूरा पता भरें।'; _pricePreview = null; _priceBusy = false; });
+      return;
+    }
     setState(() { _priceBusy = true; _priceError = null; _pricePreview = null; });
     try {
       final data = await _client.rpc('srk_customer_preview_booking_price_v3', params: {
@@ -1087,9 +1091,9 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             initialValue: _helperCount, decoration: _decoration('कितने Helper चाहिए?'),
-            items: List.generate(_selection!.pricingUnit == 'hour' ? 11 : 1, (i) => i)
+            items: List.generate(_selection!.pricingUnit == 'hour' && _selection!.helperAvailable ? 11 : 1, (i) => i)
               .map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'$v Helper'))).toList(),
-            onChanged: _selection!.pricingUnit == 'hour'
+            onChanged: _selection!.pricingUnit == 'hour' && _selection!.helperAvailable
               ? (v) { setState(() { _helperCount=v??0; _pricePreview=null; }); }
               : null,
           ),
