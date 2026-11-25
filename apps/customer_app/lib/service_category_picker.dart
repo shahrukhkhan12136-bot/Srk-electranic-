@@ -14,6 +14,7 @@ class SrkBackendServiceSelection {
     required this.skillLevelId,
     required this.skillLevelName,
     required this.pricingUnit,
+    required this.helperAvailable,
     this.pricingRuleId,
     this.motorHp,
     this.availableMotorHp = const [],
@@ -22,6 +23,7 @@ class SrkBackendServiceSelection {
   final String categoryId, categoryName, serviceTypeId, serviceName;
   final String skillId, skillName, skillLevelId, skillLevelName;
   final String pricingUnit;
+  final bool helperAvailable;
   final String? pricingRuleId;
   final double? motorHp;
   final List<double> availableMotorHp;
@@ -139,7 +141,9 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       serviceTypeId: s['id'].toString(), serviceName: s['service_name'].toString(),
       skillId: k['id'].toString(), skillName: k['skill_name'].toString(),
       skillLevelId: l['id'].toString(), skillLevelName: l['level_name'].toString(),
-      pricingUnit: unit, pricingRuleId: r?['id']?.toString(), motorHp: hp,
+      pricingUnit: unit,
+      helperAvailable: (unit == 'hour') && ((r?['helper_rate'] as num?) ?? 0) > 0 || matchingRates.any((x) => ((x['helper_hourly_rate'] as num?) ?? 0) > 0),
+      pricingRuleId: r?['id']?.toString(), motorHp: hp,
       availableMotorHp: _hpTiers.where((x) => r != null && x['pricing_rule_id'] == r['id'])
         .map((x) => (x['motor_hp'] as num).toDouble()).toList()..sort(),
     ));
