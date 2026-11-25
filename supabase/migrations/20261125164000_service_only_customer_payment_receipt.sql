@@ -12,6 +12,7 @@ DECLARE
  p public.srk_master_booking_payments%rowtype;
  v_total bigint;
  v_service bigint;
+ v_fee bigint:=0;
 BEGIN
  IF v_uid IS NULL THEN RAISE EXCEPTION 'CUSTOMER_LOGIN_REQUIRED' USING ERRCODE='42501'; END IF;
  IF p_booking_id IS NULL THEN RAISE EXCEPTION 'BOOKING_ID_REQUIRED' USING ERRCODE='22023'; END IF;
@@ -50,13 +51,18 @@ BEGIN
   SELECT labour_amount_paise INTO v_service FROM public.srk_booking_labour_bills
    WHERE booking_id=p_booking_id AND customer_user_id=v_uid;
   IF v_service IS NULL OR v_service>v_total THEN RAISE EXCEPTION 'LEGACY_PAID_AMOUNT_MISMATCH'; END IF;
-  RETURN jsonb_build_object('receipt_reference','SRK-PAY-'||upper(left(replace(b.id::text,'-',''),12)),
-   'booking_id',b.id,'customer_name',b.customer_name,'service_type',b.service_type,'address',b.address,
-   'district',b.district,'state',b.state,'pincode',b.pincode,'booking_date',b.created_at,
-   'payment_date',b.payment_verified_at,'payment_method',lower(coalesce(b.payment_method,'other')),
-   'service_amount',v_service/100.0,'amount_paid',v_total/100.0,
-   'cancellation_fee_amount',greatest(v_total-v_service,0)/100.0,'total_amount',v_total/100.0,
-   'description','सत्यापित भुगतान रसीद','document_type','payment_receipt');
+  SELECT coalesce(sum(i.amount_paise),0) INTO v_fee
+   FROM public.srk_booking_cancellation_fee_items i
+   WHERE i.booking_id=p_booking_id AND i.status='settled';
+  IF v_service+v_fee=v_total THEN
+   RETURN jsonb_build_object('receipt_reference','SRK-PAY-'||upper(left(replace(b.id::text,'-',''),12)),
+    'booking_id',b.id,'customer_name',b.customer_name,'service_type',b.service_type,'address',b.address,
+    'district',b.district,'state',b.state,'pincode',b.pincode,'booking_date',b.created_at,
+    'payment_date',b.payment_verified_at,'payment_method',lower(coalesce(b.payment_method,'other')),
+    'service_amount',v_service/100.0,'amount_paid',v_total/100.0,
+    'cancellation_fee_amount',v_fee/100.0,'total_amount',v_total/100.0,
+    'description','सत्यापित भुगतान रसीद','document_type','payment_receipt');
+  END IF;
  END IF;
  RETURN jsonb_build_object('receipt_reference','SRK-PAY-'||upper(left(replace(b.id::text,'-',''),12)),
   'booking_id',b.id,'customer_name',b.customer_name,'service_type',b.service_type,'address',b.address,
