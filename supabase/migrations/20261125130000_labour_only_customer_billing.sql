@@ -55,6 +55,7 @@ begin
 
   update public.service_bookings
   set service_charge=v_total,
+      materials_amount=0,
       quoted_amount=v_total,
       quote_note=left(coalesce(p_quote_note,''),1000),
       quote_status='pending',
