@@ -86,13 +86,14 @@ void main() {
       expect(fitting.note, contains('मोटर वाइंडिंग SRK ELECTRONIC की सेवा नहीं है'));
     });
 
-    test('keeps Cooler repair fixed at ₹500 with separate parts', () {
+    test('keeps Cooler repair fixed at ₹500 labour charge', () {
       final cooler = srkServiceCatalog.singleWhere((item) => item.name == 'Cooler');
       final repair = cooler.options.single;
       expect(repair.name, 'Cooler Repair');
       expect(repair.rates.single.amount, '₹500');
       expect(repair.rates.single.unit, 'प्रति कूलर फिक्स');
-      expect(repair.note, contains('पार्ट्स अलग'));
+      expect(repair.note, isNot(contains('पार्ट्स')));
+      expect(repair.note, isNot(contains('सामान')));
       expect(repair.note, contains('Motor winding'));
     });
   });
