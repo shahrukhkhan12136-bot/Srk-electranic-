@@ -18,16 +18,20 @@ test('Technician can submit an idempotent UPI or bank payout request',()=>{
  assert.match(technician,/p_destination_type:type/);
  assert.match(technician,/p_idempotency_key:key/);
 });
-test('Admin screen reviews requests and records real company settlement evidence',()=>{
- assert.match(admin,/srk_admin_list_master_payout_requests/);
- assert.match(admin,/srk_admin_review_master_payout_request/);
- assert.match(admin,/srk_admin_confirm_master_company_settlement/);
- assert.match(admin,/p_settled_amount_paise:Math\.round\(amount\*100\)/);
+test('Admin screen reviews canonical Worker payout requests and stores private transfer evidence',()=>{
+ assert.match(admin,/from\('srk_worker_payout_requests'\)/);
+ assert.match(admin,/srk_admin_review_worker_payout/);
+ assert.match(admin,/srk_admin_attach_worker_payout_evidence/);
+ assert.match(admin,/srk_admin_mark_worker_payout_paid/);
+ assert.match(admin,/srk-worker-payout-evidence/);
+ assert.match(admin,/p_storage_path:path/);
+ assert.match(admin,/p_payment_reference:ref/);
 });
-test('Admin cannot complete Master payout without approved request and actual UTR entry',()=>{
- assert.match(admin,/srk_admin_mark_master_payout_paid/);
- assert.match(admin,/वास्तविक ट्रांसफर UTR/);
- assert.match(admin,/COMPANY_RAZORPAY_SETTLEMENT_NOT_CONFIRMED|Razorpay settlement, Admin approval और UTR/);
+test('Admin payout is blocked without Main Admin verified UPI and transfer evidence',()=>{
+ assert.match(admin,/w\.payout_details_change_status==='approved'&&w\.upi_id/);
+ assert.match(admin,/!\['upi','phonepe'\]\.includes\(method\)/);
+ assert.match(admin,/file\.size>10\*1024\*1024/);
+ assert.match(admin,/बैंक खाते के अंतिम 4 अंक से बैंक ट्रांसफर करना सुरक्षित नहीं है/);
 });
 test('Existing legacy wallet and payout UI remains present',()=>{
  assert.match(technician,/srk_get_my_wallet_summary/);
