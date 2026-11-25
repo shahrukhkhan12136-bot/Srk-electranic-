@@ -256,7 +256,7 @@ const List<SrkServiceCategory> srkServiceCatalog = [
         SrkServiceTask(id: 'ac_compressor', name: 'कंप्रेसर'),
         SrkServiceTask(id: 'ac_pcb', name: 'PCB'),
       ], rates: [
-        SrkServiceRate(label: 'AC मैकेनिक की मजदूरी', amount: '₹250', unit: 'प्रति घंटा', helperAmount: 'Helper ₹150 प्रति घंटा अतिरिक्त', note: 'मैकेनिक और हेल्पर साथ होने पर कुल ₹400 प्रति घंटा। सामान / पार्ट्स अलग; ग्राहक की मंजूरी के बाद।'),
+        SrkServiceRate(label: 'AC मैकेनिक की मजदूरी', amount: '₹250', unit: 'प्रति घंटा', helperAmount: 'Helper ₹150 प्रति घंटा अतिरिक्त', note: 'मैकेनिक और हेल्पर साथ होने पर कुल ₹400 प्रति घंटा।'),
       ], note: 'Installation, Uninstallation, Repair, Servicing, Gas Charging, Leakage Check, Compressor और PCB'),
       SrkServiceOption(id: 'fridge', name: 'Fridge', displayName: 'फ्रिज', tasks: [
         SrkServiceTask(id: 'fridge_repair', name: 'फ्रिज रिपेयर'),
@@ -271,7 +271,7 @@ const List<SrkServiceCategory> srkServiceCatalog = [
           unit: 'प्रति घंटा',
           helperAmount: 'Helper ₹100 प्रति घंटा अतिरिक्त',
         ),
-      ], note: 'Refrigerator Repair, Cooling Problem, Compressor, Gas / Leakage, PCB और Other Repair. अंतिम दर की पुष्टि बाकी; पार्ट्स अलग और ग्राहक की मंजूरी के बाद।'),
+      ], note: 'Refrigerator Repair, Cooling Problem, Compressor, Gas / Leakage, PCB और Other Repair. अंतिम दर की पुष्टि बाकी।'),
     ],
   ),
   SrkServiceCategory(
