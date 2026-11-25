@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:srk_mobile_core/srk_service_catalog.dart';
 import 'package:srk_electrician_app/verified_services/srk_verified_service_skill.dart';
 import 'package:srk_electrician_app/verified_services/srk_verified_services_panel.dart';
 
@@ -43,7 +44,7 @@ void main() {
         'category_label': 'गलत पुराना नाम',
         'subcategory_label': 'गलत पुराना काम',
         'task_label': 'गलत task label',
-        'catalogue_version': 'draft-2026-11-21.1',
+        'catalogue_version': srkServiceCatalogDraftVersion,
         'verification_status': 'approved',
         'active': true,
       }, now: now);
