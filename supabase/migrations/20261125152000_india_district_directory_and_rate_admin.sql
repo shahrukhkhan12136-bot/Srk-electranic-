@@ -92,8 +92,11 @@ begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'Main Admin permission required' using errcode='42501';
   end if;
-  if jsonb_typeof(p_districts) <> 'array' or jsonb_array_length(p_districts) < 700 then
-    raise exception 'District sync rejected: expected a complete all-India directory snapshot';
+  if jsonb_typeof(p_districts) <> 'array' or jsonb_array_length(p_districts) < 780 then
+    raise exception 'District sync rejected: expected a current all-India directory snapshot';
+  end if;
+  if (select count(distinct state_code) from jsonb_to_recordset(p_districts) as x(code text, name text, state_code text, state_name text)) <> 36 then
+    raise exception 'District sync rejected: expected all 36 Indian States/UTs';
   end if;
   if nullif(btrim(p_source_date), '') is null then
     raise exception 'LGD source date is required';
