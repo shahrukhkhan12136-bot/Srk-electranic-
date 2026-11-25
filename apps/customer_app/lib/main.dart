@@ -500,9 +500,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     await _client.auth.signOut();
   }
 
-  Future<void> _openBookingForm() async {
+  Future<void> _openBookingForm({String? categoryCode}) async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const CustomerBookingFormPage(),
+      builder: (_) => CustomerBookingFormPage(initialCategoryCode: categoryCode),
     ));
     if (mounted) _loadBookings();
   }
@@ -542,6 +542,24 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           children: [
             const SrkFounderBanner(),
             const SizedBox(height: 14),
+            Text('अपनी सर्विस चुनें', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 10),
+            GridView.count(
+              crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.25,
+              children: const [
+                _CustomerCategoryTile(code: 'electrician', title: 'Electrician', icon: Icons.electrical_services),
+                _CustomerCategoryTile(code: 'plumber', title: 'Plumber', icon: Icons.plumbing),
+                _CustomerCategoryTile(code: 'painter', title: 'Painter', icon: Icons.format_paint),
+                _CustomerCategoryTile(code: 'ac_fridge', title: 'AC और Fridge', icon: Icons.ac_unit),
+                _CustomerCategoryTile(code: 'motor_pump', title: 'Motor और Pump', icon: Icons.water),
+                _CustomerCategoryTile(code: 'cooler', title: 'Cooler', icon: Icons.air),
+              ].map((tile) => _CustomerCategoryTile(
+                code: tile.code, title: tile.title, icon: tile.icon,
+                onTap: () => _openBookingForm(categoryCode: tile.code),
+              )).toList(),
+            ),
+            const SizedBox(height: 18),
             Text('मेरी बुकिंग',
                 style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 6),
@@ -795,8 +813,32 @@ Future<void> _callPhone(String raw) async {
 
 /// Uses the existing rate-limited Netlify booking endpoint. The service-role
 /// credential remains server-side and is never included in this app.
+class _CustomerCategoryTile extends StatelessWidget {
+  const _CustomerCategoryTile({required this.code, required this.title, required this.icon, this.onTap});
+  final String code, title;
+  final IconData icon;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Row(children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 26),
+          const SizedBox(width: 9),
+          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700), maxLines: 2)),
+          const Icon(Icons.chevron_right),
+        ]),
+      ),
+    ),
+  );
+}
+
 class CustomerBookingFormPage extends StatefulWidget {
-  const CustomerBookingFormPage({super.key});
+  const CustomerBookingFormPage({super.key, this.initialCategoryCode});
+  final String? initialCategoryCode;
   @override
   State<CustomerBookingFormPage> createState() => _CustomerBookingFormPageState();
 }
@@ -1075,10 +1117,12 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         const SizedBox(height: 14),
         Text('आपको कौन-सी सेवा चाहिए?', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        SrkServiceCategoryPicker(onSelection: (selection) {
-          setState(() { _selection = selection; _pricePreview = null; _priceError = null; });
-          _refreshPricePreview();
-        }),
+        SrkServiceCategoryPicker(
+          initialCategoryCode: widget.initialCategoryCode,
+          onSelection: (selection) {
+            setState(() { _selection = selection; _pricePreview = null; _priceError = null; });
+          },
+        ),
         if (_selection != null) ...[
           const SizedBox(height: 12),
           Text('${_selection!.categoryName} • ${_selection!.serviceName}\n${_selection!.skillName} • ${_selection!.skillLevelName}',
@@ -1086,9 +1130,16 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           if (_selection!.pricingUnit == 'hour') ...[
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
-              initialValue: _durationHours, decoration: _decoration('काम की अवधि'),
-              items: [1,3,8].map((v) => DropdownMenuItem(value:v,child:Text('$v घंटे'))).toList(),
-              onChanged: (v) { setState(() => _durationHours=v??1); _refreshPricePreview(); },
+              initialValue: _durationHours,
+              decoration: _decoration('काम की कुल अवधि (घंटे / दिन)'),
+              items: [
+                const DropdownMenuItem(value: 1, child: Text('1 घंटा')),
+                const DropdownMenuItem(value: 3, child: Text('3 घंटे')),
+                const DropdownMenuItem(value: 8, child: Text('8 घंटे')),
+                ...List.generate(60, (i) => i + 1).map((days) =>
+                  DropdownMenuItem(value: days * 24, child: Text('$days दिन'))),
+              ],
+              onChanged: (v) { setState(() { _durationHours=v??1; _pricePreview=null; }); },
             ),
           ],
           if (_selection!.pricingUnit == 'per_item') ...[
@@ -1103,14 +1154,16 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           DropdownButtonFormField<int>(
             initialValue: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
             items: [1,2,3].map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
-            onChanged: (v) { setState(() => _technicianCount=v??1); _refreshPricePreview(); },
+            onChanged: (v) { setState(() { _technicianCount=v??1; _pricePreview=null; }); },
           ),
           const SizedBox(height: 8),
-          if (_selection!.pricingUnit == 'hour' && ((_pricePreview?['helper_rate'] as num?) ?? 0) > 0)
+          if (_selection!.pricingUnit == 'hour')
             DropdownButtonFormField<int>(
-              initialValue: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
-              items: [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
-              onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
+              initialValue: _helperCount,
+              decoration: _decoration('कितने Helper चाहिए?'),
+              items: List.generate(((_pricePreview?['helper_rate'] as num?) ?? 0) > 0 ? 11 : 1, (i) => i)
+                .map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'$v Helper'))).toList(),
+              onChanged: (v) { setState(() { _helperCount=v??0; _pricePreview=null; }); },
             ),
           const SizedBox(height: 12),
           Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
