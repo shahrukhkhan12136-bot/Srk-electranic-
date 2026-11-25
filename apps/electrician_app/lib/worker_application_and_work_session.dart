@@ -678,7 +678,7 @@ class _WorkerWorkdayPanelState extends State<WorkerWorkdayPanel> {
     if (row == null) return 0;
     final base = (row['elapsed_work_seconds'] as num?)?.toInt() ?? 0;
     if (row['status'] != 'running') return base;
-    return base + DateTime.now().difference(fetchedAt).inSeconds.clamp(0, 86400);
+    return base + DateTime.now().difference(fetchedAt).inSeconds.clamp(0, 86400).toInt();
   }
 
   String get clock {
