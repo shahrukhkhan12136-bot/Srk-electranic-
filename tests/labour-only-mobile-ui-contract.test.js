@@ -10,7 +10,7 @@ const files = {
   customerBill: fs.readFileSync('apps/customer_app/lib/customer_confirmation/srk_customer_confirmation_preview.dart', 'utf8'),
   sharedBill: fs.readFileSync('packages/srk_mobile_core/lib/srk_work_confirmation_contract.dart', 'utf8'),
   admin: fs.readFileSync('admin.html', 'utf8'),
-  migration: fs.readFileSync('supabase/migrations/20261125130000_labour_only_customer_billing.sql', 'utf8'),
+  migration: fs.readFileSync('supabase/migrations/20261125112828_labour_only_customer_billing.sql', 'utf8'),
 };
 
 test('Customer, Technician, catalogue and Admin screens expose labour-only billing', () => {
