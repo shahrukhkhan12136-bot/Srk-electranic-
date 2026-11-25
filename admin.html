@@ -135,7 +135,9 @@
 <input id="adminDistrictRateReason" maxlength="500" placeholder="जैसे स्थानीय बाजार दर के अनुसार संशोधन" style="width:100%">
 <p id="adminDistrictRateStatus" class="muted" aria-live="polite"></p>
 <div id="adminDistrictRateRows" class="scroll" style="margin-top:12px">पहले जिला सूची सिंक करें और एक जिला चुनें।</div>
-<p class="muted">नोट: इस शाखा में जिला-वार दरों का Admin प्रबंधन और इतिहास तैयार किया जा रहा है। Customer booking, Technician offer और final bill में लागू करने का एकीकरण और परीक्षण पूरा होने से पहले इन दरों को लाइव बुकिंग पर लागू नहीं माना जाएगा।</p>
+<h3>इस जिले का पूरा रेट बदलाव इतिहास</h3>
+<div id="adminDistrictRateHistoryRows" class="scroll">जिला चुनने पर बदलाव इतिहास दिखाई देगा।</div>
+<p class="muted">हर नई बुकिंग पर चुने गए जिले का उस समय लागू रेट और कंपनी प्रतिशत सुरक्षित Snapshot में रखा जाएगा। पहले से बनी बुकिंग का पुराना रेट नहीं बदलेगा। Main Database पर लागू करने से पहले सभी SQL और मोबाइल प्रवाह का परीक्षण आवश्यक है।</p>
 </div>
 <div class="card" id="adminAccountDeletionCard">
 <h2>Account Deletion Requests</h2>
@@ -1606,7 +1608,21 @@ async function loadAdminDistrictRateMatrix(){
    const current=r.override_id?'Configured':'Rate not configured';
    return '<tr><td>'+label+'<br><small>'+current+'</small></td><td>'+adminHistoryEscape(r.pricing_unit)+'</td><td>'+adminHistoryEscape(base)+'</td><td>'+inputs+'</td><td><button type="button" onclick="saveAdminDistrictRateRow('+i+')">रेट सुरक्षित करें</button><br><small>'+adminHistoryEscape(r.change_reason||'')+'</small></td></tr>';
   }).join('')+'</tbody></table>';
+  await loadAdminDistrictRateHistory();
  }catch(e){box.textContent='District rate सूची नहीं खुली: '+(e.message||'Admin अनुमति / migration जाँचें।');}
+}
+async function loadAdminDistrictRateHistory(){
+ const district=document.getElementById('adminDistrictSelect')?.value||'',box=document.getElementById('adminDistrictRateHistoryRows');
+ if(!district||!box||!sb||!user)return;
+ box.textContent='रेट बदलाव इतिहास लोड हो रहा है…';
+ try{
+  const {data,error}=await sb.rpc('srk_admin_list_district_rate_history',{p_district_lgd_code:district,p_limit:200});if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  if(!rows.length){box.textContent='इस जिले में अभी कोई रेट बदलाव दर्ज नहीं है।';return;}
+  box.innerHTML='<table><thead><tr><th>तारीख</th><th>कैटेगरी / सेवा</th><th>पुराना रेट</th><th>नया रेट</th><th>किसने बदला</th><th>कारण</th></tr></thead><tbody>'+
+  rows.map(r=>'<tr><td>'+adminHistoryEscape(r.created_at?new Date(r.created_at).toLocaleString('hi-IN'):'—')+'</td><td>'+adminHistoryEscape(r.target_type)+'<br><small>'+adminHistoryEscape(r.target_id)+'</small></td><td><pre>'+adminHistoryEscape(JSON.stringify(r.old_values||{},null,2))+'</pre></td><td><pre>'+adminHistoryEscape(JSON.stringify(r.new_values||{},null,2))+'</pre></td><td>'+adminHistoryEscape(r.admin_name||'—')+'<br><small>'+adminHistoryEscape(r.admin_email||'')+'</small></td><td>'+adminHistoryEscape(r.reason||'—')+'</td></tr>').join('')+
+  '</tbody></table>';
+ }catch(e){box.textContent='रेट इतिहास उपलब्ध नहीं: '+(e.message||'Admin अनुमति / migration जाँचें।');}
 }
 async function saveAdminDistrictRateRow(index){
  const row=window.adminDistrictRateRows[index],district=document.getElementById('adminDistrictSelect')?.value||'';
@@ -1637,6 +1653,6 @@ async function saveAdminDistrictRateRow(index){
  });
  if(error){if(status)status.textContent='रेट सुरक्षित नहीं हुआ: '+error.message;return;}
  if(status)status.textContent='जिला रेट सेव हुआ। पुराने रेट का इतिहास सुरक्षित है।';
- await loadAdminDistrictRateMatrix();
+ await loadAdminDistrictRateMatrix();await loadAdminDistrictRateHistory();
 }
 </script></body></html>
