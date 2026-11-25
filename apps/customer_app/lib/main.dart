@@ -562,6 +562,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       booking['completion_approval_status'] == 'pending' &&
       booking['completion_requested_at'] != null;
     final method = (booking['payment_method'] ?? '').toString().toLowerCase();
+    final paymentCycle = booking['payment_cycle'] is Map ? Map<String, dynamic>.from(booking['payment_cycle'] as Map) : <String, dynamic>{};
+    final onlineOnly = paymentCycle['online_required'] == true;
+    final cycleUnverified = paymentCycle['cycle_unverified'] == true;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -658,8 +661,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             if (status == 'completed' && booking['payment_status'] != 'paid') ...[
               const SizedBox(height: 8),
-              final onlineOnly = (booking['payment_cycle'] as Map?)?['online_required'] == true;
-              final cycleUnverified = (booking['payment_cycle'] as Map?)?['cycle_unverified'] == true;
               if (onlineOnly)
                 Text(cycleUnverified
                   ? 'भुगतान क्रम अभी सत्यापित नहीं हो पाया। सुरक्षित भुगतान के लिए केवल Online विकल्प उपलब्ध है।'
