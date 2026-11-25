@@ -5,13 +5,14 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 export 'srk_work_confirmation_contract.dart';
+export 'srk_service_selection_contract.dart';
 
 enum SrkAppRole { customer, electrician, admin }
 
 String roleTitle(SrkAppRole role) => switch (role) {
       SrkAppRole.customer => 'Customer App',
       SrkAppRole.electrician => 'Electrician App',
-      SrkAppRole.admin => 'Admin App',
+      SrkAppRole.admin => 'Admin Web',
     };
 
 Future<void> initializeSrkSupabase() async {
@@ -480,4 +481,3 @@ class SrkFounderBanner extends StatelessWidget {
     );
   }
 }
-export 'srk_service_selection_contract.dart';
