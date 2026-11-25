@@ -826,7 +826,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       appBar: AppBar(
         title: const Text('SRK ELECTRONIC'),
         actions: [
-          TextButton.icon(onPressed: _loading ? null : _loadBookings, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
+          TextButton.icon(onPressed: _loading ? null : _loadBookings, icon: const Icon(Icons.refresh), label: Text(customerEnglish ? 'Refresh' : 'रिफ्रेश')),
           PopupMenuButton<String>(
             tooltip: 'अधिक विकल्प',
             icon: const Icon(Icons.more_vert),
@@ -853,28 +853,28 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             const SizedBox(height: 12),
             const SrkFounderBanner(),
             const SizedBox(height: 14),
-            Text('अपनी सर्विस चुनें', style: Theme.of(context).textTheme.titleLarge),
+            Text(customerEnglish ? 'Choose a service' : 'अपनी सर्विस चुनें', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 10),
             GridView.count(
               crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.25,
               children: const [
-                _CustomerCategoryTile(code: 'electrician', title: 'Electrician', icon: Icons.electrical_services),
-                _CustomerCategoryTile(code: 'plumber', title: 'Plumber', icon: Icons.plumbing),
-                _CustomerCategoryTile(code: 'painter', title: 'Painter', icon: Icons.format_paint),
-                _CustomerCategoryTile(code: 'ac_fridge_technician', title: 'AC + Fridge Technician', icon: Icons.ac_unit),
-                _CustomerCategoryTile(code: 'motor_pump_technician', title: 'Motor & Pump Technician', icon: Icons.water),
-                _CustomerCategoryTile(code: 'cooler_technician', title: 'Cooler Technician', icon: Icons.air),
+                _CustomerCategoryTile(code: 'electrician', title: customerEnglish ? 'Electrician' : 'इलेक्ट्रिशियन', icon: Icons.electrical_services),
+                _CustomerCategoryTile(code: 'plumber', title: customerEnglish ? 'Plumber' : 'प्लंबर', icon: Icons.plumbing),
+                _CustomerCategoryTile(code: 'painter', title: customerEnglish ? 'Painter' : 'पेंटर', icon: Icons.format_paint),
+                _CustomerCategoryTile(code: 'ac_fridge_technician', title: customerEnglish ? 'AC + Fridge Technician' : 'एसी और फ्रिज टेक्नीशियन', icon: Icons.ac_unit),
+                _CustomerCategoryTile(code: 'motor_pump_technician', title: customerEnglish ? 'Motor & Pump Technician' : 'मोटर और पंप टेक्नीशियन', icon: Icons.water),
+                _CustomerCategoryTile(code: 'cooler_technician', title: customerEnglish ? 'Cooler Technician' : 'कूलर टेक्नीशियन', icon: Icons.air),
               ].map((tile) => _CustomerCategoryTile(
                 code: tile.code, title: tile.title, icon: tile.icon,
                 onTap: () => _openBookingForm(categoryCode: tile.code),
               )).toList(),
             ),
             const SizedBox(height: 18),
-            Text('मेरी बुकिंग', key: _bookingsSectionKey,
+            Text(customerEnglish ? 'My bookings' : 'मेरी बुकिंग', key: _bookingsSectionKey,
                 style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 6),
-            const Text('आपकी OTP-लिंक की गई बुकिंग और इलेक्ट्रिशियन के कोटेशन यहाँ दिखेंगे।'),
+            Text(customerEnglish ? 'Your OTP-linked bookings and technician quotes appear here.' : 'आपकी OTP-लिंक की गई बुकिंग और इलेक्ट्रिशियन के कोटेशन यहाँ दिखेंगे।'),
             const SizedBox(height: 16),
             if (_loading) const Center(child: CircularProgressIndicator()),
             if (_error != null)
@@ -1451,14 +1451,14 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             initialValue: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
-            items: List.generate(10, (i) => i + 1).map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
+            items: List.generate(10, (i) => i + 1).map((v)=>DropdownMenuItem(value:v,child:Text('$v टेक्नीशियन'))).toList(),
             onChanged: (v) { setState(() { _technicianCount=v??1; _pricePreview=null; }); },
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
             initialValue: _helperCount, decoration: _decoration('कितने Helper चाहिए?'),
             items: List.generate(_selection!.pricingUnit == 'hour' && _selection!.helperAvailable ? 11 : 1, (i) => i)
-              .map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'$v Helper'))).toList(),
+              .map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'हेल्पर नहीं':'$v हेल्पर'))).toList(),
             onChanged: _selection!.pricingUnit == 'hour' && _selection!.helperAvailable
               ? (v) { setState(() { _helperCount=v??0; _pricePreview=null; }); }
               : null,
