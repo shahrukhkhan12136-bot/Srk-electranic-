@@ -219,7 +219,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         wallet = null;
         loadWarnings.add('वॉलेट का बैलेंस अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
       }
-    } catch (e) {
+    } catch (_) {
       error = 'टेक्नीशियन डैशबोर्ड लोड नहीं हो सका। आवश्यक Worker API migration लागू होने और इंटरनेट की जाँच करें।';
     } finally {
       if (mounted) setState(() => loading = false);
@@ -227,22 +227,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
   }
 
 
-  Future<void> confirmCashPayment(Map<String,dynamic> booking) async {
-    final ok = await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
-      title:const Text('नकद भुगतान की पुष्टि'),
-      content:Text('क्या ग्राहक से ₹${booking['quoted_amount'] ?? 0} नकद वास्तव में मिल गए हैं?'),
-      actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('नहीं')),FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('हाँ, नकद मिला'))],
-    ));
-    if(ok!=true)return;
-    try {
-      await client.rpc('srk_electrician_confirm_cash_payment',params:{'p_booking_id':booking['booking_id']});
-      if(!mounted)return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('नकद भुगतान दर्ज हो गया।')));
-      await load();
-    } catch (_) {
-      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('नकद भुगतान दर्ज नहीं हुआ। बुकिंग और भुगतान तरीका जाँचें।')));
-    }
-  }
+
 
   Future<void> openBookingMap(Map<String,dynamic> booking) async {
     final lat=booking['location_lat'], lng=booking['location_lng'];
@@ -254,7 +239,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
   }
 
   String bookingStatusLabel(String? status) => switch (status) {
-    'assigned' => 'इलेक्ट्रिशियन नियुक्त',
+    'assigned' => 'टेक्नीशियन नियुक्त',
     'inspection' => 'जाँच / निरीक्षण',
     'awaiting_quote_approval' => 'ग्राहक की कोटेशन मंजूरी बाकी',
     'quote_approved' => 'कोटेशन मंजूर',
@@ -271,7 +256,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
       builder: (ctx) => AlertDialog(
         title: Text(accept ? 'बुकिंग ऑफर स्वीकार करें?' : 'बुकिंग ऑफर मना करें?'),
         content: Text(accept
-          ? 'स्वीकार करते ही यह बुकिंग आपके नाम नियुक्त हो जाएगी। दूसरे इलेक्ट्रिशियन के ऑफर बंद हो जाएँगे।'
+          ? 'स्वीकार करते ही यह बुकिंग आपके नाम नियुक्त हो जाएगी। अन्य Technician के ऑफर बंद हो जाएँगे।'
           : 'यह ऑफर आपकी सूची से हट जाएगा।'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('वापस')),
@@ -294,17 +279,21 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
     }
   }
 
-  Future<void> updateWorkStatus(String bookingId, String nextStatus, String label) async {
+  Future<void> requestWorkStartApproval(String bookingWorkerId) async {
     try {
-      await client.rpc('srk_update_booking_work_status', params: {
-        'p_booking_id': bookingId, 'p_status': nextStatus,
+      await client.rpc('srk_worker_request_work_start_approval', params: {
+        'p_booking_worker_id': bookingWorkerId,
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(label)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('काम शुरू करने की मंजूरी ग्राहक को भेज दी गई है।')),
+      );
       await load();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('बुकिंग की स्थिति अपडेट नहीं हुई। पहले ग्राहक की कोटेशन मंजूरी जाँचें।')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('काम शुरू करने की मंजूरी नहीं भेजी गई। ग्राहक की कोटेशन मंजूरी जाँचें।')),
+      );
     }
   }
 
@@ -359,7 +348,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      p == null ? 'इलेक्ट्रिशियन आवेदन' : 'प्रोफाइल सत्यापन / एक्टिवेशन बाकी',
+                      p == null ? 'टेक्नीशियन आवेदन' : 'प्रोफाइल सत्यापन / एक्टिवेशन बाकी',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
@@ -453,8 +442,6 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                   Text('स्थान: ' + (booking['district']?.toString() ?? '') + ', ' + (booking['state']?.toString() ?? '') + ' • PIN ' + (booking['pincode']?.toString() ?? '')),
                   Text('स्थिति: ' + bookingStatusLabel(status)),
                   OutlinedButton.icon(onPressed:()=>openBookingMap(booking),icon:const Icon(Icons.directions),label:const Text('ग्राहक की लोकेशन / रास्ता खोलें')),
-                  if(status=='completed' && (booking['payment_method'] ?? '').toString().toLowerCase()=='cash' && booking['payment_status']!='paid')
-                    FilledButton.icon(onPressed:()=>confirmCashPayment(booking),icon:const Icon(Icons.payments),label:Text('नकद भुगतान मिला • ₹${booking['quoted_amount'] ?? 0}')),
                   if(booking['payment_status']=='paid')
                     const Text('भुगतान प्राप्त दर्ज है',style:TextStyle(color:Colors.green,fontWeight:FontWeight.bold)),
                   if ((booking['customer_phone'] ?? '').toString().trim().isNotEmpty)
@@ -474,21 +461,13 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                   if (service != null) Text('लेबर चार्ज: ₹' + service.toStringAsFixed(2)),
                   if (total != null) Text('कुल कोटेशन: ₹' + total.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)),
                   if ((booking['quote_note'] ?? '').toString().isNotEmpty) Text('नोट: ' + booking['quote_note'].toString()),
-                  if (status == 'assigned')
-                    Align(alignment: Alignment.centerRight, child: OutlinedButton.icon(
-                      onPressed: loading ? null : () => updateWorkStatus(booking['booking_id'].toString(), 'inspection', 'निरीक्षण शुरू हो गया।'),
-                      icon: const Icon(Icons.search), label: const Text('निरीक्षण शुरू करें'),
-                    )),
                   if (status == 'quote_approved')
                     Align(alignment: Alignment.centerRight, child: FilledButton.icon(
-                      onPressed: loading ? null : () => updateWorkStatus(booking['booking_id'].toString(), 'in_progress', 'काम शुरू दर्ज हो गया।'),
-                      icon: const Icon(Icons.play_arrow), label: const Text('काम शुरू करें'),
+                      onPressed: loading ? null : () => requestWorkStartApproval(booking['assignment_id'].toString()),
+                      icon: const Icon(Icons.play_arrow), label: const Text('काम शुरू करने की मंजूरी माँगें'),
                     )),
                   if (status == 'in_progress')
-                    Align(alignment: Alignment.centerRight, child: FilledButton.icon(
-                      onPressed: loading ? null : () => updateWorkStatus(booking['booking_id'].toString(), 'completed', 'काम पूरा दर्ज हो गया।'),
-                      icon: const Icon(Icons.task_alt), label: const Text('काम पूरा करें'),
-                    )),
+                    const Text('काम जारी है। सुरक्षित टाइमर और पूरा करने का नियंत्रण साझा Worker session से जोड़ा जा रहा है।'),
                   if (canQuote) ...[
                     const SizedBox(height: 12),
                     SizedBox(width: double.infinity, child: FilledButton.icon(
