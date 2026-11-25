@@ -696,10 +696,10 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                 const Text('मेरा Worker Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
                 Text('Payout के लिए उपलब्ध: ' + _money(wallet?['available_for_payout']), style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text('कंपनी का Cash कमीशन बकाया: ' + _money(wallet?['cash_commission_outstanding'])),
+                if (_number(wallet?['recovery_debt']) > 0)
+                  Text('Wallet में कंपनी का Cash कमीशन बकाया: −' + _money(wallet?['recovery_debt']), style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                Text('कंपनी का Cash कमीशन बाकी: ' + _money(wallet?['cash_commission_outstanding'])),
                 Text('रुकी हुई कमाई: ' + _money(wallet?['held_earnings'])),
-                if (((wallet?['recovery_debt'] as num?)?.toDouble() ?? 0) > 0)
-                  Text('पुराना Cash कमीशन समायोजित होना बाकी: ' + _money(wallet?['recovery_debt']), style: const TextStyle(color: Colors.red)),
                 const SizedBox(height: 10),
                 SizedBox(width: double.infinity, child: FilledButton.icon(
                   onPressed: loading || ((wallet?['available_for_payout'] as num?)?.toDouble() ?? 0) <= 0 || wallet?['payout_blocked'] == true ? null : requestAvailablePayout,
