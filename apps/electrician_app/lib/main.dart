@@ -279,6 +279,48 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
     }
   }
 
+  Future<void> proposeSchedule(Map<String, dynamic> booking) async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(days: 1)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 90)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(hours: 2))),
+    );
+    if (time == null || !mounted) return;
+    final start = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    if (!start.isAfter(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('भविष्य का समय चुनें।')),
+      );
+      return;
+    }
+    final hours = (booking['requested_duration_hours'] as num?)?.toInt() ?? 1;
+    final end = start.add(Duration(hours: hours < 1 ? 1 : hours));
+    try {
+      await client.rpc('srk_worker_propose_next_schedule', params: {
+        'p_booking_worker_id': booking['assignment_id'],
+        'p_start_at': start.toUtc().toIso8601String(),
+        'p_end_at': end.toUtc().toIso8601String(),
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('समय का प्रस्ताव ग्राहक को मंजूरी के लिए भेज दिया गया।')),
+      );
+      await load();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('समय का प्रस्ताव नहीं भेजा गया। बुकिंग की स्थिति जाँचें।')),
+      );
+    }
+  }
+
   Future<void> requestWorkStartApproval(String bookingWorkerId) async {
     try {
       await client.rpc('srk_worker_request_work_start_approval', params: {
@@ -442,6 +484,12 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                   Text('स्थान: ' + (booking['district']?.toString() ?? '') + ', ' + (booking['state']?.toString() ?? '') + ' • PIN ' + (booking['pincode']?.toString() ?? '')),
                   Text('स्थिति: ' + bookingStatusLabel(status)),
                   OutlinedButton.icon(onPressed:()=>openBookingMap(booking),icon:const Icon(Icons.directions),label:const Text('ग्राहक की लोकेशन / रास्ता खोलें')),
+                  if (['assigned','quote_approved'].contains(status))
+                    OutlinedButton.icon(
+                      onPressed: loading ? null : () => proposeSchedule(booking),
+                      icon: const Icon(Icons.calendar_month),
+                      label: const Text('ग्राहक को समय प्रस्तावित करें'),
+                    ),
                   if(booking['payment_status']=='paid')
                     const Text('भुगतान प्राप्त दर्ज है',style:TextStyle(color:Colors.green,fontWeight:FontWeight.bold)),
                   if ((booking['customer_phone'] ?? '').toString().trim().isNotEmpty)
