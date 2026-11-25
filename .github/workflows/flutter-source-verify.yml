@@ -1,0 +1,47 @@
+name: Flutter Source Verification
+
+on:
+  push:
+    branches:
+      - work/mobile-customer-technician-integration-20261125
+  pull_request:
+    branches:
+      - feature/master-technician-payment-cycle-20261121
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Prepare bundled founder artwork
+        run: python3 scripts/prepare_mobile_assets.py
+      - name: Verify shared mobile core
+        run: |
+          cd packages/srk_mobile_core
+          flutter pub get
+          dart analyze
+          flutter test
+      - name: Verify Customer app
+        run: |
+          cd apps/customer_app
+          flutter pub get
+          dart analyze
+          flutter test
+      - name: Verify Technician app
+        run: |
+          cd apps/electrician_app
+          flutter pub get
+          dart analyze
+          flutter test
