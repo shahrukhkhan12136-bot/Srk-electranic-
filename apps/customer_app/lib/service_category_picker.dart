@@ -14,14 +14,15 @@ class SrkBackendServiceSelection {
     required this.skillLevelId,
     required this.skillLevelName,
     required this.pricingUnit,
-    required this.helperAvailable,
+    this.helperAvailable = false,
     this.pricingRuleId,
     this.motorHp,
     this.availableMotorHp = const [],
   });
 
   final String categoryId, categoryName, serviceTypeId, serviceName;
-  final String skillId, skillName, skillLevelId, skillLevelName;
+  final String skillId, skillName, skillLevelName;
+  final String? skillLevelId;
   final String pricingUnit;
   final bool helperAvailable;
   final String? pricingRuleId;
