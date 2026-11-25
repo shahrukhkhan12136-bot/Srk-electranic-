@@ -152,6 +152,7 @@ WHERE o.skill_code IN ('motor_winding','cooler_motor_winding')
    );
 
 -- Rates are seeded only when the exact service code exists; otherwise Admin must configure a verified rate.
+-- Conflicting category prices are deliberately not activated until the Admin verifies them.
 INSERT INTO public.srk_service_rates
 (service_code,level_code,level_label,technician_hourly_paise,helper_hourly_paise,rate_version,status)
 SELECT v.service_code,v.level_code,v.level_label,v.technician_hourly_paise,v.helper_hourly_paise,
