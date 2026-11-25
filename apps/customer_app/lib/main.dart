@@ -100,10 +100,43 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       }
       final response = await _client
           .from('service_bookings')
-          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,materials_amount,quote_status,quote_note,district,state,pincode,electrician_quote_kind')
+          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,materials_amount,quote_status,quote_note,district,state,pincode,electrician_quote_kind,work_start_approval_status,work_start_requested_at,completion_approval_status,completion_requested_at,requested_duration_hours,pricing_unit_snapshot')
           .eq('customer_user_id', user.id)
           .order('created_at', ascending: false)
           .limit(50);
+      final bookingRows = List<Map<String, dynamic>>.from(response);
+      final finalBills = <String, Map<String, dynamic>>{};
+      try {
+        final bookingIds = bookingRows.map((b) => b['id'].toString()).toList();
+        if (bookingIds.isNotEmpty) {
+          final billRows = await _client.from('srk_booking_final_bills')
+            .select('id,booking_id,bill_number,service_amount,materials_amount,discount_amount,tax_amount,total_amount,status,prepared_at,revision_no')
+            .inFilter('booking_id', bookingIds)
+            .order('revision_no', ascending: false);
+          final billIds = <String>[];
+          for (final row in List<Map<String, dynamic>>.from(billRows)) {
+            final bookingId = row['booking_id'].toString();
+            if (!finalBills.containsKey(bookingId)) {
+              finalBills[bookingId] = {...row, 'items': <Map<String, dynamic>>[]};
+              billIds.add(row['id'].toString());
+            }
+          }
+          if (billIds.isNotEmpty) {
+            final itemRows = await _client.from('srk_booking_final_bill_items')
+              .select('id,bill_id,item_type,description,quantity,unit,unit_price,line_total')
+              .inFilter('bill_id', billIds);
+            for (final item in List<Map<String, dynamic>>.from(itemRows)) {
+              final bill = finalBills.values.firstWhere(
+                (x) => x['id'].toString() == item['bill_id'].toString(),
+                orElse: () => <String, dynamic>{},
+              );
+              if (bill.isNotEmpty) (bill['items'] as List<Map<String, dynamic>>).add(item);
+            }
+          }
+        }
+      } catch (_) {
+        _complaintLoadWarning = 'अंतिम बिल का विवरण अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।';
+      }
       final contacts = <String, String>{};
       try {
         final rows = await _client.rpc('srk_customer_get_my_booking_contacts');
@@ -120,9 +153,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       } catch (_) {
         _complaintLoadWarning = 'शिकायतों की सूची अभी लोड नहीं हो पाई। Refresh करके फिर कोशिश करें।';
       }
-      _bookings = List<Map<String, dynamic>>.from(response).map((booking) {
+      _bookings = bookingRows.map((booking) {
         final phone = contacts[booking['id'].toString()] ?? booking['electrician_phone']?.toString();
-        return {...booking, if (phone != null) 'electrician_phone': phone};
+        return {
+          ...booking,
+          if (phone != null) 'electrician_phone': phone,
+          if (finalBills[booking['id'].toString()] != null) 'final_bill': finalBills[booking['id'].toString()],
+        };
       }).toList();
     } catch (_) {
       _error = 'बुकिंग अभी लोड नहीं हो सकीं। इंटरनेट और लॉगिन जाँचकर फिर कोशिश करें।';
