@@ -108,15 +108,13 @@ begin
   end if;
 
   v_definition:=replace(v_definition,'  v_material numeric(12,2);'||E'\n','');
-  v_definition:=replace(v_definition,'  v_cancellation_fee numeric(12,2):=0;'||E'\n','');
   v_definition:=replace(v_definition,'  v_material:=0;'||E'\n','');
-  v_definition:=replace(v_definition,'  v_cancellation_fee:=coalesce(v_booking.pending_cancellation_fee_amount,0);'||E'\n','');
   v_definition:=replace(v_definition,
     'service_amount=v_labour,materials_amount=v_material,cancellation_fee_amount=v_cancellation_fee,',
-    'service_amount=v_labour,materials_amount=0,cancellation_fee_amount=0,');
+    'service_amount=v_labour,materials_amount=0,cancellation_fee_amount=v_cancellation_fee,');
   v_definition:=replace(v_definition,
     '1,v_labour,v_material,v_cancellation_fee,''issued'',clock_timestamp()',
-    '1,v_labour,0,0,''issued'',clock_timestamp()');
+    '1,v_labour,0,v_cancellation_fee,''issued'',clock_timestamp()');
 
   v_old:=$old$  if v_material>0 then
     insert into public.srk_booking_final_bill_items(
@@ -132,17 +130,6 @@ $old$;
   end if;
   v_definition:=replace(v_definition,v_old,'');
 
-  v_old:=$old$  if v_cancellation_fee>0 then
-    insert into public.srk_booking_final_bill_items(
-      bill_id,item_type,description,quantity,unit,unit_price
-    ) values(v_bill.id,'cancellation_fee','Pending cancellation fee from a previous booking',1,'booking',v_cancellation_fee);
-  end if;
-
-$old$;
-  if position(v_old in v_definition)=0 then
-    raise exception 'Cancellation fee bill item block changed; stop and review manually';
-  end if;
-  v_definition:=replace(v_definition,v_old,'');
 
   if position('v_material' in v_definition)>0 then
     raise exception 'Non-labour bill calculation remains; stop and review manually';
