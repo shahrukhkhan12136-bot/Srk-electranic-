@@ -1,53 +1,82 @@
 # SRK ELECTRONIC — Main Supabase Migration History vs Git Source Audit
 
 **Audit date:** 25 November 2026  
-**Scope:** Read-only repository-tree comparison and previously recorded Main-project migration-history count  
-**Target project:** Main Supabase project `gnqhoaqatmoiwwhgzkgm` only  
-**Execution boundary:** No SQL, migration, database write, migration repair, merge, deployment, or payment operation was performed.
+**Target:** Main Supabase project `gnqhoaqatmoiwwhgzkgm`  
+**Scope:** Read-only migration ledger, schema metadata and Git tree comparison.  
+**Execution boundary:** No migration, DDL, history repair, merge, deploy, payment or test data operation.
 
-## 1. Evidence snapshot
+## 1. Fresh Main migration-ledger evidence
 
-The latest available Main-project inspection recorded **539 rows** in Supabase's migration history. The current Git source is split across several active/historical branches, and the number of checked-in SQL migration files differs by branch:
+Read-only `list_migrations` returned exactly **539 migration rows**, with **539 distinct version strings** and no duplicate versions.
 
-| Git ref inspected | SQL files under `supabase/migrations/` |
-|---|---:|
-| `main` | 22 |
-| `work/admin-worker-payout-web-integration-20261125` | 105 |
-| `work/mobile-customer-technician-integration-20261125` | 120 |
-| `feat/ai-rate-management-foundation-20261118` | 127 |
-| `feature/master-customer-workday-ui-20261121` | 110 |
-| `feature/master-technician-payment-cycle-20261121` | 102 |
-| `chore/pr8-replay-audit-20261116-v2` | 100 |
+The first recorded entries include:
 
-These are independent branch snapshots, **not additive counts**. A higher count does not establish that a branch is authoritative or that its migrations match the remote database.
+- `20261108092928` — `harden_srk_rls_policy_performance`
+- `20261108093725` — `add_atomic_payment_order_lock`
+- `20261108093757` — `add_service_role_policy_payment_order_locks`
+- `20261108094007` — `harden_security_definer_function_search_paths`
+- `20261108095224` — `add_missing_foreign_key_indexes`
+- `20261108095928` — `add_actual_paid_amount_commission_and_status_history`
+- `20261108184815` — `protect_commission_columns_and_admin_report`
 
-## 2. What this establishes
+Thus the Main ledger has an early financial/paid-amount-related migration entry before the later commission-column protection entry. The ledger gives version/name, not the historical SQL body, so it does not alone prove every DDL statement in that earlier migration.
 
-1. The current `main` branch is not a complete source archive for the previously observed 539-row Main migration history.
-2. The mobile integration branch has the largest currently relevant complete snapshot inspected in this audit (120 files), but it still does not account for the full recorded remote history.
-3. The repository has known historical replay hazards documented in `docs/MIGRATION_REPLAY_MANIFEST_HI.md` and `docs/GPT2_CURRENT_HEAD_MIGRATION_REPLAY_GATES_20261116_HI.md`: duplicate legacy `20261109` version prefixes, unresolved provenance/order for `service_bookings.amount_paid`, and incomplete proof of the canonical baseline.
-4. A branch's migration-file count cannot be compared directly with the remote history row count to name the missing migrations. The exact remote version list and the exact Git file-version list must be compared row by row; version identity and SQL body hash must both be checked.
+## 2. Fresh Main schema evidence for amount_paid
 
-## 3. What remains unproven
+Read-only `information_schema.columns` inspection confirms:
 
-- The exact 539 remote version strings and their order have not been freshly exported in this audit.
-- It has not been proven that the 539 history rows all correspond to distinct, currently intended migrations.
-- It has not been proven that any one of the inspected branches contains the complete historical SQL source.
-- No remote migration history row has been changed, repaired, deleted, or marked as applied.
-- No migration has been replayed against Main or any other live project.
+- `public.service_bookings.amount_paid` exists.
+- Type: `numeric(12,2)`.
+- Nullable: YES.
+- Default: NULL.
 
-## 4. Safe reconciliation procedure
+Read-only `pg_constraint` inspection confirms two validated constraints:
 
-1. Obtain a **read-only, sanitized export** of the Main project's migration history with exact version, name (if available), and applied order. Do not include credentials, customer data, or payment data.
-2. Export the complete filename/version inventory from the selected Git ref.
-3. Compare exact version identities in three groups: remote-only, Git-only, and matching versions.
-4. For every matching version, compare the deployed SQL body with the repository file using a trusted hash or exact content comparison. A matching filename alone is insufficient.
-5. Recover remote-only SQL only from verified Git history, approved backups, or Supabase migration artifacts. Record source provenance and content hash. Never synthesize a missing migration from its filename or infer SQL from the current schema.
-6. Review duplicate/legacy version identities and baseline dependencies separately. Do not rename, squash, reorder, replay, or edit the remote history until the owner approves a documented repair plan.
-7. Perform any replay experiment only in a disposable local database after the canonical baseline and dependency order have been independently reviewed.
+- `service_bookings_amount_paid_nonnegative`: `amount_paid IS NULL OR amount_paid >= 0`.
+- `service_bookings_amount_paid_range`: `amount_paid IS NULL OR (amount_paid >= 0 AND amount_paid <= 10000000)`.
 
-## 5. Decision
+**Conclusion:** the live Main schema has the column and validated bounds. The candidate Git-only migration `20261109002500_restore_service_bookings_amount_paid_before_financial_grants.sql` is not needed as a live schema patch based on current evidence. Do not apply it: it is not in the Main migration ledger, and its differently named non-negative constraint could add a redundant third check.
 
-**Production migration replay and history repair remain BLOCKED.** The next required evidence is the exact sanitized Main migration-history export. This is a source-reconciliation blocker, not permission to run or repair migrations.
+## 3. Exact Git-version comparison
 
-No production deployment, APK build, merge, live payment, or test-account creation was performed as part of this audit.
+The following independent refs were inspected:
+
+| Git ref | SQL migration files | Distinct filename versions |
+|---|---:|---:|
+| `main` | 22 | 21 |
+| `work/mobile-customer-technician-integration-20261125` | 120 | 119 |
+| `work/admin-worker-payout-web-integration-20261125` | 105 | 104 |
+| `feat/ai-rate-management-foundation-20261118` | 127 | 126 |
+| `feature/master-customer-workday-ui-20261121` | 110 | 109 |
+| `feature/master-technician-payment-cycle-20261121` | 102 | 101 |
+
+Across these six refs, the union contains **169 distinct filename versions**. Comparing that union with the live Main ledger:
+
+- Main versions: **539**
+- Versions present in both Main and at least one inspected Git ref: **25**
+- Main-only versions (not found in any of those six refs): **514**
+- Git-only versions (not present in the Main ledger): **144**
+
+The 25 matching versions had matching filename stems/names in the inspected source. This is a version/name comparison only; it is **not** an SQL body/hash comparison. Branch inventories are independent snapshots and must not be added together.
+
+## 4. Important interpretation
+
+1. Main's current schema is more advanced than the checked-in migration history source available on the six inspected refs.
+2. The 514 Main-only version entries are not necessarily missing SQL forever; their source may exist in older branches, commits, backups, or other refs not yet inspected. They are simply not found in this bounded six-ref comparison.
+3. The isolated `20261109002500` candidate is Git-only (not present in Main's migration ledger). Preserve it as a historical branch artifact; do not cherry-pick or apply it without provenance review.
+4. Existing replay hazards remain relevant to clean-room rebuilds: historical duplicate short version prefixes, baseline provenance and dependency order must be reviewed from source, not inferred from the current live schema.
+5. A live schema query does not reveal the original SQL body of an applied migration. SQL-body provenance still requires approved backup, verified Git history, or another trusted artifact.
+
+## 5. Next safe steps
+
+1. Search older repository refs/commit history and approved backups for the 514 Main-only versions.
+2. For each recovered source file, record exact version, filename, origin ref/commit, blob SHA and whether its body can be independently tied to the deployed migration artifact.
+3. Investigate the 25 matching version/name pairs for exact SQL body equality where a trusted deployed artifact exists.
+4. Build a migration manifest from the **actual Main order**, but do not replay it until the canonical starter schema and dependency order are independently verified.
+5. Keep all source recovery and replay experiments separate from Main; no remote history repair is authorized by this audit.
+
+## 6. Decision
+
+**Main's live `amount_paid` column is present and validated. The migration-source archive is still incomplete: 514 Main ledger versions were not found across the six inspected Git refs. Clean-room replay and history repair remain BLOCKED.**
+
+No Main database writes, migrations, merges, deployments, APK builds, test accounts or payment operations were performed.
