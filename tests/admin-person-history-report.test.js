@@ -64,7 +64,7 @@ test('Admin district directory and rate management require LGD snapshot and audi
   assert.match(admin, /srk_admin_list_india_districts/);
   assert.match(admin, /srk_admin_list_district_rate_matrix/);
   assert.match(admin, /srk_admin_save_district_rate_override/);
-  assert.match(migration, /jsonb_array_length\(p_districts\) < 700/);
+  assert.match(districtMigration, /jsonb_array_length\(p_districts\) < 700/);
   assert.match(migration, /srk_district_service_rate_overrides/);
   assert.match(migration, /admin_district_rate_audit_log/);
   assert.match(migration, /effective_to=clock_timestamp\(\)/);
