@@ -7,6 +7,7 @@ const app = fs.readFileSync('apps/electrician_app/lib/main.dart', 'utf8');
 const workerModules = fs.readFileSync('apps/electrician_app/lib/worker_application_and_work_session.dart', 'utf8');
 const pubspec = fs.readFileSync('apps/electrician_app/pubspec.yaml', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20261125113624_worker_registration_policy_consent_gate.sql', 'utf8');
+const financialMigration = fs.readFileSync('supabase/migrations/20261125115348_worker_financial_details_include_final_bill_id_for_dynamic_qr.sql', 'utf8');
 
 test('Technician app exposes the existing authenticated registration form when no approved profile exists', () => {
   assert.match(app, /import 'worker_application_and_work_session\.dart';/);
@@ -35,4 +36,11 @@ test('Worker application submission is blocked unless current Hindi Terms and Pr
   assert.match(migration, /srk_require_worker_registration_policy_consent/);
   assert.match(migration, /v_required_count<>2/);
   assert.match(migration, /c\.accepted=true/);
+});
+
+test('Technician bill detail can generate a final-bill-specific Razorpay QR for onsite UPI payment', () => {
+  assert.match(app, /create-razorpay-dynamic-qr/);
+  assert.match(app, /final_bill_id/);
+  assert.match(app, /On-site QR बनाएँ/);
+  assert.match(financialMigration, /'final_bill_id',fb\.id/);
 });
