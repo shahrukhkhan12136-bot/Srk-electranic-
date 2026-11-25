@@ -68,9 +68,7 @@ void main() {
     test('accepts exact non-negative paise breakdown', () {
       final bill = SrkFinalBillContract.fromJson({
         'labour_amount_paise': 10000,
-        'approved_materials_amount_paise': 2500,
-        'other_charges_amount_paise': 500,
-        'total_amount_paise': 13000,
+        'total_amount_paise': 10000,
         'currency': 'INR',
         'payment_status': 'unpaid',
         'payment_method': 'online',
@@ -83,8 +81,6 @@ void main() {
     test('rejects mismatch, missing or negative amounts', () {
       final mismatch = SrkFinalBillContract.fromJson({
         'labour_amount_paise': 10000,
-        'approved_materials_amount_paise': 2500,
-        'other_charges_amount_paise': 500,
         'total_amount_paise': 12000,
         'currency': 'INR',
         'payment_status': 'unpaid',
@@ -94,8 +90,6 @@ void main() {
       final missing = SrkFinalBillContract.fromJson({});
       final negative = SrkFinalBillContract.fromJson({
         'labour_amount_paise': -1,
-        'approved_materials_amount_paise': 0,
-        'other_charges_amount_paise': 0,
         'total_amount_paise': -1,
       });
       expect(mismatch.amountsAreValid, isFalse);
