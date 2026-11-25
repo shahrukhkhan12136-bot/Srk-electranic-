@@ -13,7 +13,9 @@ const customerApp = fs.readFileSync(path.join(root, 'apps/customer_app/lib/main.
 
 test('Admin exposes six-category skill counts and loads them after login', () => {
   assert.match(admin, /adminCategorySkillCountsCard/);
-  assert.match(admin, /srk_admin_get_category_skill_counts/);
+  assert.match(admin, /srk_admin_get_category_skill_counts_v2/);
+  assert.match(admin, /openAdminCategorySkillWorkers/);
+  assert.match(admin, /srk_admin_list_category_skill_workers/);
   assert.match(migration, /cross join \(values \('technician'::text\),\('helper'::text\)\)/);
   assert.match(admin, /async function loadAll\(\)\{await loadAdminCategorySkillCounts\(\);/);
   for (const status of ['pending_skill_holders', 'approved_skill_holders', 'active_skill_holders', 'currently_working']) {
@@ -86,4 +88,14 @@ test('District rate changes retain a readable Main-Admin audit history', () => {
   assert.match(admin, /adminDistrictRateHistoryRows/);
   assert.match(admin, /srk_admin_list_district_rate_history/);
   assert.match(districtMigration, /effective_to=clock_timestamp\(\)/);
+});
+
+test('Category worker drilldown returns zero-safe counts and profile detail fields', () => {
+  const drilldown = fs.readFileSync(path.join(root, 'supabase/migrations/20261125160000_admin_category_skill_worker_drilldown.sql'), 'utf8');
+  assert.match(drilldown, /inactive_skill_holders/);
+  assert.match(drilldown, /currently_working/);
+  assert.match(drilldown, /cross join \(values\('technician'::text\),\('helper'::text\)\)/);
+  assert.match(drilldown, /srk_admin_list_category_skill_workers/);
+  assert.match(drilldown, /service_names text\[\]/);
+  assert.match(drilldown, /skill_names text\[\]/);
 });
