@@ -242,7 +242,6 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         Text('इस काम में कौन-कौन से काम आते हैं?', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         ..._availableSkills.map((skill) {
-          final selected = _skill?['id'] == skill['id'];
           return Card(
             margin: const EdgeInsets.only(bottom: 6),
             child: RadioListTile<String>(
