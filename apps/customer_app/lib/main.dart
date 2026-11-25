@@ -1171,7 +1171,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   @override
   void initState() {
     super.initState();
-    final user = _client.auth.currentUser;
   }
 
   @override
