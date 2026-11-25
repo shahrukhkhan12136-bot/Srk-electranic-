@@ -65,10 +65,10 @@ test('Admin district directory and rate management require LGD snapshot and audi
   assert.match(admin, /srk_admin_list_district_rate_matrix/);
   assert.match(admin, /srk_admin_save_district_rate_override/);
   assert.match(districtMigration, /jsonb_array_length\(p_districts\) < 700/);
-  assert.match(migration, /srk_district_service_rate_overrides/);
-  assert.match(migration, /admin_district_rate_audit_log/);
-  assert.match(migration, /effective_to=clock_timestamp\(\)/);
-  assert.match(migration, /length\(btrim\(coalesce\(p_change_reason,''\)\)\)<10/);
+  assert.match(districtMigration, /srk_district_service_rate_overrides/);
+  assert.match(districtMigration, /admin_district_rate_audit_log/);
+  assert.match(districtMigration, /effective_to=clock_timestamp\(\)/);
+  assert.match(districtMigration, /length\(btrim\(coalesce\(p_change_reason,''\)\)\)<10/);
 });
 
 test('District rates are snapshotted into bookings and drive customer pricing and worker rates', () => {
