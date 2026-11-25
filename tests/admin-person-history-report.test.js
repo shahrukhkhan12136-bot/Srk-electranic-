@@ -33,7 +33,11 @@ test('Admin person history supports all four permanent ID types and date windows
   assert.match(admin, /srk_admin_get_person_history/);
   assert.match(migration, /worker_code/);
   assert.match(migration, /customer_code/);
-  assert.match(migration, /employee_code/);
+  assert.match(migration, /staff_code/);
+  assert.match(migration, /srk_staff_profiles/);
+  assert.match(migration, /srk_worker_documents/);
+  assert.match(migration, /srk_staff_documents/);
+  assert.match(migration, /improvement_areas/);
   assert.match(migration, /'helper'/);
   assert.match(migration, /'technician'/);
 });
