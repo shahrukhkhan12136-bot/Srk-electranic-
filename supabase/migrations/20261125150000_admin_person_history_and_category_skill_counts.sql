@@ -18,6 +18,8 @@ alter table public.srk_admin_staff_members
 alter table public.srk_admin_staff_members
   alter column employee_code set not null;
 
+grant usage, select on sequence public.srk_admin_staff_code_seq to authenticated;
+
 create unique index if not exists srk_admin_staff_members_employee_code_uidx
   on public.srk_admin_staff_members(employee_code);
 
@@ -62,6 +64,8 @@ declare
   v_complaints jsonb := '[]'::jsonb;
   v_activity jsonb := '[]'::jsonb;
   v_summary jsonb;
+  v_from timestamptz;
+  v_until timestamptz;
 begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'Main Admin permission required' using errcode='42501';
@@ -75,6 +79,8 @@ begin
   if p_to_date - p_from_date > 3650 then
     raise exception 'Report range cannot exceed 10 years' using errcode='22023';
   end if;
+  v_from := p_from_date::timestamp at time zone 'Asia/Kolkata';
+  v_until := (p_to_date + 1)::timestamp at time zone 'Asia/Kolkata';
 
   select * into v_worker
   from public.srk_worker_profiles
@@ -110,9 +116,9 @@ begin
     join public.service_bookings b on b.id = bw.booking_id
     where bw.worker_id = v_worker.id
       and coalesce(bw.worker_completed_at, bw.accepted_at, bw.assigned_at, b.created_at)
-          >= p_from_date::timestamptz
+           >= v_from
       and coalesce(bw.worker_completed_at, bw.accepted_at, bw.assigned_at, b.created_at)
-          < (p_to_date + 1)::timestamptz;
+          < v_until;
 
     select coalesce(jsonb_agg(jsonb_build_object(
       'booking_worker_id', ws.booking_worker_id, 'work_date', ws.work_date,
@@ -312,17 +318,17 @@ begin
   return query
   select c.id, c.category_name, w.worker_type,
     count(distinct w.id)::bigint,
-    count(distinct w.id) filter (where ws.verification_status in ('pending','submitted','under_review'))::bigint,
-    count(distinct w.id) filter (where ws.verification_status in ('approved','verified'))::bigint,
-    count(distinct w.id) filter (where ws.verification_status in ('approved','verified') and w.is_active)::bigint,
-    count(distinct w.id) filter (where exists (
+    (count(distinct w.id) filter (where ws.verification_status in ('pending','submitted','under_review')))::bigint,
+    (count(distinct w.id) filter (where ws.verification_status in ('approved','verified')))::bigint,
+    (count(distinct w.id) filter (where ws.verification_status in ('approved','verified') and w.is_active))::bigint,
+    (count(distinct w.id) filter (where exists (
       select 1
       from public.srk_booking_workers bw
       join public.service_bookings b on b.id = bw.booking_id
       where bw.worker_id = w.id
         and bw.assignment_status in ('accepted','on_the_way','arrived','working','in_progress')
         and b.status not in ('completed','cancelled','rejected')
-    ))::bigint
+    )))::bigint
   from public.srk_service_categories c
   join public.srk_service_types st on st.category_id = c.id and st.is_active
   join public.srk_service_skills sk on sk.service_type_id = st.id and sk.is_active
