@@ -1,0 +1,47 @@
+name: Flutter Analyze and Tests (No APK)
+
+on:
+  pull_request:
+    branches:
+      - feature/master-technician-payment-cycle-20261121
+    paths:
+      - 'apps/customer_app/**'
+      - 'apps/electrician_app/**'
+      - 'packages/srk_mobile_core/**'
+      - '.github/workflows/flutter-analyze.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-analyze-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Analyze and test shared core
+        run: |
+          cd packages/srk_mobile_core
+          flutter pub get
+          dart analyze
+          flutter test
+      - name: Analyze and test Customer app
+        run: |
+          cd apps/customer_app
+          flutter pub get
+          dart analyze
+          flutter test
+      - name: Analyze and test Technician app
+        run: |
+          cd apps/electrician_app
+          flutter pub get
+          dart analyze
+          flutter test
