@@ -119,7 +119,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       skillId: k['id'].toString(), skillName: k['skill_name'].toString(),
       skillLevelId: l['id'].toString(), skillLevelName: l['level_name'].toString(),
       pricingUnit: unit, pricingRuleId: r?['id']?.toString(), motorHp: hp,
-      availableMotorHp: _hpTiers.where((x) => x['pricing_rule_id'] == r['id'])
+      availableMotorHp: _hpTiers.where((x) => r != null && x['pricing_rule_id'] == r['id'])
         .map((x) => (x['motor_hp'] as num).toDouble()).toList()..sort(),
     ));
   }
