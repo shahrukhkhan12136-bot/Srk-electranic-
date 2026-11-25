@@ -46,3 +46,17 @@ test('Admin inline JavaScript parses without executing browser actions', () => {
   assert.ok(inlineScripts.length > 0, 'expected an inline Admin script');
   assert.doesNotThrow(() => new Function(inlineScripts.at(-1)[1]));
 });
+
+test('Admin district directory and rate management require LGD snapshot and audited changes', () => {
+  assert.match(admin, /adminDistrictPricingCard/);
+  assert.match(admin, /india-lgd-index-api\.vercel\.app\/v1\/districts/);
+  assert.match(admin, /srk_admin_sync_lgd_districts/);
+  assert.match(admin, /srk_admin_list_india_districts/);
+  assert.match(admin, /srk_admin_list_district_rate_matrix/);
+  assert.match(admin, /srk_admin_save_district_rate_override/);
+  assert.match(migration, /jsonb_array_length\(p_districts\) < 700/);
+  assert.match(migration, /srk_district_service_rate_overrides/);
+  assert.match(migration, /admin_district_rate_audit_log/);
+  assert.match(migration, /effective_to=clock_timestamp\(\)/);
+  assert.match(migration, /length\(btrim\(coalesce\(p_change_reason,''\)\)\)<10/);
+});
