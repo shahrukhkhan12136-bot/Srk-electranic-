@@ -1471,6 +1471,7 @@ function renderAdminPersonHistory(data){
 async function loadAdminCategorySkillCounts(){
  const box=document.getElementById('adminCategorySkillCountsRows'),status=document.getElementById('adminCategorySkillCountsStatus');
  if(!box||!sb||!user)return;
+ const endInput=document.getElementById('adminPersonHistoryEnd');if(endInput&&!endInput.value){endInput.value=adminHistoryDateValue(new Date());syncAdminHistoryFromDate();}
  box.textContent='छह कैटेगरी की स्किल संख्या लोड हो रही है…';
  try{
   const {data,error}=await sb.rpc('srk_admin_get_category_skill_counts');if(error)throw error;
