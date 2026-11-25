@@ -469,13 +469,11 @@ Future<void> _callPhone(String raw) async {
 /// credential remains server-side and is never included in this app.
 class CustomerBookingFormPage extends StatefulWidget {
   const CustomerBookingFormPage({super.key});
-
   @override
   State<CustomerBookingFormPage> createState() => _CustomerBookingFormPageState();
 }
 
 class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
-  static const _apiBase = String.fromEnvironment('SRK_API_BASE_URL', defaultValue: 'https://srk-electronic-india.netlify.app');
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _phone = TextEditingController();
@@ -483,47 +481,34 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   final _district = TextEditingController();
   final _pincode = TextEditingController();
   final _address = TextEditingController();
-  final _work = TextEditingController();
   final _client = Supabase.instance.client;
-  String? _service;
-  SrkServiceSelection? _draftServiceSelection;
-  DateTime? _date;
-  TimeOfDay? _time;
-  bool _submitting = false;
-  bool _locationBusy = false;
-  double? _locationLat, _locationLng;
-  String _paymentMethod = 'cash';
 
-  static const _services = [
-    'Electrical Wiring',
-    'Fan Installation / Repair',
-    'Switch & Socket Repair',
-    'Light Installation',
-    'MCB / Distribution Board',
-    'Inverter / Battery',
-    'Appliance Electrical Repair',
-    'Other Electrical Work',
-  ];
+  SrkBackendServiceSelection? _selection;
+  Map<String, dynamic>? _pricePreview;
+  String? _priceError;
+  int _durationHours = 1, _technicianCount = 1, _helperCount = 0, _unitCount = 1;
+  int _previewRequest = 0;
+  bool _submitting = false, _locationBusy = false, _priceBusy = false;
+  double? _locationLat, _locationLng;
 
   @override
   void initState() {
     super.initState();
     final user = _client.auth.currentUser;
-    _phone.text = (user?.phone ?? '').replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^91(?=\d{10}$)'), '');
+    _phone.text = (user?.phone ?? '').replaceAll(RegExp(r'\\D'), '').replaceFirst(RegExp(r'^91(?=\\d{10}$)'), '');
     _name.text = user?.userMetadata?['full_name']?.toString() ?? '';
   }
 
   @override
   void dispose() {
-    _name.dispose(); _phone.dispose(); _state.dispose(); _district.dispose();
-    _pincode.dispose(); _address.dispose(); _work.dispose();
+    _name.dispose(); _phone.dispose(); _state.dispose();
+    _district.dispose(); _pincode.dispose(); _address.dispose();
     super.dispose();
   }
 
   String? _required(String? value, String label, {int min = 2}) {
     final v = value?.trim() ?? '';
-    if (v.length < min) return '$label सही भरें';
-    return null;
+    return v.length < min ? '$label सही भरें' : null;
   }
 
   Future<void> _useCurrentLocation() async {
@@ -532,120 +517,109 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       if (!await Geolocator.isLocationServiceEnabled()) throw StateError('फोन की Location/GPS चालू करें।');
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) throw StateError('लोकेशन अनुमति दें या पता मैन्युअल भरें।');
-      final pos = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 20)));
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        throw StateError('लोकेशन अनुमति दें या पता मैन्युअल भरें।');
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 20)),
+      );
       if (!mounted) return;
       setState(() { _locationLat = pos.latitude; _locationLng = pos.longitude; });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('वर्तमान लोकेशन बुकिंग में जोड़ दी गई।')));
-    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', '')))); }
-    finally { if (mounted) setState(() => _locationBusy = false); }
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('वर्तमान GPS लोकेशन जोड़ दी गई।')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _locationBusy = false);
+    }
   }
 
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final value = await showDatePicker(
-      context: context,
-      initialDate: _date ?? now,
-      firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: DateTime(now.year + 1),
-    );
-    if (value != null) setState(() => _date = value);
+  Future<void> _refreshPricePreview() async {
+    final selection = _selection;
+    final request = ++_previewRequest;
+    if (selection == null) {
+      if (mounted) setState(() { _pricePreview = null; _priceError = null; _priceBusy = false; });
+      return;
+    }
+    setState(() { _priceBusy = true; _priceError = null; _pricePreview = null; });
+    try {
+      final data = await _client.rpc('srk_customer_preview_booking_price_v2', params: {
+        'p_category_id': selection.categoryId,
+        'p_service_type_id': selection.serviceTypeId,
+        'p_skill_id': selection.skillId,
+        'p_skill_level_id': selection.skillLevelId,
+        'p_technician_count': _technicianCount,
+        'p_helper_count': _helperCount,
+        'p_duration_hours': selection.pricingUnit == 'hour' ? _durationHours : 1,
+        'p_motor_hp': selection.motorHp,
+        'p_unit_count': selection.pricingUnit == 'per_item' ? _unitCount : 1,
+      });
+      final rows = List<Map<String, dynamic>>.from(data as List);
+      if (rows.isEmpty) throw StateError('इस सेवा के लिए सक्रिय दर उपलब्ध नहीं है।');
+      if (!mounted || request != _previewRequest) return;
+      setState(() { _pricePreview = rows.first; _priceBusy = false; });
+    } catch (e) {
+      if (!mounted || request != _previewRequest) return;
+      setState(() { _priceError = e.toString().replaceFirst('Exception: ', ''); _priceBusy = false; });
+    }
   }
-
-  Future<void> _pickTime() async {
-    final value = await showTimePicker(
-      context: context,
-      initialTime: _time ?? TimeOfDay.now(),
-    );
-    if (value != null) setState(() => _time = value);
-  }
-
-  String _two(int n) => n.toString().padLeft(2, '0');
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_service == null || _date == null || _time == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('सर्विस, तारीख और समय चुनना जरूरी है।')),
-      );
+    final selection = _selection;
+    if (selection == null || _pricePreview == null || _priceBusy) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('पहले लाइव कैटलॉग से सेवा चुनें और सर्वर दर की पुष्टि करें।')));
       return;
     }
     final session = _client.auth.currentSession;
     final user = _client.auth.currentUser;
     if (session == null || user == null || user.phoneConfirmedAt == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('बुकिंग के लिए पहले मोबाइल OTP सत्यापन पूरा करें।')),
-      );
-      return;
-    }
-    if (_apiBase.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ऐप का API domain configure नहीं है। अभी बुकिंग भेजना संभव नहीं है।')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('बुकिंग के लिए पहले मोबाइल OTP सत्यापन पूरा करें।')));
       return;
     }
     setState(() => _submitting = true);
-    HttpClient? http;
     try {
-      final base = _apiBase.trim().replaceFirst(RegExp(r'/+$'), '');
-      final uri = Uri.parse('$base/api/create-booking');
-      if (uri.scheme != 'https' || uri.host.isEmpty) {
-        throw const FormatException('Secure API address is invalid');
-      }
-      http = HttpClient()..connectionTimeout = const Duration(seconds: 20);
-      final request = await http.postUrl(uri);
-      request.headers.contentType = ContentType.json;
-      request.headers.set(HttpHeaders.authorizationHeader, 'Bearer ${session.accessToken}');
-      request.write(jsonEncode({
-        'customer_name': _name.text.trim(),
-        'phone': _phone.text.trim(),
-        'state': _state.text.trim(),
-        'district': _district.text.trim(),
-        'pincode': _pincode.text.trim(),
-        'address': _address.text.trim(),
-        'service_type': _service,
-        'preferred_date': '${_date!.year}-${_two(_date!.month)}-${_two(_date!.day)}',
-        'preferred_time': '${_two(_time!.hour)}:${_two(_time!.minute)}',
-        'work_details': _work.text.trim(),
-        'payment_method': _paymentMethod,
-        'location_lat': _locationLat,
-        'location_lng': _locationLng,
-      }));
-      final response = await request.close().timeout(const Duration(seconds: 30));
-      final responseText = await response.transform(utf8.decoder).join();
-      final Map<String, dynamic> data;
-      try {
-        data = Map<String, dynamic>.from(jsonDecode(responseText) as Map);
-      } catch (_) {
-        throw StateError('सर्वर से सही जवाब नहीं मिला।');
-      }
-      if (response.statusCode < 200 || response.statusCode >= 300 || data['success'] != true) {
-        throw StateError(data['error']?.toString() ?? 'बुकिंग सेव नहीं हुई।');
-      }
+      await _client.rpc('srk_customer_upsert_profile', params: {
+        'p_full_name': _name.text.trim(),
+        'p_phone': _phone.text.trim(),
+      });
+      final response = await _client.rpc('srk_customer_create_booking', params: {
+        'p_category_id': selection.categoryId,
+        'p_service_type_id': selection.serviceTypeId,
+        'p_skill_id': selection.skillId,
+        'p_technician_count': _technicianCount,
+        'p_helper_count': _helperCount,
+        'p_duration_hours': selection.pricingUnit == 'hour' ? _durationHours : 1,
+        'p_state': _state.text.trim(),
+        'p_district': _district.text.trim(),
+        'p_pincode': _pincode.text.trim(),
+        'p_address': _address.text.trim(),
+        'p_booking_latitude': _locationLat,
+        'p_booking_longitude': _locationLng,
+        'p_current_gps_latitude': _locationLat,
+        'p_current_gps_longitude': _locationLng,
+        'p_motor_hp': selection.motorHp,
+        'p_skill_level_id': selection.skillLevelId,
+        'p_unit_count': selection.pricingUnit == 'per_item' ? _unitCount : 1,
+      });
+      final booking = Map<String, dynamic>.from(response as Map);
       if (!mounted) return;
       await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
+        context: context, barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.check_circle, color: Colors.green, size: 42),
           title: const Text('बुकिंग सफलतापूर्वक भेजी गई'),
-          content: Text(
-            '${data['message'] ?? 'आपकी बुकिंग सेव हो गई है।'}\n\nबुकिंग ID: ${data['booking_id'] ?? '—'}',
-          ),
+          content: Text('बुकिंग ID: ${booking['id'] ?? '—'}\n\nअभी कोई अग्रिम भुगतान नहीं लिया गया है। योग्य Technician को सेवा के अनुसार ऑफर भेजा जाएगा।'),
           actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('ठीक है'))],
         ),
       );
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e is SocketException
-              ? 'इंटरनेट कनेक्शन जाँचें और दोबारा कोशिश करें।'
-              : e.toString().replaceFirst('Bad state: ', ''))),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
     } finally {
-      http?.close(force: true);
       if (mounted) setState(() => _submitting = false);
     }
   }
@@ -657,8 +631,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
 
   Widget _field(TextEditingController controller, String label, {
     String? hint, TextInputType? keyboard, int maxLines = 1, int maxLength = 250,
-    String? Function(String?)? validator,
-    bool readOnly = false,
+    String? Function(String?)? validator, bool readOnly = false,
   }) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: TextFormField(
@@ -668,101 +641,100 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     ),
   );
 
+  String _money(dynamic value) => '₹${(value as num?)?.toStringAsFixed(2) ?? '—'}';
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('नई सर्विस बुकिंग')),
     body: SafeArea(child: Form(
       key: _formKey,
       child: ListView(padding: const EdgeInsets.all(16), children: [
-        Card(child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [
-          const Icon(Icons.verified_user, color: Colors.green),
-          const SizedBox(width: 10),
-          Expanded(child: Text('बुकिंग आपके OTP-verified मोबाइल खाते से जुड़ी होगी। मोबाइल नंबर वही होना चाहिए जिससे लॉगिन किया है।')),
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Row(children: const [
+          Icon(Icons.verified_user, color: Colors.green), SizedBox(width: 10),
+          Expanded(child: Text('बुकिंग आपके OTP-verified मोबाइल खाते से जुड़ेगी। भुगतान काम पूरा होने और अंतिम बिल बनने के बाद ही होगा।')),
         ]))),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('नई सर्विस कैटेगरी', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                SrkServiceCategoryPicker(
-                  onSelection: (selection) {
-                    setState(() => _draftServiceSelection = selection);
-                  },
-                ),
-                if (_draftServiceSelection != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'चुना गया प्रारूप: ${_draftServiceSelection!.displayName}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    'कैटलॉग वर्जन: ${_draftServiceSelection!.catalogueVersion}',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                const Text(
-                  'यह चयन अभी केवल तैयारी/preview के लिए है। Backend की मंजूरी से पहले इसे बुकिंग में नहीं भेजा जाएगा। नीचे मौजूदा बुकिंग सिस्टम का सर्विस विकल्प अभी आवश्यक है।',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-        ),
         const SizedBox(height: 12),
         Text('ग्राहक की जानकारी', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         _field(_name, 'पूरा नाम', maxLength: 100),
         _field(_phone, 'OTP verified मोबाइल नंबर', keyboard: TextInputType.phone, maxLength: 10, readOnly: true,
-          validator: (v) => RegExp(r'^\d{10}$').hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
+          validator: (v) => RegExp(r'^\\d{10}$').hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
         const SizedBox(height: 4),
         Text('सेवा का पता', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
         _field(_state, 'राज्य', maxLength: 100),
         _field(_district, 'जिला', maxLength: 100),
         _field(_pincode, '6 अंकों का PIN Code', keyboard: TextInputType.number, maxLength: 6,
-          validator: (v) => RegExp(r'^\d{6}$').hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
+          validator: (v) => RegExp(r'^\\d{6}$').hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
         _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
-        OutlinedButton.icon(onPressed: _locationBusy ? null : _useCurrentLocation, icon: _locationBusy ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.my_location), label: Text(_locationBusy ? 'लोकेशन ली जा रही है…' : (_locationLat == null ? 'वर्तमान GPS लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें'))),
-        if (_locationLat != null) const Text('मैप लोकेशन बुकिंग के साथ भेजी जाएगी।', style: TextStyle(color: Colors.green)),
-        const SizedBox(height: 4),
-        Text('भुगतान का तरीका', style: Theme.of(context).textTheme.titleMedium),
-        DropdownButtonFormField<String>(value: _paymentMethod, decoration: _decoration('भुगतान चुनें'), items: const [DropdownMenuItem(value: 'cash', child: Text('नकद (काम पूरा होने पर)')), DropdownMenuItem(value: 'online', child: Text('ऑनलाइन (UPI / कार्ड / नेट बैंकिंग)'))], onChanged: (v) => setState(() => _paymentMethod = v ?? 'cash')),
-        const Text('भुगतान की अनुमति बुकिंग की स्थिति और सर्वर की पुष्टि के बाद ही मिलेगी। अभी कोई अग्रिम भुगतान नहीं।'),
-        Text('काम की जानकारी', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(
-          value: _service, decoration: _decoration('मौजूदा बुकिंग सिस्टम की सर्विस चुनें'),
-          items: _services.map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))).toList(),
-          onChanged: (v) => setState(() => _service = v),
-          validator: (v) => v == null ? 'सर्विस चुनें' : null,
-        ),
-        const SizedBox(height: 12),
-        _field(_work, 'काम की समस्या / अतिरिक्त जानकारी', maxLines: 4, maxLength: 2000,
-          validator: (v) => (v?.trim().length ?? 0) < 5 ? 'कम से कम 5 अक्षरों में काम समझाएँ' : null),
         OutlinedButton.icon(
-          onPressed: _pickDate,
-          icon: const Icon(Icons.calendar_month),
-          label: Text(_date == null ? 'पसंदीदा तारीख चुनें' : 'तारीख: ${_date!.day}-${_date!.month}-${_date!.year}'),
+          onPressed: _locationBusy ? null : _useCurrentLocation,
+          icon: _locationBusy ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.my_location),
+          label: Text(_locationBusy ? 'GPS लोकेशन ली जा रही है…' : (_locationLat == null ? 'वर्तमान GPS लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें')),
         ),
+        const SizedBox(height: 14),
+        Text('आपको कौन-सी सेवा चाहिए?', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: _pickTime,
-          icon: const Icon(Icons.schedule),
-          label: Text(_time == null ? 'पसंदीदा समय चुनें' : 'समय: ${_time!.format(context)}'),
-        ),
+        SrkServiceCategoryPicker(onSelection: (selection) {
+          setState(() { _selection = selection; _pricePreview = null; _priceError = null; });
+          _refreshPricePreview();
+        }),
+        if (_selection != null) ...[
+          const SizedBox(height: 12),
+          Text('${_selection!.categoryName} • ${_selection!.serviceName}\n${_selection!.skillName} • ${_selection!.skillLevelName}',
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (_selection!.pricingUnit == 'hour') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _durationHours, decoration: _decoration('काम की अवधि'),
+              items: const [1,3,8].map((v) => DropdownMenuItem(value:v,child:Text('$v घंटे'))).toList(),
+              onChanged: (v) { setState(() => _durationHours=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          if (_selection!.pricingUnit == 'per_item') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
+              items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
+              onChanged: (v) { setState(() => _unitCount=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
+            items: const [1,2,3].map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
+            onChanged: (v) { setState(() => _technicianCount=v??1); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
+            items: const [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
+            onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 12),
+          Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('सर्वर से अनुमानित मजदूरी', style: Theme.of(context).textTheme.titleMedium),
+              if (_priceBusy) const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
+              if (_priceError != null) Text(_priceError!, style: const TextStyle(color: Colors.red)),
+              if (_pricePreview != null) ...[
+                Text('अनुमानित कुल: ${_money(_pricePreview!['estimated_customer_total'])}', style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
+                Text('मजदूरी: ${_money(_pricePreview!['estimated_base_total'])}'),
+                Text('कंपनी कमीशन (अनुमान): ${_money(_pricePreview!['estimated_company_commission'])}'),
+                Text('Technician का हिस्सा (अनुमान): ${_money(_pricePreview!['estimated_worker_net'])}'),
+                Text((_pricePreview!['price_note']??'').toString()),
+                const Text('सामान / पार्ट्स इस अनुमान में शामिल नहीं हैं; अलग सूची और आपकी मंजूरी के बाद ही जोड़े जाएँगे।'),
+              ],
+            ]))),
+        ],
         const SizedBox(height: 12),
         Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Padding(padding: EdgeInsets.all(14), child: Text(
-            'सर्विस की तय दर और काम की जानकारी के आधार पर बुकिंग होगी। जरूरी सामान या पार्ट्स की कीमत अलग बताई जाएगी और आपकी मंजूरी के बाद ही जोड़ी जाएगी।')),
+            'बुकिंग भेजने के बाद योग्य Technician को ऑफर मिलेगा। Technician स्वीकार करने के बाद काम का समय तय करने का प्रस्ताव भेज सकता है, जिसे आप स्वीकार या अस्वीकार कर सकेंगे। कोई अग्रिम भुगतान नहीं।')),
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
-          onPressed: _submitting ? null : _submit,
+          onPressed: _submitting || _selection == null || _pricePreview == null || _priceBusy ? null : _submit,
           icon: _submitting ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.send),
           label: Text(_submitting ? 'बुकिंग भेजी जा रही है…' : 'बुकिंग भेजें'),
         ),
