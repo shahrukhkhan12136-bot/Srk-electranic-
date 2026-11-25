@@ -113,8 +113,6 @@ class SrkWorkConfirmationContract {
 class SrkFinalBillContract {
   const SrkFinalBillContract({
     required this.labourAmountPaise,
-    required this.approvedMaterialsAmountPaise,
-    required this.otherChargesAmountPaise,
     required this.totalAmountPaise,
     required this.currency,
     required this.paymentStatus,
@@ -124,8 +122,6 @@ class SrkFinalBillContract {
   });
 
   final int labourAmountPaise;
-  final int approvedMaterialsAmountPaise;
-  final int otherChargesAmountPaise;
   final int totalAmountPaise;
   final String currency;
   final String paymentStatus;
@@ -135,18 +131,13 @@ class SrkFinalBillContract {
 
   bool get amountsAreValid =>
       labourAmountPaise >= 0 &&
-      approvedMaterialsAmountPaise >= 0 &&
-      otherChargesAmountPaise >= 0 &&
       totalAmountPaise >= 0 &&
-      labourAmountPaise + approvedMaterialsAmountPaise + otherChargesAmountPaise ==
-          totalAmountPaise;
+      labourAmountPaise == totalAmountPaise;
 
   factory SrkFinalBillContract.fromJson(Map<String, Object?> json) {
     int readAmount(String key) => json[key] is int ? json[key] as int : -1;
     return SrkFinalBillContract(
       labourAmountPaise: readAmount('labour_amount_paise'),
-      approvedMaterialsAmountPaise: readAmount('approved_materials_amount_paise'),
-      otherChargesAmountPaise: readAmount('other_charges_amount_paise'),
       totalAmountPaise: readAmount('total_amount_paise'),
       currency: json['currency'] is String ? json['currency'] as String : '',
       paymentStatus: json['payment_status'] is String ? json['payment_status'] as String : '',
