@@ -85,3 +85,35 @@ These are exact version-string comparisons. The 40 matching versions are not yet
 **Main's live `amount_paid` column is present and validated. The migration-source archive is still incomplete: 499 Main ledger versions were not found across the 11 inspected Git refs. Clean-room replay and history repair remain BLOCKED.**
 
 No Main database writes, migrations, merges, deployments, APK builds, test accounts or payment operations were performed.
+
+
+## 7. Source recovery from Main migration ledger — 25 Nov 2026
+
+A further read-only inspection found that `supabase_migrations.schema_migrations` stores the full `statements` array, not just version/name metadata. All rows were checked:
+
+- 539 total rows
+- 0 NULL statement arrays
+- 0 empty statement arrays
+- 539 statement items (one per migration)
+- approximately 2,073,329 SQL characters
+- largest single SQL body: 30,848 characters
+- basic scan for common Razorpay live-key, service-role-key and JWT token patterns: 0 matches (not a complete secret audit)
+
+All 539 entries were exported read-only in 22 ordered JSON batches and committed to:
+
+- `docs/recovered-main-migrations/README.md`
+- `docs/recovered-main-migrations/main_migration_source_001.json` through `main_migration_source_022.json`
+
+The repository tree confirms all 22 expected files. Chunks 001, 011 and 022 were fetched back from GitHub and parsed successfully; their embedded row counts and version ranges match. Batch creation responses account for 539 rows total.
+
+**This closes the immediate loss of access to the historical SQL bodies:** a copy of every SQL statement is now preserved in the integration branch as a JSON source archive. It does not yet mean the canonical `supabase/migrations/` folder has been rebuilt, that bodies match any older Git artifact, or that replay is safe. The archive is intentionally not an executable migration directory.
+
+The exact Main entry `20261108095928` was also inspected directly. Its stored SQL creates `amount_paid numeric(12,2)`, adds the non-negative constraint, and defines related commission/status-history objects. This confirms the live migration body—not just the migration name—introduced the amount column before `20261108184815`. The isolated Git-only `20261109002500` candidate should not be applied to Main.
+
+### Remaining safe reconstruction work
+
+1. Convert the archived statement arrays into one source file per exact Main version/name in a separate recovery branch or directory, preserving SQL bytes and original order.
+2. Compare every reconstructed file against all existing Git files with the same version; record exact equality/difference and source hashes.
+3. Review any migration bodies that contain environment-specific values or privileged operations.
+4. Rebuild and validate a canonical starter baseline and dependency order before any disposable replay.
+5. Do not apply archived SQL to Main and do not edit Main migration history as part of recovery.
