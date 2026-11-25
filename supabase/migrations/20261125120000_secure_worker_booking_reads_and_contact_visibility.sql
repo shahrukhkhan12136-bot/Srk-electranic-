@@ -74,21 +74,30 @@ begin
     b.state,
     b.district,
     b.pincode,
-    b.address,
-    b.booking_latitude,
-    b.booking_longitude,
+    case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
+      then b.address else null end,
+    case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
+      then b.booking_latitude else null end,
+    case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
+      then b.booking_longitude else null end,
     b.requested_duration_hours,
     b.pricing_unit_snapshot,
     b.work_start_approval_status,
     b.work_start_requested_at,
     b.completion_approval_status,
     b.completion_requested_at,
-    b.payment_method,
-    b.payment_status,
-    fb.id,
-    fb.bill_number,
-    fb.total_amount,
-    fb.status
+    case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
+      then b.payment_method else null end,
+    case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
+      then b.payment_status else null end,
+    case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
+      then fb.id else null end,
+    case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
+      then fb.bill_number else null end,
+    case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
+      then fb.total_amount else null end,
+    case when bw.assignment_status in ('accepted','assigned','working','paused','completed')
+      then fb.status else null end
   from public.srk_booking_workers bw
   join public.service_bookings b on b.id = bw.booking_id
   left join lateral (
