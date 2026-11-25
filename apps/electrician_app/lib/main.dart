@@ -72,7 +72,7 @@ class _ElectricianLoginPageState extends State<ElectricianLoginPage> {
   }
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('SRK ELECTRONIC — Electrician')),
+    appBar: AppBar(title: const Text('SRK ELECTRONIC — Technician')),
     body: Center(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 460), child: Card(child: Padding(padding: const EdgeInsets.all(22), child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -116,54 +116,114 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
     try {
       final uid = client.auth.currentUser?.id;
       if (uid == null) throw StateError('Session expired');
-      profile = await client.from('electrician_profiles').select('id,display_name,state,district,pincode,active,verification_status').or('user_id.eq.$uid,auth_user_id.eq.$uid').maybeSingle();
-      if (profile != null) {
-        final pid = profile!['id'] as String;
-        final offerRows = await client.from('job_offers').select('id,status,match_level,created_at').eq('electrician_id', pid).order('created_at', ascending: false).limit(100);
-        offers = List<Map<String, dynamic>>.from(offerRows);
-        final offerDetailRows = await client.rpc('srk_get_my_offer_details');
-        offerDetails = List<Map<String, dynamic>>.from(offerDetailRows as List);
-        try {
-          final priceDetailsRows = await client.rpc('srk_get_my_offer_price_details');
-          offerPriceDetails = List<Map<String, dynamic>>.from(priceDetailsRows as List);
-        } catch (_) {
-          offerPriceDetails = [];
-          loadWarnings.add('कीमत/कोटेशन का विवरण अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
-        }
-        final bookingRows = await client.rpc('srk_get_my_assigned_booking_quote_details');
-        final customerPhones = <String, String>{};
-        try {
-          final contactRows = await client.rpc('srk_electrician_get_my_assigned_booking_contacts');
-          for (final row in List<Map<String, dynamic>>.from(contactRows as List)) {
-            final phone = row['customer_phone']?.toString().trim() ?? '';
-            if (phone.isNotEmpty) customerPhones[row['booking_id'].toString()] = phone;
-          }
-        } catch (_) {
-          loadWarnings.add('नियुक्त बुकिंग के ग्राहक संपर्क अभी लोड नहीं हुए। Refresh करके फिर कोशिश करें।');
-        }
-        bookingDetails = List<Map<String, dynamic>>.from(bookingRows as List).map((booking) {
-          final phone = customerPhones[booking['booking_id'].toString()];
-          return {...booking, if (phone != null) 'customer_phone': phone};
+
+      final workerRow = await client.from('srk_worker_profiles')
+          .select('id,worker_type,full_name,phone,state,district,pincode,is_active,verification_status,is_online,category_id')
+          .eq('user_id', uid)
+          .maybeSingle();
+
+      if (workerRow == null) {
+        profile = null;
+        offers = [];
+        offerDetails = [];
+        earnings = [];
+        offerPriceDetails = [];
+        bookingDetails = [];
+        wallet = null;
+        return;
+      }
+
+      profile = {
+        ...Map<String, dynamic>.from(workerRow),
+        'display_name': workerRow['full_name'],
+        'active': workerRow['is_active'],
+      };
+
+      final assignmentRows = await client.rpc('srk_worker_get_my_assignments');
+      final assignments = List<Map<String, dynamic>>.from(assignmentRows as List);
+
+      final contactRows = await client.rpc('srk_worker_get_my_booking_customer_contacts');
+      final customerPhones = <String, String>{};
+      for (final row in List<Map<String, dynamic>>.from(contactRows as List)) {
+        final phone = row['customer_phone']?.toString().trim() ?? '';
+        if (phone.isNotEmpty) customerPhones[row['booking_id'].toString()] = phone;
+      }
+
+      offers = assignments.map((a) => {
+        'id': a['assignment_id'],
+        'assignment_id': a['assignment_id'],
+        'offer_id': a['assignment_id'],
+        'status': a['assignment_status'] == 'rejected' ? 'declined' : a['assignment_status'],
+      }).toList();
+
+      offerDetails = assignments
+          .where((a) => a['assignment_status'] == 'offered')
+          .map((a) => {
+            ...a,
+            'offer_status': a['assignment_status'],
+            'booking_id': a['booking_id'],
+            'service_type': a['service_type'],
+            'match_level': 'district',
+            'work_details': a['work_details'],
+          }).toList();
+
+      bookingDetails = assignments
+          .where((a) => ['accepted','assigned','working','paused','completed'].contains(a['assignment_status']))
+          .map((a) {
+            final bookingStatus = a['booking_status']?.toString();
+            final normalizedStatus = bookingStatus == 'confirmed' || bookingStatus == 'new'
+                ? 'assigned'
+                : bookingStatus;
+            final phone = customerPhones[a['booking_id'].toString()];
+            return {
+              ...a,
+              'booking_status': normalizedStatus,
+              'service_charge': a['service_charge'],
+              'quoted_amount': a['quoted_amount'] ?? a['final_bill_total'],
+              'quote_note': a['quote_note'],
+              'location_lat': a['booking_latitude'],
+              'location_lng': a['booking_longitude'],
+              if (phone != null) 'customer_phone': phone,
+            };
+          }).toList();
+
+      offerPriceDetails = assignments
+          .where((a) => a['service_charge'] != null)
+          .map((a) => {
+            'booking_id': a['booking_id'],
+            'service_charge': a['service_charge'],
+            'quote_status': a['quote_status'],
+            'quote_note': a['quote_note'],
+            'electrician_quote_kind': 'labour_quote',
+          }).toList();
+
+      try {
+        final earningRows = await client.rpc('srk_worker_get_my_earnings');
+        earnings = List<Map<String, dynamic>>.from(earningRows as List).map((row) => {
+          ...row,
+          'electrician_earning': row['net_earning'],
         }).toList();
-        try {
-          final earningRows = await client.rpc('srk_get_my_earnings');
-          earnings = List<Map<String, dynamic>>.from(earningRows as List);
-        } catch (_) {
-          earnings = [];
-          loadWarnings.add('कमाई का विवरण अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
-        }
-        try {
-          final walletResult = await client.rpc('srk_get_my_wallet_summary');
-          final walletData = Map<String, dynamic>.from(walletResult as Map);
-          final partnerWallet = walletData['electrician'];
-          wallet = partnerWallet == null ? null : Map<String, dynamic>.from(partnerWallet as Map);
-        } catch (_) {
-          wallet = null;
-          loadWarnings.add('वॉलेट का बैलेंस अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
-        }
-      } else { offers = []; offerDetails = []; earnings = []; offerPriceDetails = []; bookingDetails = []; wallet = null; }
-    } catch (_) { error = 'डैशबोर्ड लोड नहीं हो सका। इंटरनेट जाँचकर Refresh करें।'; }
-    finally { if (mounted) setState(() => loading = false); }
+      } catch (_) {
+        earnings = [];
+        loadWarnings.add('कमाई का विवरण अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
+      }
+
+      try {
+        final walletResult = await client.rpc('srk_worker_get_my_wallet_summary');
+        final walletData = Map<String, dynamic>.from(walletResult as Map);
+        wallet = {
+          'balance': walletData['available_for_payout'] ?? 0,
+          ...walletData,
+        };
+      } catch (_) {
+        wallet = null;
+        loadWarnings.add('वॉलेट का बैलेंस अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।');
+      }
+    } catch (e) {
+      error = 'टेक्नीशियन डैशबोर्ड लोड नहीं हो सका। आवश्यक Worker API migration लागू होने और इंटरनेट की जाँच करें।';
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
 
 
@@ -221,8 +281,8 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
     );
     if (confirmed != true) return;
     try {
-      await client.rpc('srk_respond_to_offer', params: {
-        'p_offer_id': offer['offer_id'], 'p_response': response,
+      await client.rpc('srk_worker_respond_assignment', params: {
+        'p_assignment_id': offer['assignment_id'], 'p_accept': accept,
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(accept ? 'बुकिंग आपके नाम नियुक्त हो गई।' : 'ऑफर मना कर दिया गया।')));
