@@ -25,6 +25,8 @@ create index if not exists srk_worker_application_skills_skill_status_idx
  on public.srk_worker_application_skills(skill_id,status);
 alter table public.srk_worker_skills add column if not exists years_experience integer
  check(years_experience is null or years_experience between 0 and 60);
+alter table public.srk_worker_skills drop constraint if exists srk_approved_worker_skill_requires_level;
+alter table public.srk_worker_application_skills drop constraint if exists srk_approved_application_skill_requires_level;
 alter table public.srk_worker_skills drop constraint if exists srk_worker_skill_status_valid;
 alter table public.srk_worker_skills add constraint srk_worker_skill_status_valid
  check(verification_status=any(array['pending','approved','rejected','more_info']::text[]));
@@ -37,21 +39,22 @@ alter table public.srk_worker_skills add constraint srk_worker_skill_review_cons
 create or replace function srk_private.validate_worker_skill_category()
 returns trigger language plpgsql set search_path=pg_catalog,public
 as $function$
-declare v_category_id uuid;
+declare v_category_id uuid;v_level_count integer;
 begin
- select st.category_id into v_category_id
- from public.srk_service_skills sk join public.srk_service_types st on st.id=sk.service_type_id
+ select st.category_id into v_category_id from public.srk_service_skills sk join public.srk_service_types st on st.id=sk.service_type_id
  where sk.id=new.skill_id and sk.is_active and st.is_active;
  if v_category_id is null then raise exception 'Skill or service category is inactive'; end if;
- if new.skill_level_id is not null and not exists(
-  select 1 from public.srk_skill_levels l where l.id=new.skill_level_id and l.category_id=v_category_id and l.is_active
- ) then raise exception 'Skill level must belong to the skill category'; end if;
- if new.verification_status='approved' and new.skill_level_id is null then
-  raise exception 'Approved skill requires a category-matched skill level';
+ select count(*) into v_level_count from public.srk_skill_levels where category_id=v_category_id and is_active;
+ if new.skill_level_id is not null and not exists(select 1 from public.srk_skill_levels l where l.id=new.skill_level_id and l.category_id=v_category_id and l.is_active) then
+  raise exception 'Skill level must belong to the skill category';
+ end if;
+ if new.verification_status='approved' and v_level_count>0 and new.skill_level_id is null then
+  raise exception 'Approved skill requires a category-matched qualification level';
  end if;
  return new;
 end;
 $function$;
+
 drop trigger if exists srk_worker_skills_validate_category on public.srk_worker_skills;
 create trigger srk_worker_skills_validate_category before insert or update of skill_id,skill_level_id,verification_status
 on public.srk_worker_skills for each row execute function srk_private.validate_worker_skill_category();
@@ -59,23 +62,23 @@ on public.srk_worker_skills for each row execute function srk_private.validate_w
 create or replace function srk_private.validate_worker_application_skill()
 returns trigger language plpgsql set search_path=pg_catalog,public
 as $function$
-declare v_category_id uuid;
+declare v_category_id uuid;v_level_count integer;
 begin
- select st.category_id into v_category_id
- from public.srk_service_skills sk join public.srk_service_types st on st.id=sk.service_type_id
+ select st.category_id into v_category_id from public.srk_service_skills sk join public.srk_service_types st on st.id=sk.service_type_id
  where sk.id=new.skill_id and sk.is_active and st.is_active;
  if v_category_id is null then raise exception 'Skill or service category is inactive'; end if;
- if new.skill_level_id is not null and not exists(
-  select 1 from public.srk_skill_levels l where l.id=new.skill_level_id and l.category_id=v_category_id and l.is_active
- ) then raise exception 'Skill level must belong to the selected skill category'; end if;
- if new.status='approved' and new.skill_level_id is null then raise exception 'Approved application skill requires a skill level'; end if;
- if new.evidence_document_id is not null and not exists(
-  select 1 from public.srk_worker_documents d where d.id=new.evidence_document_id and d.application_id=new.application_id
- ) then raise exception 'Evidence document must belong to this application'; end if;
- new.updated_at:=clock_timestamp();
- return new;
+ select count(*) into v_level_count from public.srk_skill_levels where category_id=v_category_id and is_active;
+ if new.skill_level_id is not null and not exists(select 1 from public.srk_skill_levels l where l.id=new.skill_level_id and l.category_id=v_category_id and l.is_active) then
+  raise exception 'Skill level must belong to the selected skill category';
+ end if;
+ if new.status='approved' and v_level_count>0 and new.skill_level_id is null then raise exception 'Approved application skill requires a qualification level'; end if;
+ if new.evidence_document_id is not null and not exists(select 1 from public.srk_worker_documents d where d.id=new.evidence_document_id and d.application_id=new.application_id) then
+  raise exception 'Evidence document must belong to this application';
+ end if;
+ new.updated_at:=clock_timestamp();return new;
 end;
 $function$;
+
 drop trigger if exists srk_worker_application_skills_validate on public.srk_worker_application_skills;
 create trigger srk_worker_application_skills_validate before insert or update of skill_id,skill_level_id,status,evidence_document_id
 on public.srk_worker_application_skills for each row execute function srk_private.validate_worker_application_skill();
@@ -83,10 +86,9 @@ on public.srk_worker_application_skills for each row execute function srk_privat
 create or replace function public.srk_worker_submit_application_skill(
  p_application_id uuid,p_skill_id uuid,p_skill_level_id uuid,p_years_experience integer default null,p_evidence_document_id uuid default null
 ) returns public.srk_worker_application_skills
-language plpgsql security definer
-set search_path=pg_catalog,public,auth
+language plpgsql security definer set search_path=pg_catalog,public,auth
 as $function$
-declare v_app public.srk_worker_applications%rowtype;v_skill public.srk_service_skills%rowtype;v_level public.srk_skill_levels%rowtype;v_result public.srk_worker_application_skills%rowtype;
+declare v_app public.srk_worker_applications%rowtype;v_skill public.srk_service_skills%rowtype;v_category_id uuid;v_level_count integer;v_result public.srk_worker_application_skills%rowtype;
 begin
  if auth.uid() is null then raise exception 'Authentication required' using errcode='28000'; end if;
  select * into v_app from public.srk_worker_applications where id=p_application_id and user_id=auth.uid() for update;
@@ -95,25 +97,26 @@ begin
  if p_years_experience is not null and p_years_experience not between 0 and 60 then raise exception 'Years of experience must be between 0 and 60'; end if;
  select * into v_skill from public.srk_service_skills where id=p_skill_id and is_active;
  if not found then raise exception 'Active skill not found'; end if;
- if not exists(select 1 from public.srk_service_types st join public.srk_service_categories c on c.id=st.category_id where st.id=v_skill.service_type_id and st.is_active and c.is_active) then
-  raise exception 'Skill service category is inactive';
+ select st.category_id into v_category_id from public.srk_service_types st join public.srk_service_categories c on c.id=st.category_id
+ where st.id=v_skill.service_type_id and st.is_active and c.is_active;
+ if v_category_id is null then raise exception 'Skill service category is inactive'; end if;
+ select count(*) into v_level_count from public.srk_skill_levels where category_id=v_category_id and is_active;
+ if v_level_count>0 then
+  if p_skill_level_id is null then raise exception 'This category requires a qualification level'; end if;
+  if not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then raise exception 'Skill level does not match the selected skill category'; end if;
+ elsif p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then
+  raise exception 'Skill level does not match the selected skill category';
  end if;
- select * into v_level from public.srk_skill_levels l join public.srk_service_types st on st.category_id=l.category_id
- where l.id=p_skill_level_id and st.id=v_skill.service_type_id and l.is_active;
- if not found then raise exception 'Skill level does not match the selected skill category'; end if;
- if p_evidence_document_id is not null and not exists(select 1 from public.srk_worker_documents d where d.id=p_evidence_document_id and d.application_id=p_application_id) then
-  raise exception 'Evidence document must belong to this application';
- end if;
+ if p_evidence_document_id is not null and not exists(select 1 from public.srk_worker_documents where id=p_evidence_document_id and application_id=p_application_id) then raise exception 'Evidence document must belong to this application'; end if;
  insert into public.srk_worker_application_skills(application_id,skill_id,skill_level_id,years_experience,evidence_document_id,status)
  values(p_application_id,p_skill_id,p_skill_level_id,p_years_experience,p_evidence_document_id,'pending')
- on conflict(application_id,skill_id) do update set
-  skill_level_id=excluded.skill_level_id,years_experience=excluded.years_experience,
-  evidence_document_id=excluded.evidence_document_id,status='pending',reviewed_by=null,reviewed_at=null,
-  admin_note=null,updated_at=clock_timestamp()
+ on conflict(application_id,skill_id) do update set skill_level_id=excluded.skill_level_id,years_experience=excluded.years_experience,
+  evidence_document_id=excluded.evidence_document_id,status='pending',reviewed_by=null,reviewed_at=null,admin_note=null,updated_at=clock_timestamp()
  returning * into v_result;
  return v_result;
 end;
 $function$;
+
 
 create or replace function public.srk_admin_list_application_skills(p_application_id uuid)
 returns table(
@@ -142,13 +145,11 @@ begin
 end;
 $function$;
 
-create or replace function public.srk_admin_review_application_skill(
- p_application_skill_id uuid,p_decision text,p_skill_level_id uuid,p_note text default null
-) returns public.srk_worker_application_skills
-language plpgsql security definer
+create or replace function public.srk_admin_review_application_skill(p_application_skill_id uuid,p_decision text,p_skill_level_id uuid,p_note text default null)
+returns public.srk_worker_application_skills language plpgsql security definer
 set search_path=pg_catalog,public,auth
 as $function$
-declare v_aps public.srk_worker_application_skills%rowtype;v_app public.srk_worker_applications%rowtype;v_profile public.srk_worker_profiles%rowtype;v_category_id uuid;
+declare v_aps public.srk_worker_application_skills%rowtype;v_app public.srk_worker_applications%rowtype;v_category_id uuid;v_level_count integer;
 begin
  if auth.uid() is null or not public.srk_has_admin_permission('workers.verify') then raise exception 'Worker verification permission required' using errcode='42501'; end if;
  if p_decision not in ('approved','rejected','pending','more_info') then raise exception 'Invalid application skill decision' using errcode='22023'; end if;
@@ -158,12 +159,10 @@ begin
  if v_app.status='approved' then raise exception 'Application is already approved; use the worker skill review workflow'; end if;
  select st.category_id into v_category_id from public.srk_service_skills sk join public.srk_service_types st on st.id=sk.service_type_id
  where sk.id=v_aps.skill_id and sk.is_active and st.is_active;
- if p_decision='approved' then
-  if p_skill_level_id is null then raise exception 'Approved skill requires skill level'; end if;
-  if not exists(select 1 from public.srk_skill_levels l where l.id=p_skill_level_id and l.category_id=v_category_id and l.is_active) then raise exception 'Skill level does not match selected skill category'; end if;
- elsif p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels l where l.id=p_skill_level_id and l.category_id=v_category_id and l.is_active) then
-  raise exception 'Skill level does not match selected skill category';
- end if;
+ if v_category_id is null then raise exception 'Skill is not active'; end if;
+ select count(*) into v_level_count from public.srk_skill_levels where category_id=v_category_id and is_active;
+ if p_decision='approved' and v_level_count>0 and p_skill_level_id is null then raise exception 'Approved skill requires a qualification level'; end if;
+ if p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then raise exception 'Skill level does not match selected skill category'; end if;
  update public.srk_worker_application_skills set status=p_decision,skill_level_id=coalesce(p_skill_level_id,skill_level_id),
   reviewed_by=case when p_decision='pending' then null else auth.uid() end,
   reviewed_at=case when p_decision='pending' then null else clock_timestamp() end,
@@ -173,47 +172,38 @@ begin
 end;
 $function$;
 
-create or replace function public.srk_worker_request_skill(
- p_skill_id uuid,p_skill_level_id uuid,p_years_experience integer
-) returns public.srk_worker_skills
-language plpgsql security definer
+
+create or replace function public.srk_worker_request_skill(p_skill_id uuid,p_skill_level_id uuid,p_years_experience integer)
+returns public.srk_worker_skills language plpgsql security definer
 set search_path=pg_catalog,public,auth
 as $function$
-declare
- v_worker public.srk_worker_profiles%rowtype;
- v_skill public.srk_service_skills%rowtype;
- v_category_id uuid;
- v_level public.srk_skill_levels%rowtype;
- v_result public.srk_worker_skills%rowtype;
+declare v_worker public.srk_worker_profiles%rowtype;v_skill public.srk_service_skills%rowtype;v_category_id uuid;v_level_count integer;v_result public.srk_worker_skills%rowtype;
 begin
  if auth.uid() is null then raise exception 'Authentication required' using errcode='28000'; end if;
  select * into v_worker from public.srk_worker_profiles where user_id=auth.uid() for update;
- if not found or v_worker.verification_status<>'approved' or not v_worker.is_active then
-  raise exception 'Only an approved active worker can request an additional skill' using errcode='42501';
- end if;
- if p_years_experience is not null and p_years_experience not between 0 and 60 then
-  raise exception 'Years of experience must be between 0 and 60' using errcode='22023';
- end if;
+ if not found or v_worker.verification_status<>'approved' or not v_worker.is_active then raise exception 'Only an approved active worker can request an additional skill' using errcode='42501'; end if;
+ if p_years_experience is not null and p_years_experience not between 0 and 60 then raise exception 'Years of experience must be between 0 and 60' using errcode='22023'; end if;
  select * into v_skill from public.srk_service_skills where id=p_skill_id and is_active;
  if not found then raise exception 'Active skill not found'; end if;
- select st.category_id into v_category_id from public.srk_service_types st
- where st.id=v_skill.service_type_id and st.is_active;
- if v_category_id is null or not exists(select 1 from public.srk_service_categories c where c.id=v_category_id and c.is_active) then
-  raise exception 'Skill category is not active';
+ select st.category_id into v_category_id from public.srk_service_types st join public.srk_service_categories c on c.id=st.category_id
+ where st.id=v_skill.service_type_id and st.is_active and c.is_active;
+ if v_category_id is null then raise exception 'Skill category is not active'; end if;
+ select count(*) into v_level_count from public.srk_skill_levels where category_id=v_category_id and is_active;
+ if v_level_count>0 then
+  if p_skill_level_id is null then raise exception 'This category requires a qualification level'; end if;
+  if not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then raise exception 'Skill level does not match the selected skill category'; end if;
+ elsif p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then
+  raise exception 'Skill level does not match the selected skill category';
  end if;
- select * into v_level from public.srk_skill_levels
- where id=p_skill_level_id and category_id=v_category_id and is_active;
- if not found then raise exception 'Skill level does not match the selected skill category'; end if;
  insert into public.srk_worker_skills(worker_id,skill_id,skill_level_id,verification_status,years_experience)
  values(v_worker.id,p_skill_id,p_skill_level_id,'pending',p_years_experience)
- on conflict(worker_id,skill_id) do update set
-  skill_level_id=excluded.skill_level_id,years_experience=excluded.years_experience,
-  verification_status='pending',reviewed_by=null,reviewed_at=null,
-  admin_note=null,updated_at=clock_timestamp()
+ on conflict(worker_id,skill_id) do update set skill_level_id=excluded.skill_level_id,years_experience=excluded.years_experience,
+  verification_status='pending',reviewed_by=null,reviewed_at=null,admin_note=null,updated_at=clock_timestamp()
  returning * into v_result;
  return v_result;
 end;
 $function$;
+
 
 create or replace function public.srk_worker_request_skill(p_skill_id uuid,p_skill_level_id uuid)
 returns public.srk_worker_skills
@@ -222,40 +212,25 @@ set search_path=pg_catalog,public,auth
 as $function$
  select public.srk_worker_request_skill(p_skill_id,p_skill_level_id,null::integer);
 $function$;
-create or replace function public.srk_admin_review_worker_skill(
- p_worker_skill_id uuid,p_decision text,p_skill_level_id uuid,p_note text default null
-) returns public.srk_worker_skills
-language plpgsql security definer
+create or replace function public.srk_admin_review_worker_skill(p_worker_skill_id uuid,p_decision text,p_skill_level_id uuid,p_note text default null)
+returns public.srk_worker_skills language plpgsql security definer
 set search_path=pg_catalog,public,auth
 as $function$
-declare
- v_skill public.srk_worker_skills%rowtype;
- v_category_id uuid;
- v_level public.srk_skill_levels%rowtype;
+declare v_skill public.srk_worker_skills%rowtype;v_category_id uuid;v_level_count integer;
 begin
- if auth.uid() is null or not public.srk_has_admin_permission('workers.verify') then
-  raise exception 'Worker verification permission required' using errcode='42501';
- end if;
- if p_decision not in ('approved','rejected','pending','more_info') then
-  raise exception 'Invalid skill decision' using errcode='22023';
- end if;
+ if auth.uid() is null or not public.srk_has_admin_permission('workers.verify') then raise exception 'Worker verification permission required' using errcode='42501'; end if;
+ if p_decision not in ('approved','rejected','pending','more_info') then raise exception 'Invalid skill decision' using errcode='22023'; end if;
  select * into v_skill from public.srk_worker_skills where id=p_worker_skill_id for update;
  if not found then raise exception 'Worker skill not found'; end if;
- select st.category_id into v_category_id
- from public.srk_service_skills sk join public.srk_service_types st on st.id=sk.service_type_id
+ select st.category_id into v_category_id from public.srk_service_skills sk join public.srk_service_types st on st.id=sk.service_type_id
  where sk.id=v_skill.skill_id and sk.is_active and st.is_active;
  if v_category_id is null then raise exception 'Skill is not active'; end if;
- if p_decision='approved' and p_skill_level_id is null then
-  raise exception 'Approved skill requires skill level';
+ select count(*) into v_level_count from public.srk_skill_levels where category_id=v_category_id and is_active;
+ if p_decision='approved' and v_level_count>0 and p_skill_level_id is null then raise exception 'Approved skill requires a qualification level'; end if;
+ if p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then
+  raise exception 'Skill level does not match the selected skill category';
  end if;
- if p_skill_level_id is not null then
-  select * into v_level from public.srk_skill_levels
-  where id=p_skill_level_id and category_id=v_category_id and is_active;
-  if not found then raise exception 'Skill level does not match the selected skill category'; end if;
- end if;
- update public.srk_worker_skills set
-  verification_status=p_decision,
-  skill_level_id=coalesce(p_skill_level_id,skill_level_id),
+ update public.srk_worker_skills set verification_status=p_decision,skill_level_id=coalesce(p_skill_level_id,skill_level_id),
   reviewed_by=case when p_decision='pending' then null else auth.uid() end,
   reviewed_at=case when p_decision='pending' then null else clock_timestamp() end,
   admin_note=p_note,updated_at=clock_timestamp()
@@ -263,6 +238,7 @@ begin
  return v_skill;
 end;
 $function$;
+
 CREATE OR REPLACE FUNCTION public.srk_find_eligible_workers(p_booking_id uuid, p_worker_type text)
  RETURNS TABLE(worker_id uuid, worker_code text, worker_type text, distance_km numeric)
  LANGUAGE plpgsql
@@ -606,68 +582,27 @@ create or replace function public.srk_admin_list_category_skill_workers(
 language sql stable security invoker set search_path=pg_catalog,public,auth,srk_private
 as $function$ select * from srk_private.list_admin_category_skill_workers(p_category_id,p_worker_type,p_status,p_limit); $function$;
 
-create or replace function srk_private.audit_worker_application_skill_change()
-returns trigger language plpgsql security definer set search_path=pg_catalog,public,auth,srk_private
-as $function$
-declare v_old jsonb;v_new jsonb;v_action text;
-begin
- if tg_op='INSERT' then v_old:=null;v_new:=to_jsonb(new);v_action:='worker_application_skill_added';
- elsif tg_op='DELETE' then v_old:=to_jsonb(old);v_new:=null;v_action:='worker_application_skill_deleted';
- else v_old:=to_jsonb(old);v_new:=to_jsonb(new);v_action:='worker_application_skill_updated'; end if;
- insert into public.srk_admin_audit_events(actor_user_id,entity_type,entity_id,action,before_data,after_data,changed_fields,created_at)
- values(auth.uid(),'worker_application_skill',coalesce(new.id,old.id),v_action,v_old,v_new,
-  case when tg_op='INSERT' then array['application_id','skill_id','skill_level_id','years_experience','status']::text[]
-       when tg_op='DELETE' then array['application_id','skill_id','status']::text[]
-       else array['skill_level_id','years_experience','status','admin_note']::text[] end,clock_timestamp());
- if tg_op='DELETE' then return old; end if; return new;
-end;
-$function$;
 drop trigger if exists srk_worker_application_skills_audit on public.srk_worker_application_skills;
 create trigger srk_worker_application_skills_audit after insert or update or delete on public.srk_worker_application_skills
-for each row execute function srk_private.audit_worker_application_skill_change();
-
-create or replace function public.srk_admin_list_worker_application_documents_masked(p_application_id uuid)
-returns table(
- document_id uuid,document_type text,file_name text,mime_type text,file_size_bytes bigint,
- review_status text,admin_note text,storage_path text,created_at timestamptz,reviewed_at timestamptz
-)
-language plpgsql stable security definer set search_path=pg_catalog,public,auth
-as $function$
-begin
- if auth.uid() is null or not public.srk_has_admin_permission('workers.verify') then raise exception 'Worker verification permission required' using errcode='42501'; end if;
- if not exists(select 1 from public.srk_worker_applications where id=p_application_id) then raise exception 'Application not found'; end if;
- return query select d.id,d.document_type,d.file_name,d.mime_type,d.file_size_bytes,d.review_status,d.admin_note,d.storage_path,d.created_at,d.reviewed_at
- from public.srk_worker_documents d where d.application_id=p_application_id order by d.created_at;
-end;
-$function$;
-revoke all on function public.srk_admin_list_worker_application_documents_masked(uuid) from public,anon;
-grant execute on function public.srk_admin_list_worker_application_documents_masked(uuid) to authenticated;
-
-do $storage_policy$
-begin
- if not exists(select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='srk_worker_kyc_admin_read') then
-  execute 'create policy srk_worker_kyc_admin_read on storage.objects for select to authenticated using (bucket_id = ''srk-worker-kyc'' and public.srk_has_admin_permission(''workers.verify''))';
- end if;
-end;
-$storage_policy$;
+for each row execute function public.srk_log_admin_entity_change('worker_application_skill');
 
 revoke all on function public.srk_worker_submit_application_skill(uuid,uuid,uuid,integer,uuid) from public,anon;
 grant execute on function public.srk_worker_submit_application_skill(uuid,uuid,uuid,integer,uuid) to authenticated;
 revoke all on function public.srk_admin_list_application_skills(uuid) from public,anon;
 grant execute on function public.srk_admin_list_application_skills(uuid) to authenticated;
-revoke all on function public.srk_admin_review_application_skill(uuid,text,uuid,text) from public,anon;
-grant execute on function public.srk_admin_review_application_skill(uuid,text,uuid,text) to authenticated;
-revoke all on function public.srk_worker_request_skill(uuid,uuid) from public,anon;
-grant execute on function public.srk_worker_request_skill(uuid,uuid) to authenticated;
 revoke all on function public.srk_worker_request_skill(uuid,uuid,integer) from public,anon;
 grant execute on function public.srk_worker_request_skill(uuid,uuid,integer) to authenticated;
-revoke all on function public.srk_admin_review_worker_skill(uuid,text,uuid,text) from public,anon;
-grant execute on function public.srk_admin_review_worker_skill(uuid,text,uuid,text) to authenticated;
-revoke all on function public.srk_find_eligible_workers(uuid,text) from public,anon;
-grant execute on function public.srk_find_eligible_workers(uuid,text) to authenticated;
-revoke all on function public.srk_admin_review_worker_application(uuid,text,text) from public,anon;
-grant execute on function public.srk_admin_review_worker_application(uuid,text,text) to authenticated;
 
+revoke all on function public.srk_worker_request_skill(uuid,uuid,integer) from public,anon;
+grant execute on function public.srk_worker_request_skill(uuid,uuid,integer) to authenticated;
+revoke all on function srk_private.get_admin_category_workforce_overview() from public,anon,authenticated;
+grant execute on function srk_private.get_admin_category_workforce_overview() to authenticated;
+revoke all on function public.srk_admin_get_category_workforce_overview() from public,anon;
+grant execute on function public.srk_admin_get_category_workforce_overview() to authenticated;
+revoke all on function srk_private.list_admin_category_applications(uuid,text,text,integer) from public,anon,authenticated;
+grant execute on function srk_private.list_admin_category_applications(uuid,text,text,integer) to authenticated;
+revoke all on function public.srk_admin_list_category_applications(uuid,text,text,integer) from public,anon;
+grant execute on function public.srk_admin_list_category_applications(uuid,text,text,integer) to authenticated;
 do $verify_multi$
 begin
  if not exists(select 1 from information_schema.columns where table_schema='public' and table_name='srk_worker_skills' and column_name='years_experience') then
