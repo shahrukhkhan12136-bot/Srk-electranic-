@@ -552,9 +552,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 _CustomerCategoryTile(code: 'electrician', title: 'Electrician', icon: Icons.electrical_services),
                 _CustomerCategoryTile(code: 'plumber', title: 'Plumber', icon: Icons.plumbing),
                 _CustomerCategoryTile(code: 'painter', title: 'Painter', icon: Icons.format_paint),
-                _CustomerCategoryTile(code: 'ac_fridge', title: 'AC और Fridge', icon: Icons.ac_unit),
-                _CustomerCategoryTile(code: 'motor_pump', title: 'Motor और Pump', icon: Icons.water),
-                _CustomerCategoryTile(code: 'cooler', title: 'Cooler', icon: Icons.air),
+                _CustomerCategoryTile(code: 'ac_fridge_technician', title: 'AC + Fridge Technician', icon: Icons.ac_unit),
+                _CustomerCategoryTile(code: 'motor_pump_technician', title: 'Motor & Pump Technician', icon: Icons.water),
+                _CustomerCategoryTile(code: 'cooler_technician', title: 'Cooler Technician', icon: Icons.air),
               ].map((tile) => _CustomerCategoryTile(
                 code: tile.code, title: tile.title, icon: tile.icon,
                 onTap: () => _openBookingForm(categoryCode: tile.code),
