@@ -412,7 +412,7 @@ begin
  else
   if v_booking.pricing_rule_id is not null and v_rule.pricing_unit='hour' then
    if p_worker_role='technician' then v_rate:=v_rule.technician_rate; else v_rate:=v_rule.helper_rate; end if;
-   if v_rate is null then raise exception 'Hourly rate not configured for this worker role'; end if;
+   if v_rate is null and v_booking.district_rate_snapshot is null then raise exception 'Hourly rate not configured for this worker role'; end if;
   else
    select r.id,case when p_worker_role='technician' then r.technician_hourly_rate else r.helper_hourly_rate end
     into v_rate_id,v_rate from public.srk_service_rates r
@@ -420,9 +420,9 @@ begin
      and (r.service_type_id is null or r.service_type_id=v_booking.service_type_id)
      and r.rate_status='approved' and r.effective_from<=clock_timestamp()
      and (r.effective_to is null or r.effective_to>clock_timestamp())
-     and (case when p_worker_role='technician' then r.technician_hourly_rate else r.helper_hourly_rate end) is not null
+     and ((case when p_worker_role='technician' then r.technician_hourly_rate else r.helper_hourly_rate end) is not null or v_booking.district_rate_snapshot is not null)
     order by (r.service_type_id is not null) desc,r.effective_from desc limit 1;
-   if v_rate is null then raise exception 'Approved hourly rate not configured'; end if;
+   if v_rate is null and v_booking.district_rate_snapshot is null then raise exception 'Approved hourly rate not configured'; end if;
   end if;
  end if;
  if v_booking.pricing_unit_snapshot='hour' and v_booking.district_rate_snapshot is not null then
@@ -597,7 +597,7 @@ begin
    else
     if v_booking.pricing_rule_id is not null and v_rule.pricing_unit='hour' then
      if v_role='technician' then v_rate:=v_rule.technician_rate; else v_rate:=v_rule.helper_rate; end if;
-     if v_rate is null then continue; end if;
+     if v_rate is null and v_booking.district_rate_snapshot is null then continue; end if;
     else
      select r.id,case when v_role='technician' then r.technician_hourly_rate else r.helper_hourly_rate end
       into v_rate_id,v_rate
@@ -606,9 +606,9 @@ begin
       and (r.service_type_id is null or r.service_type_id=v_booking.service_type_id)
       and r.rate_status='approved' and r.effective_from<=clock_timestamp()
       and (r.effective_to is null or r.effective_to>clock_timestamp())
-      and (case when v_role='technician' then r.technician_hourly_rate else r.helper_hourly_rate end) is not null
+      and ((case when v_role='technician' then r.technician_hourly_rate else r.helper_hourly_rate end) is not null or v_booking.district_rate_snapshot is not null)
      order by (r.service_type_id is not null) desc,r.effective_from desc limit 1;
-     if v_rate is null then continue; end if;
+     if v_rate is null and v_booking.district_rate_snapshot is null then continue; end if;
     end if;
    end if;
 
