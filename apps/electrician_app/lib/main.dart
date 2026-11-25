@@ -260,7 +260,8 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
 
 
 
-  String _money(dynamic value) { final amount = value is num ? value.toDouble() : (double.tryParse(value?.toString() ?? '') ?? 0); return '₹' + amount.toStringAsFixed(2); }
+  double _number(dynamic value) => value is num ? value.toDouble() : (double.tryParse(value?.toString() ?? '') ?? 0);
+  String _money(dynamic value) => '₹' + _number(value).toStringAsFixed(2);
 
   Future<void> openFinancialDetails(Map<String, dynamic> earning) async {
     final bookingId = earning['booking_id']?.toString();
@@ -297,7 +298,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                   Text('कंपनी को Wallet में देना बाकी: −' + _money(d['my_cash_commission_due'])),
                 ] else ...[
                   Text('आपके Wallet में जमा: ' + _money(d['my_wallet_credit'])),
-                  if (((d['my_cash_commission_recovered'] as num?)?.toDouble() ?? double.tryParse(d['my_cash_commission_recovered']?.toString() ?? '') ?? 0) > 0)
+                  if (_number(d['my_cash_commission_recovered']) > 0)
                     Text('पुराना Cash कमीशन इस Online कमाई से समायोजित: ' + _money(d['my_cash_commission_recovered'])),
                 ],
                 Text('कंपनी का कुल Cash बकाया: ' + _money(d['cash_commission_outstanding'])),
