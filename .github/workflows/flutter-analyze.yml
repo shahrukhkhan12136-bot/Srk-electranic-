@@ -1,6 +1,14 @@
 name: Flutter Analyze and Tests (No APK)
 
 on:
+  push:
+    branches:
+      - work/mobile-customer-technician-integration-20261125
+    paths:
+      - 'apps/customer_app/**'
+      - 'apps/electrician_app/**'
+      - 'packages/srk_mobile_core/**'
+      - '.github/workflows/flutter-analyze.yml'
   pull_request:
     branches:
       - feature/master-technician-payment-cycle-20261121
