@@ -735,7 +735,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               ListTile(
                 leading: const Icon(Icons.person_outline),
                 title: Text(name),
-                subtitle: Text('Customer ID: \${user?.id ?? '—'}'),
+                subtitle: Text('ग्राहक ID: ${user?.id ?? '—'}'),
               ),
               const SizedBox(height: 4),
               const Text('भाषा और Notification नियंत्रण का पूरा बदलाव अगली Settings सुविधा में जोड़ा जाएगा।',
@@ -1172,7 +1172,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   void initState() {
     super.initState();
     final user = _client.auth.currentUser;
-    _phone.text = (user?.phone ?? '').replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^91(?=\d{10}$)'), '');
   }
 
   @override
