@@ -11,4 +11,4 @@ dependencies:
 
 flutter:
   assets:
-    - assets/founder(2).webp
+    - assets/founder.webp.b64
