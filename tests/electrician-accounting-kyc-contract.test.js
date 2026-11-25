@@ -52,7 +52,7 @@ test('earnings and payout history failures are displayed separately, never as an
 test('Master wallet is primary; legacy bank and ledger fallback is owner-scoped and reports read failures', () => {
   const wallet = body('loadPartnerWallet');
   assert.match(wallet, /srk_master_wallet_summary/);
-  assert.match(wallet, /srk_technician_request_master_payout/);
+  assert.match(electrician, /srk_technician_request_master_payout/);
   assert.match(wallet, /srk_get_my_wallet_summary/);
   assert.match(wallet, /srk_wallet_bank_links/);
   assert.match(wallet, /srk_wallet_ledger/);
