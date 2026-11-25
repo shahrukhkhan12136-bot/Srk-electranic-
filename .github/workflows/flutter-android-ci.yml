@@ -18,7 +18,6 @@ jobs:
     env:
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      SRK_API_BASE_URL: ${{ vars.SRK_API_BASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,9 +46,7 @@ jobs:
           set -euo pipefail
           test -n "$SUPABASE_URL" || { echo "::error::GitHub Actions Variable SUPABASE_URL is missing."; exit 1; }
           test -n "$SUPABASE_ANON_KEY" || { echo "::error::GitHub Actions Secret SUPABASE_ANON_KEY is missing."; exit 1; }
-          test -n "$SRK_API_BASE_URL" || { echo "::error::GitHub Actions Variable SRK_API_BASE_URL is missing."; exit 1; }
           [[ "$SUPABASE_URL" == https://*.supabase.co ]] || { echo "::error::SUPABASE_URL must be the HTTPS Supabase project URL."; exit 1; }
-          [[ "$SRK_API_BASE_URL" == https://* ]] || { echo "::error::SRK_API_BASE_URL must use HTTPS."; exit 1; }
           echo "Backend configuration is present. Values are intentionally not printed."
 
       - name: Prepare Android project scaffolding
@@ -90,8 +87,7 @@ jobs:
           flutter test
           flutter build apk --debug \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
-            --dart-define=SRK_API_BASE_URL="$SRK_API_BASE_URL"
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
 
       - name: Analyze and build Technician app
         run: |
