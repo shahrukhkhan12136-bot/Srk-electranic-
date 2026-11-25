@@ -1152,7 +1152,9 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('नई सर्विस बुकिंग')),
-    body: SafeArea(child: Form(
+    body: Container(
+      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFE8F4FF), Color(0xFFF8FBFF), Color(0xFFFFF4E8)])),
+      child: SafeArea(child: Form(
       key: _formKey,
       child: ListView(padding: const EdgeInsets.all(16), children: [
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Row(children: const [
@@ -1301,5 +1303,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         const SizedBox(height: 24),
       ]),
     )),
+    ),
   );
 }
