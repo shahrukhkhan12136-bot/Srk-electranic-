@@ -330,13 +330,14 @@ begin
         and b.status not in ('completed','cancelled','rejected')
     )))::bigint
   from public.srk_service_categories c
-  join public.srk_service_types st on st.category_id = c.id and st.is_active
-  join public.srk_service_skills sk on sk.service_type_id = st.id and sk.is_active
-  join public.srk_worker_skills ws on ws.skill_id = sk.id
-  join public.srk_worker_profiles w on w.id = ws.worker_id
-  where c.is_active and w.worker_type in ('technician','helper')
-  group by c.id, c.category_name, c.sort_order, w.worker_type
-  order by c.sort_order, w.worker_type;
+  cross join (values ('technician'::text),('helper'::text)) as roles(worker_type)
+  left join public.srk_service_types st on st.category_id = c.id and st.is_active
+  left join public.srk_service_skills sk on sk.service_type_id = st.id and sk.is_active
+  left join public.srk_worker_skills ws on ws.skill_id = sk.id
+  left join public.srk_worker_profiles w on w.id = ws.worker_id and w.worker_type = roles.worker_type
+  where c.is_active
+  group by c.id, c.category_name, c.sort_order, roles.worker_type
+  order by c.sort_order, roles.worker_type;
 end;
 $function$;
 
