@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class WorkerApplicationPage extends StatefulWidget {
@@ -29,7 +30,12 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
   PlatformFile? photo;
   PlatformFile? identity;
   List<Map<String, dynamic>> categories = [];
+  List<Map<String, dynamic>> skills = [];
+  List<Map<String, dynamic>> skillLevels = [];
+  final Set<String> selectedSkillIds = {};
+  final Map<String, String> selectedSkillLevels = {};
   List<Map<String, dynamic>> policies = [];
+  bool detectingLocation = false;
   final Map<String, bool> accepted = {};
   bool loading = true, saving = false;
   String? message, error;
@@ -55,12 +61,182 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
           .select('id,category_name').eq('is_active', true).order('sort_order');
       categories = List<Map<String, dynamic>>.from(rows);
       if (categories.isNotEmpty) categoryId = categories.first['id'].toString();
+      await loadSkillOptions();
       await loadPolicies();
+      await detectStateFromLocation();
     } catch (_) {
       error = 'आवेदन फॉर्म लोड नहीं हुआ। इंटरनेट और Database की जाँच करें।';
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> loadSkillOptions() async {
+    final id = categoryId;
+    selectedSkillIds.clear();
+    selectedSkillLevels.clear();
+    if (id == null) {
+      skills = [];
+      skillLevels = [];
+      if (mounted) setState(() {});
+      return;
+    }
+    try {
+      final skillRows = await client.from('srk_service_skills')
+          .select('id,display_name,category_id')
+          .eq('category_id', id)
+          .eq('is_active', true)
+          .order('display_name');
+      final levelRows = await client.from('srk_skill_levels')
+          .select('id,level_name,category_id')
+          .eq('category_id', id)
+          .eq('is_active', true)
+          .order('sort_order')
+          .order('level_name');
+      skills = List<Map<String, dynamic>>.from(skillRows);
+      skillLevels = List<Map<String, dynamic>>.from(levelRows);
+    } catch (_) {
+      skills = [];
+      skillLevels = [];
+      error = 'इस कैटेगरी की Skill और Basic / Expert / Master सूची लोड नहीं हुई। Refresh करें।';
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> detectStateFromLocation() async {
+    if (detectingLocation || state.text.trim().isNotEmpty) return;
+    detectingLocation = true;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return;
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) return;
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+      final places = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+      if (places.isEmpty) return;
+      final place = places.first;
+      final detectedState = (place.administrativeArea ?? '').trim();
+      if (detectedState.isNotEmpty && mounted && state.text.trim().isEmpty) {
+        setState(() {
+          state.text = detectedState;
+          if (district.text.trim().isEmpty) {
+            district.text = (place.subAdministrativeArea ?? place.locality ?? '').trim();
+          }
+          if (pincode.text.trim().isEmpty) {
+            pincode.text = (place.postalCode ?? '').trim();
+          }
+          message = 'फोन की Location से राज्य स्वतः भर दिया गया है। कृपया विवरण जाँच लें।';
+        });
+      }
+    } catch (_) {
+      // Location lookup is best-effort; manual entry remains available.
+    } finally {
+      detectingLocation = false;
+    }
+  }
+
+  Future<void> changeCategory(String? value) async {
+    if (value == null) return;
+    setState(() {
+      categoryId = value;
+      skills = [];
+      skillLevels = [];
+      selectedSkillIds.clear();
+      selectedSkillLevels.clear();
+      error = null;
+    });
+    await loadSkillOptions();
+  }
+
+  Widget skillSelectionSection() {
+    if (skills.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text('इस कैटेगरी की Skill सूची अभी उपलब्ध नहीं है। आवेदन भेजने से पहले सूची लोड होना जरूरी है।'),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('अपनी Skills चुनें', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          const Text('एक या अधिक काम चुनें और हर चुनी हुई Skill का स्तर निर्धारित करें।'),
+          const SizedBox(height: 8),
+          ...skills.map((skill) {
+            final skillId = skill['id'].toString();
+            final selected = selectedSkillIds.contains(skillId);
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Column(
+                  children: [
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      value: selected,
+                      title: Text(skill['display_name']?.toString() ?? 'सेवा'),
+                      onChanged: saving ? null : (checked) => setState(() {
+                        if (checked == true) {
+                          selectedSkillIds.add(skillId);
+                        } else {
+                          selectedSkillIds.remove(skillId);
+                          selectedSkillLevels.remove(skillId);
+                        }
+                      }),
+                    ),
+                    if (selected && skillLevels.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                        child: DropdownButtonFormField<String>(
+                          value: selectedSkillLevels[skillId],
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Skill Level — Basic / Expert / Master',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: skillLevels.map((level) => DropdownMenuItem<String>(
+                            value: level['id'].toString(),
+                            child: Text(level['level_name'].toString()),
+                          )).toList(),
+                          onChanged: saving ? null : (value) => setState(() {
+                            if (value == null) {
+                              selectedSkillLevels.remove(skillId);
+                            } else {
+                              selectedSkillLevels[skillId] = value;
+                            }
+                          }),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 
   Future<void> loadPolicies() async {
@@ -132,7 +308,9 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
     if (name.text.trim().length < 2 || father.text.trim().length < 2 ||
         address.text.trim().length < 5 || state.text.trim().isEmpty ||
         district.text.trim().isEmpty || !RegExp(r'^\d{6}$').hasMatch(pincode.text.trim()) ||
-        categoryId == null || dateOfBirth == null || photo == null || identity == null ||
+        categoryId == null || selectedSkillIds.isEmpty ||
+        (skillLevels.isNotEmpty && selectedSkillIds.any((id) => !selectedSkillLevels.containsKey(id))) ||
+        dateOfBirth == null || photo == null || identity == null ||
         years == null || years < 0 || years > 60) {
       setState(() => error = 'सभी आवश्यक विवरण, जन्मतिथि, फोटो और Aadhaar/पहचान दस्तावेज़ भरें।');
       return;
@@ -183,6 +361,15 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
         'p_file_size_bytes': photo!.size,
         'p_application_id': appId,
       });
+      for (final skillId in selectedSkillIds) {
+        await client.rpc('srk_worker_submit_application_skill', params: {
+          'p_application_id': appId,
+          'p_skill_id': skillId,
+          'p_skill_level_id': selectedSkillLevels[skillId],
+          'p_years_experience': years,
+          'p_evidence_document_id': null,
+        });
+      }
       await client.rpc('srk_submit_worker_document', params: {
         'p_document_type': 'identity_proof',
         'p_storage_path': identityPath,
@@ -223,7 +410,7 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
     if (loading) return const Center(child: CircularProgressIndicator());
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Technician / Helper Registration', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
@@ -249,9 +436,11 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
             items: categories.map((c) => DropdownMenuItem(
               value: c['id'].toString(), child: Text(c['category_name'].toString()),
             )).toList(),
-            onChanged: saving ? null : (v) => setState(() => categoryId = v),
+            onChanged: saving ? null : changeCategory,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          skillSelectionSection(),
+          const SizedBox(height: 12),
           field(name, 'पूरा नाम'),
           field(father, 'पिता का नाम'),
           TextFormField(
@@ -271,7 +460,19 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
               dateOfBirth!.month.toString() + '/' + dateOfBirth!.year.toString()),
           ),
           field(address, 'पूरा पता', maxLines: 2),
-          field(state, 'राज्य'),
+          TextFormField(
+            controller: state,
+            decoration: InputDecoration(
+              labelText: 'राज्य',
+              helperText: detectingLocation ? 'Location से राज्य खोजा जा रहा है…' : 'Location से अपने-आप भरा जाएगा; जरूरत पर बदल सकते हैं।',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                tooltip: 'राज्य फिर से पहचानें',
+                onPressed: saving ? null : () { state.clear(); detectStateFromLocation(); },
+                icon: const Icon(Icons.my_location),
+              ),
+            ),
+          ),
           field(district, 'जिला'),
           field(pincode, 'PIN Code', keyboard: TextInputType.number),
           field(experience, 'अनुभव (वर्ष)', keyboard: TextInputType.number),
@@ -294,14 +495,25 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
               label: Text(identity == null ? 'Aadhaar / पहचान दस्तावेज़' : 'दस्तावेज़: ' + identity!.name),
             ),
           ]),
-          const Divider(height: 28),
-          Text('Terms & Privacy Consent', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Terms & Privacy Consent', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              const Text('आवेदन भेजने से पहले दोनों दस्तावेज़ पढ़ना और स्वीकार करना जरूरी है।'),
           if (policies.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 'इस Worker Role के लिए Main Admin ने अभी Hindi Terms और Privacy Policy प्रकाशित नहीं की हैं। सुरक्षा के लिए आवेदन तब तक Submit नहीं होगा। Admin को दोनों दस्तावेज़ प्रकाशित करने होंगे।',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             )
           else
@@ -320,6 +532,8 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
                 ],
               );
             }),
+            ]),
+          ),
           if (error != null) Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(error!, style: const TextStyle(color: Colors.red)),
