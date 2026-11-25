@@ -434,7 +434,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                 ),
               ),
             ),
-          if (p != null && active) [
+          if (p != null && active) ...[
             Text('बुकिंग ऑफर', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Row(children: [
