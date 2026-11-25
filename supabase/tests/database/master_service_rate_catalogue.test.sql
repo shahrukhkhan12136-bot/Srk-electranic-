@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(22);
+SELECT plan(23);
 
 SELECT has_table('public','srk_service_offerings','service offerings are separate from technician skills');
 SELECT has_table('public','srk_service_rates','versioned Admin-controlled labour rates exist');
@@ -74,6 +74,15 @@ SELECT ok(
     WHERE (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%') AND o.is_active
   ),
   'all winding offerings are inactive while historical skill rows are preserved'
+);
+SELECT ok(
+  (SELECT count(*) FROM public.srk_service_offerings)=(SELECT count(*) FROM public.srk_service_skills)
+  AND NOT EXISTS(
+    SELECT 1 FROM public.srk_service_skills s
+    LEFT JOIN public.srk_service_offerings o ON o.skill_code=s.skill_code
+    WHERE o.skill_code IS NULL OR o.is_active IS DISTINCT FROM s.is_active
+  ),
+  'each skill has exactly one offering that preserves its active/inactive state'
 );
 SELECT ok(
   position('srk_service_category_code' in pg_get_constraintdef((
