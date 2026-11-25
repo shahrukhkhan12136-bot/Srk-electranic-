@@ -212,7 +212,7 @@ create or replace function srk_private.preview_booking_price_with_district(
 ) returns table(
   pricing_unit text,qualification_level text,technician_rate numeric,helper_rate numeric,
   estimated_base_total numeric,estimated_company_commission numeric,estimated_worker_net numeric,
-  overtime_may_apply boolean,materials_included boolean,price_note text,
+  overtime_may_apply boolean,price_note text,
   pending_cancellation_fee_amount numeric,estimated_customer_total numeric
 )
 language plpgsql stable security definer
@@ -315,7 +315,7 @@ begin
 
   return query select v_base.pricing_unit,v_base.qualification_level,v_tech,v_helper,v_total,
     round(v_total*v_commission/100,2),v_total-round(v_total*v_commission/100,2),
-    v_base.overtime_may_apply,false,
+    v_base.overtime_may_apply,
     'District-approved service rate · '||v_district.district_name||', '||v_district.state_name,
     v_pending,round(v_total+v_pending,2);
 end;
@@ -353,7 +353,7 @@ create or replace function public.srk_customer_preview_booking_price_v3(
 ) returns table(
   pricing_unit text,qualification_level text,technician_rate numeric,helper_rate numeric,
   estimated_base_total numeric,estimated_company_commission numeric,estimated_worker_net numeric,
-  overtime_may_apply boolean,materials_included boolean,price_note text,
+  overtime_may_apply boolean,price_note text,
   pending_cancellation_fee_amount numeric,estimated_customer_total numeric
 )
 language sql stable security invoker set search_path=pg_catalog,public
