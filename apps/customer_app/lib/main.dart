@@ -81,6 +81,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         'quote_rejected' => 'कोटेशन में बदलाव चाहिए',
         'in_progress' => 'काम चल रहा है',
         'completed' => 'काम पूरा',
+        'awaiting_work_start_approval' => 'काम शुरू करने की अनुमति बाकी',
         'cancelled' => 'रद्द',
         _ => value,
       };
@@ -530,7 +531,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final quoteTotal = (booking['quoted_amount'] as num?)?.toDouble() ?? service + materials;
     final bill = booking['final_bill'] is Map<String, dynamic>
       ? Map<String, dynamic>.from(booking['final_bill'] as Map) : null;
-    final billIssued = bill != null && ['issued','approved'].contains(bill['status']);
     final billTotal = (bill?['total_amount'] as num?)?.toDouble() ?? 0;
     final startWaiting = status == 'awaiting_work_start_approval' &&
       booking['work_start_approval_status'] == 'pending';
@@ -607,7 +607,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 child: const Text('अस्वीकार करें')),
             ]),
           ],
-          if (billIssued) ...[
+          if (bill != null && ['issued','approved'].contains(bill['status'])) ...[
             const Divider(),
             Text('अंतिम बिल • ${bill!['bill_number'] ?? '—'}',
               style: const TextStyle(fontWeight: FontWeight.bold)),
