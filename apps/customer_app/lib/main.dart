@@ -858,7 +858,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             GridView.count(
               crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.25,
-              children: const [
+              children: [
                 _CustomerCategoryTile(code: 'electrician', title: customerEnglish ? 'Electrician' : 'इलेक्ट्रिशियन', icon: Icons.electrical_services),
                 _CustomerCategoryTile(code: 'plumber', title: customerEnglish ? 'Plumber' : 'प्लंबर', icon: Icons.plumbing),
                 _CustomerCategoryTile(code: 'painter', title: customerEnglish ? 'Painter' : 'पेंटर', icon: Icons.format_paint),
