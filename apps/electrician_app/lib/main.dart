@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:srk_mobile_core/srk_mobile_core.dart';
 import 'worker_rate_card.dart';
+import 'worker_application_and_work_session.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
@@ -108,6 +109,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
   Map<String, dynamic>? profile, wallet, paymentCycle;
   List<Map<String, dynamic>> rateCardCategories = [];
   List<Map<String, dynamic>> payoutRequests = [];
+  List<Map<String, dynamic>> applicationRows = [];
   List<Map<String, dynamic>> offers = [], offerDetails = [], earnings = [], offerPriceDetails = [], bookingDetails = [];
   bool loading = true;
   String? error;
@@ -129,6 +131,15 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
           .maybeSingle();
 
       if (workerRow == null) {
+        try {
+          final rows = await client.from('srk_worker_applications')
+              .select('id,worker_type,category_id,full_name,status,admin_note,created_at,updated_at')
+              .eq('user_id', uid).order('created_at', ascending: false);
+          applicationRows = List<Map<String, dynamic>>.from(rows);
+        } catch (_) {
+          applicationRows = [];
+          loadWarnings.add('आपके Registration आवेदन की स्थिति अभी लोड नहीं हुई। Refresh करें।');
+        }
         profile = null;
         offers = [];
         offerDetails = [];
@@ -565,6 +576,25 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                 ]),
               ),
             ),
+          if (p == null) ...[
+            if (applicationRows.isEmpty)
+              WorkerApplicationPage(onSubmitted: load)
+            else
+              Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('आपके Registration आवेदन', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  ...applicationRows.map((a) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.assignment_outlined),
+                    title: Text((a['worker_type'] == 'helper' ? 'Helper' : 'Technician') + ' • ' + (a['full_name']?.toString() ?? 'आवेदन')),
+                    subtitle: Text('स्थिति: ' + ({'pending':'जाँच बाकी','under_review':'जाँच चल रही है','approved':'स्वीकृत','rejected':'अस्वीकृत','more_info':'अधिक जानकारी चाहिए','withdrawn':'वापस लिया गया'}[a['status']] ?? a['status'].toString()) + (a['admin_note']?.toString().isNotEmpty == true ? '\nAdmin: ' + a['admin_note'].toString() : '')),
+                  )),
+                  const Text('Admin की स्वीकृति और Worker Profile सक्रिय होने के बाद ही Booking Offers मिलेंगे।'),
+                ],
+              ))),
+          ],
           if (p != null) WorkerRateCard(categories: rateCardCategories),
           if (p == null || !active)
             Card(
@@ -699,7 +729,12 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                       icon: const Icon(Icons.play_arrow), label: const Text('काम शुरू करने की मंजूरी माँगें'),
                     )),
                   if (status == 'in_progress')
-                    const Text('काम जारी है। सुरक्षित टाइमर और पूरा करने का नियंत्रण साझा Worker session से जोड़ा जा रहा है।'),
+                    WorkerWorkSessionPanel(
+                      assignmentId: booking['assignment_id'].toString(),
+                      pricingUnit: booking['pricing_unit_snapshot']?.toString() ?? 'hourly',
+                      onChanged: load,
+                      onProposeSchedule: () => proposeSchedule(booking),
+                    ),
                   if (canQuote) ...[
                     const SizedBox(height: 12),
                     SizedBox(width: double.infinity, child: FilledButton.icon(
