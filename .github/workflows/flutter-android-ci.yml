@@ -6,7 +6,6 @@ on:
     branches:
       - work/mobile-customer-technician-integration-20261125
       - work/srk-completion-gap-20261125
-      - work/customer-booking-flow-final-20261126
     paths:
       - 'apps/customer_app/**'
       - 'apps/electrician_app/**'
