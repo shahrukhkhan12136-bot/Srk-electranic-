@@ -499,7 +499,6 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
   Future<void> start() => run(() async {
     await recordLocation();
     await action('start', note: 'Worker App से काम शुरू किया।');
-    startLocationTracking();
   });
 
   Future<void> pause() async {
