@@ -6,6 +6,7 @@ on:
       - feat/customer-login-first-dashboard-20261114
       - feature/master-technician-payment-cycle-20261121
       - work/admin-worker-payout-web-integration-20261125
+      - work/mobile-customer-technician-integration-20261125
   pull_request:
     branches:
       - main
