@@ -5,6 +5,7 @@ version: 0.1.0+1
 environment:
   sdk: ">=3.5.0 <4.0.0"
 dependencies:
+  geocoding: ^5.0.1
   flutter:
     sdk: flutter
   srk_mobile_core:
