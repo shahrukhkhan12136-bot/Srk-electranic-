@@ -24,9 +24,9 @@ test('rate catalogue supports technician/helper hourly pay and fixed-per-unit la
 });
 
 test('only explicitly confirmed plumber rates are activated; unresolved category prices are not guessed', () => {
-  assert.match(migration, /\('residential_plumbing','basic','Basic',10000,5000/);
-  assert.match(migration, /\('residential_plumbing','expert','Expert',15000,7500/);
-  assert.match(migration, /\('industrial_plumbing','master_industrial','Master \/ Industrial',22500,10000/);
+  assert.match(migration, /\('residential_plumbing','basic','Basic',10000::bigint,5000::bigint/);
+  assert.match(migration, /\('residential_plumbing','expert','Expert',15000::bigint,7500::bigint/);
+  assert.match(migration, /\('industrial_plumbing','master_industrial','Master \/ Industrial',22500::bigint,10000::bigint/);
   assert.doesNotMatch(migration, /\('residential_wiring',[\s\S]{0,120}'active'/);
   assert.match(migration, /Conflicting category prices are deliberately not activated/);
 });
