@@ -231,8 +231,8 @@ begin
       into v_complaints
       from public.srk_booking_complaints c
       where (c.customer_user_id = v_customer.user_id or c.reported_by_user_id = v_customer.user_id)
-        and c.created_at >= p_from_date::timestamptz
-        and c.created_at < (p_to_date + 1)::timestamptz;
+        and c.created_at >= v_from
+        and c.created_at < v_until;
     else
       select * into v_staff
       from public.srk_staff_profiles
@@ -288,10 +288,10 @@ begin
   from jsonb_array_elements(v_bookings) as x(item);
 
   if v_completed_count>0 then
-    v_strengths:=v_strengths||jsonb_build_array('इस अवधि में '+v_completed_count::text+' काम पूरे होने का रिकॉर्ड दर्ज है।');
+    v_strengths:=v_strengths||jsonb_build_array('इस अवधि में '||v_completed_count::text||' काम पूरे होने का रिकॉर्ड दर्ज है।');
   end if;
   if v_cancelled_count>0 then
-    v_improvements:=v_improvements||jsonb_build_array('इस अवधि में '+v_cancelled_count::text+' रद्द/अस्वीकृत रिकॉर्ड हैं; कारण और संबंधित घटना की समीक्षा करें।');
+    v_improvements:=v_improvements||jsonb_build_array('इस अवधि में '||v_cancelled_count::text||' रद्द/अस्वीकृत रिकॉर्ड हैं; कारण और संबंधित घटना की समीक्षा करें।');
   end if;
   if v_rejected_count>0 then
     v_improvements:=v_improvements||jsonb_build_array('कुछ Work Offers अस्वीकार/रिलीज़ हुए; Offer और उपलब्धता इतिहास की समीक्षा करें।');
