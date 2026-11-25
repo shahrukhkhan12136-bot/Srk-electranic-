@@ -7,6 +7,7 @@ const customer = fs.readFileSync('apps/customer_app/lib/main.dart', 'utf8');
 const worker = fs.readFileSync('apps/electrician_app/lib/main.dart', 'utf8');
 const admin = fs.readFileSync('admin.html', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20261125120555_allow_worker_applicants_to_request_account_deletion.sql', 'utf8');
+const customerMigration = fs.readFileSync('supabase/migrations/20261125120733_allow_unprofiled_otp_customers_to_request_account_deletion.sql', 'utf8');
 
 test('Customer and Worker apps submit account deletion requests without deleting the account directly', () => {
   assert.match(customer, /srk_request_account_deletion/);
@@ -26,4 +27,9 @@ test('Main Admin can review account deletion requests with reason and retention 
 test('Worker applicants can request account deletion before Admin approval', () => {
   assert.match(migration, /from public\.srk_worker_applications/);
   assert.match(migration, /account_role,request_reason/);
+});
+
+test('OTP customer without an existing profile can still request account deletion', () => {
+  assert.match(customerMigration, /auth\.jwt\(\)->>'phone'/);
+  assert.match(customerMigration, /v_role:='customer'/);
 });
