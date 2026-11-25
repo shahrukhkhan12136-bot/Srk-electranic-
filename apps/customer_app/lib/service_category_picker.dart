@@ -83,8 +83,21 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     }
   }
 
-  List<Map<String, dynamic>> get _availableServices =>
-      _services.where((x) => x['category_id'] == _category?['id']).toList();
+  List<Map<String, dynamic>> get _availableServices => _services.where((service) {
+    if (service['category_id'] != _category?['id']) return false;
+    final levelId = _level?['id'];
+    if (levelId == null) return false;
+    final hasApprovedRate = _rates.any((rate) =>
+      rate['category_id'] == _category?['id'] &&
+      rate['service_type_id'] == service['id'] &&
+      rate['skill_level_id'] == levelId &&
+      rate['rate_status'] == 'approved');
+    final hasFixedRule = _rules.any((rule) =>
+      rule['category_id'] == _category?['id'] &&
+      rule['service_type_id'] == service['id'] &&
+      ['per_item', 'motor_hp'].contains(rule['pricing_unit']));
+    return hasApprovedRate || hasFixedRule;
+  }).toList();
   List<Map<String, dynamic>> get _availableSkills =>
       _skills.where((x) => x['service_type_id'] == _service?['id']).toList();
   List<Map<String, dynamic>> get _availableLevels =>
@@ -160,30 +173,75 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       ),
       if (_category != null) ...[
         const SizedBox(height: 12),
+        Text('इस कैटेगरी में किस स्तर का काम चाहिए?', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: _availableLevels.map((level) {
+          final selected = _level?['id'] == level['id'];
+          return ChoiceChip(
+            label: Text(level['level_name'].toString()),
+            selected: selected,
+            onSelected: (_) {
+              setState(() {
+                _level = level;
+                _service = null;
+                _skill = null;
+                _rule = null;
+                _motorHp = null;
+              });
+              widget.onSelection(null);
+            },
+          );
+        }).toList()),
+        if (_availableLevels.isEmpty)
+          const Text('इस कैटेगरी के लिए स्तर अभी उपलब्ध नहीं है।'),
+      ],
+      if (_level != null) ...[
+        const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           initialValue: _service?['id']?.toString(), isExpanded: true,
-          decoration: const InputDecoration(labelText: 'काम / सर्विस चुनें', border: OutlineInputBorder()),
+          decoration: const InputDecoration(labelText: 'काम की सर्विस चुनें', border: OutlineInputBorder()),
           items: _availableServices.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(x['service_name'].toString()))).toList(),
-          onChanged: (id) { setState(() { _service = _availableServices.firstWhere((x) => x['id'].toString() == id); _skill = null; _level = null; final matches = _rules.where((x) => x['service_type_id'] == id && x['category_id'] == _category?['id']).toList(); _rule = matches.isEmpty ? null : matches.first; _motorHp = null; }); widget.onSelection(null); },
+          onChanged: (id) {
+            setState(() {
+              _service = _availableServices.firstWhere((x) => x['id'].toString() == id);
+              _skill = null;
+              final matches = _rules.where((x) => x['service_type_id'] == id && x['category_id'] == _category?['id']).toList();
+              _rule = matches.isEmpty ? null : matches.first;
+              _motorHp = null;
+            });
+            widget.onSelection(null);
+          },
         ),
+        if (_availableServices.isEmpty)
+          const Padding(padding: EdgeInsets.only(top: 8), child: Text('इस स्तर के लिए कोई सक्रिय सर्विस उपलब्ध नहीं है।')),
       ],
       if (_service != null) ...[
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: _skill?['id']?.toString(), isExpanded: true,
-          decoration: const InputDecoration(labelText: 'काम का प्रकार / कौशल', border: OutlineInputBorder()),
-          items: _availableSkills.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(x['skill_name'].toString()))).toList(),
-          onChanged: (id) { setState(() { _skill = _availableSkills.firstWhere((x) => x['id'].toString() == id); }); _emitSelection(); },
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: _level?['id']?.toString(), isExpanded: true,
-          decoration: const InputDecoration(labelText: 'टेक्नीशियन का स्तर', border: OutlineInputBorder()),
-          items: _availableLevels.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(x['level_name'].toString()))).toList(),
-          onChanged: (id) { setState(() { _level = _availableLevels.firstWhere((x) => x['id'].toString() == id); }); _emitSelection(); },
-        ),
+        Text('इस काम में कौन-कौन से काम आते हैं?', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        ..._availableSkills.map((skill) {
+          final selected = _skill?['id'] == skill['id'];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 6),
+            child: CheckboxListTile(
+              value: selected,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(skill['skill_name'].toString()),
+              onChanged: (checked) {
+                setState(() => _skill = checked == true ? skill : null);
+                _emitSelection();
+              },
+            ),
+          );
+        }),
+        if (_availableSkills.isEmpty)
+          const Text('इस सर्विस के लिए कोई सक्रिय काम/Skill सूचीबद्ध नहीं है।'),
       ],
-      if (_service != null && _rule == null)
+      if (_service != null && _rule == null &&
+          !_rates.any((x) => x['category_id'] == _category?['id'] &&
+            x['service_type_id'] == _service?['id'] &&
+            x['skill_level_id'] == _level?['id'] &&
+            x['rate_status'] == 'approved'))
         const Padding(padding: EdgeInsets.only(top: 8), child: Text('इस सेवा की सक्रिय मूल्य-नीति उपलब्ध नहीं है। अभी बुकिंग नहीं भेजी जा सकती।', style: TextStyle(color: Colors.red))),
       if (_rule?['pricing_unit'] == 'motor_hp') ...[
         const SizedBox(height: 12),
