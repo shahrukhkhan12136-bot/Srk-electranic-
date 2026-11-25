@@ -96,8 +96,7 @@ class _ElectricianLoginPageState extends State<ElectricianLoginPage> {
           if (message != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(message!, textAlign: TextAlign.center)),
         ],
       ))),
-    ))))),
-    ),
+    )))),
   );
 }
 
