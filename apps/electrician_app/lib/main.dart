@@ -358,18 +358,16 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
               const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('अभी कीमत की जानकारी वाला कोई ऑफर उपलब्ध नहीं है।')))
             else ...offerPriceDetails.map((detail) {
               final service = (detail['service_charge'] as num?)?.toDouble();
-              final materials = (detail['materials_amount'] as num?)?.toDouble();
               final kind = detail['electrician_quote_kind']?.toString() ?? 'electrician_quote';
               return Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('बुकिंग ' + (detail['booking_id']?.toString() ?? '—'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                  if (service != null && materials != null) ...[
+                  if (service != null) ...[
                     const Divider(),
                     Text(kind == 'counter_offer' ? 'आपका Counter Offer' : kind == 'matches_suggestion' ? 'ग्राहक की कीमत के अनुसार कोटेशन' : 'आपका कोटेशन'),
-                    Text('मेहनताना / सर्विस: ₹' + service.toStringAsFixed(2)),
-                    Text('सामान / पार्ट्स: ₹' + materials.toStringAsFixed(2)),
-                    Text('कुल: ₹' + (service + materials).toStringAsFixed(2)),
+                    Text('लेबर चार्ज: ₹' + service.toStringAsFixed(2)),
+                    Text('कुल: ₹' + service.toStringAsFixed(2)),
                     Text('स्थिति: ' + (detail['quote_status']?.toString() ?? '—')),
                   ],
                   if ((detail['quote_note'] ?? '').toString().isNotEmpty) Text('नोट: ' + detail['quote_note'].toString()),
@@ -385,7 +383,6 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
               final status = booking['booking_status']?.toString();
               final canQuote = ['assigned','inspection','quote_rejected'].contains(status);
               final service = (booking['service_charge'] as num?)?.toDouble();
-              final materials = (booking['materials_amount'] as num?)?.toDouble();
               final total = (booking['quoted_amount'] as num?)?.toDouble();
               return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -414,8 +411,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                         ),
                       ),
                     ),
-                  if (service != null) Text('मेहनताना: ₹' + service.toStringAsFixed(2)),
-                  if (materials != null) Text('सामान: ₹' + materials.toStringAsFixed(2)),
+                  if (service != null) Text('लेबर चार्ज: ₹' + service.toStringAsFixed(2)),
                   if (total != null) Text('कुल कोटेशन: ₹' + total.toStringAsFixed(2), style: const TextStyle(fontWeight: FontWeight.bold)),
                   if ((booking['quote_note'] ?? '').toString().isNotEmpty) Text('नोट: ' + booking['quote_note'].toString()),
                   if (status == 'assigned')
@@ -478,7 +474,6 @@ class _QuoteSubmissionDialog extends StatefulWidget {
 
 class _QuoteSubmissionDialogState extends State<_QuoteSubmissionDialog> {
   final serviceController = TextEditingController();
-  final materialsController = TextEditingController(text: '0');
   final noteController = TextEditingController();
   bool saving = false;
   String? formError;
@@ -486,18 +481,15 @@ class _QuoteSubmissionDialogState extends State<_QuoteSubmissionDialog> {
   @override
   void dispose() {
     serviceController.dispose();
-    materialsController.dispose();
     noteController.dispose();
     super.dispose();
   }
 
   Future<void> submit() async {
     final service = double.tryParse(serviceController.text.trim());
-    final materials = double.tryParse(materialsController.text.trim());
-    if (service == null || service <= 0 || materials == null || materials < 0 ||
-        service > 10000000 || materials > 10000000) {
+    if (service == null || service <= 0 || service > 10000000) {
       setState(() => formError =
-          'सही रकम भरें। मेहनताना शून्य से अधिक और सामान की रकम शून्य या अधिक होनी चाहिए।');
+          'सही लेबर चार्ज भरें। रकम शून्य से अधिक होनी चाहिए।');
       return;
     }
 
@@ -506,10 +498,9 @@ class _QuoteSubmissionDialogState extends State<_QuoteSubmissionDialog> {
       formError = null;
     });
     try {
-      await widget.client.rpc('srk_submit_booking_quote', params: {
+      await widget.client.rpc('srk_submit_labour_quote', params: {
         'p_booking_id': widget.bookingId,
         'p_service_charge': service,
-        'p_materials_amount': materials,
         'p_quote_note': noteController.text.trim(),
       });
       if (mounted) Navigator.of(context).pop(true);
@@ -531,18 +522,12 @@ class _QuoteSubmissionDialogState extends State<_QuoteSubmissionDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('मेहनताना और सामान की कीमत अलग-अलग भरें। कुल रकम ग्राहक की मंजूरी के बाद ही मान्य होगी।'),
+          const Text('केवल लेबर चार्ज दर्ज करें। ग्राहक की मंजूरी के बाद ही काम शुरू होगा।'),
           const SizedBox(height: 12),
           TextField(
             controller: serviceController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(labelText: 'मेहनताना / सर्विस चार्ज (₹)'),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: materialsController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'सामान / पार्ट्स (₹)'),
           ),
           const SizedBox(height: 10),
           TextField(
