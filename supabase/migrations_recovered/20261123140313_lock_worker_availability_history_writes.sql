@@ -1,0 +1,1 @@
+revoke all on public.srk_worker_availability_events from public, anon, authenticated, service_role; grant select on public.srk_worker_availability_events to authenticated;

@@ -1,0 +1,19 @@
+
+create index if not exists srk_staff_attendance_approved_by_idx on public.srk_staff_attendance(approved_by);
+create index if not exists srk_staff_attendance_marked_by_idx on public.srk_staff_attendance(marked_by);
+create index if not exists srk_staff_designations_department_fk_idx on public.srk_staff_designations(department_id);
+create index if not exists srk_staff_documents_uploaded_by_idx on public.srk_staff_documents(uploaded_by);
+create index if not exists srk_staff_documents_verified_by_idx on public.srk_staff_documents(verified_by);
+create index if not exists srk_staff_history_actor_idx on public.srk_staff_employment_history(actor_user_id);
+create index if not exists srk_staff_leave_type_fk_idx on public.srk_staff_leave_requests(leave_type_id);
+create index if not exists srk_staff_leave_reviewer_idx on public.srk_staff_leave_requests(reviewed_by);
+create index if not exists srk_staff_payroll_approver_idx on public.srk_staff_payroll_records(approved_by);
+create index if not exists srk_staff_payroll_preparer_idx on public.srk_staff_payroll_records(prepared_by);
+create index if not exists srk_staff_payroll_salary_structure_idx on public.srk_staff_payroll_records(salary_structure_id);
+create index if not exists srk_staff_reviews_reviewer_idx on public.srk_staff_performance_reviews(reviewer_user_id);
+create index if not exists srk_staff_profiles_creator_idx on public.srk_staff_profiles(created_by);
+create index if not exists srk_staff_profiles_manager_idx on public.srk_staff_profiles(manager_staff_id);
+create index if not exists srk_staff_profiles_updater_idx on public.srk_staff_profiles(updated_by);
+create index if not exists srk_staff_salary_creator_idx on public.srk_staff_salary_structures(created_by);
+create index if not exists srk_staff_assignments_assigned_by_idx on public.srk_staff_work_assignments(assigned_by);
+create index if not exists srk_staff_assignments_booking_idx on public.srk_staff_work_assignments(related_booking_id);

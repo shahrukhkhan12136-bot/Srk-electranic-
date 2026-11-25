@@ -1,0 +1,1 @@
+revoke all on function public.srk_set_work_session_worker() from public,anon,authenticated;
