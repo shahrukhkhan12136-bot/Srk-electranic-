@@ -71,3 +71,35 @@ test('Worker rate-card function uses a stable time reference for active rates', 
   assert.match(stable, /r\.effective_from<=now\(\)/);
   assert.doesNotMatch(stable, /clock_timestamp\(\)/);
 });
+
+test('Worker financial details are booking-scoped to the authenticated assigned worker', () => {
+  const finance = fs.readFileSync('supabase/migrations/20261125110500_worker_bill_details_and_payout_request_rpcs.sql', 'utf8');
+  assert.match(finance, /srk_worker_get_my_booking_financial_details/);
+  assert.match(finance, /where wp\.user_id=auth\.uid\(\)/);
+  assert.match(finance, /e\.booking_id=p_booking_id and e\.worker_id=v_worker/);
+  assert.match(finance, /company_commission_total/);
+  assert.match(finance, /customer_paid_amount/);
+  assert.match(finance, /my_wallet_credit/);
+  assert.match(finance, /cash_commission_outstanding/);
+  assert.match(finance, /lower\(i\.item_type\)<>'material'/);
+  assert.match(finance, /revoke all on function public\.srk_worker_get_my_booking_financial_details/);
+});
+
+test('Technician app displays full bill split and lets worker request the available wallet payout', () => {
+  assert.match(technician, /srk_worker_get_my_booking_financial_details/);
+  assert.match(technician, /पूरा बिल और कमाई/);
+  assert.match(technician, /कंपनी प्रतिशत/);
+  assert.match(technician, /ग्राहक ने वास्तव में दिया/);
+  assert.match(technician, /srk_worker_request_payout/);
+  assert.match(technician, /srk_worker_get_my_payout_requests/);
+  assert.match(technician, /UTR:/);
+});
+
+test('Payout history RPC is limited to the authenticated worker and Admin payout workflow requires transfer evidence and reference', () => {
+  const finance = fs.readFileSync('supabase/migrations/20261125110500_worker_bill_details_and_payout_request_rpcs.sql', 'utf8');
+  assert.match(finance, /srk_worker_get_my_payout_requests/);
+  assert.match(finance, /where p\.worker_id=v_worker/);
+  assert.match(admin, /srk_admin_mark_worker_payout_paid/);
+  assert.match(admin, /UTR|payment_reference/i);
+  assert.match(admin, /srk_worker_payout_evidence/);
+});
