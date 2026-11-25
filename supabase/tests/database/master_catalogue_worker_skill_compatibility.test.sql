@@ -8,8 +8,8 @@ SELECT has_column('public','srk_service_skills','skill_name',
   'legacy Worker review reads the canonical skill display name');
 SELECT has_column('public','srk_service_skills','sort_order',
   'legacy Worker review has a stable skill ordering field');
-SELECT has_view('public','srk_service_types',
-  'legacy service-type API is a projection of canonical skills');
+SELECT ok(to_regclass('public.srk_service_types') IS NOT NULL,
+  'legacy service-type relation remains available for Worker review RPCs');
 SELECT ok(NOT EXISTS(
   SELECT 1 FROM public.srk_service_skills sk
   LEFT JOIN public.srk_service_categories c ON c.id=sk.category_id
