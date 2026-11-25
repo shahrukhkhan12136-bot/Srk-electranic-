@@ -44,7 +44,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   List<Map<String, dynamic>> _skills = [];
   List<Map<String, dynamic>> _levels = [];
   List<Map<String, dynamic>> _rules = [];
-  List<Map<String, dynamic>> _hpTiers = [];
+  List<Map<String, dynamic>> _hpTiers = [];\n  List<Map<String, dynamic>> _rates = [];
   Map<String, dynamic>? _category, _service, _skill, _level, _rule;
   double? _motorHp;
 
@@ -62,7 +62,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         _client.from('srk_service_skills').select('id,service_type_id,skill_name,sort_order').eq('is_active', true).order('sort_order'),
         _client.from('srk_skill_levels').select('id,category_id,level_name,sort_order').eq('is_active', true).order('sort_order'),
         _client.from('srk_service_pricing_rules').select('id,category_id,service_type_id,pricing_unit,technician_rate,helper_rate'),
-        _client.from('srk_service_pricing_hp_tiers').select('pricing_rule_id,motor_hp'),
+        _client.from('srk_service_pricing_hp_tiers').select('pricing_rule_id,motor_hp'),\n        _client.from('srk_service_rates').select('category_id,service_type_id,skill_level_id,technician_hourly_rate,helper_hourly_rate,rate_status,effective_from,effective_to').eq('rate_status','approved'),
       ]);
       if (!mounted) return;
       setState(() {
@@ -71,7 +71,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         _skills = List<Map<String, dynamic>>.from(results[2] as List);
         _levels = List<Map<String, dynamic>>.from(results[3] as List);
         _rules = List<Map<String, dynamic>>.from(results[4] as List);
-        _hpTiers = List<Map<String, dynamic>>.from(results[5] as List);
+        _hpTiers = List<Map<String, dynamic>>.from(results[5] as List);\n        _rates = List<Map<String, dynamic>>.from(results[6] as List);
         _loading = false;
       });
     } catch (e) {
@@ -99,10 +99,18 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
 
   void _emitSelection() {
     final c = _category, s = _service, k = _skill, l = _level, r = _rule;
-    if (c == null || s == null || k == null || l == null || r == null) {
+    if (c == null || s == null || k == null || l == null) {
       widget.onSelection(null); return;
     }
-    final unit = r['pricing_unit']?.toString() ?? 'hour';
+    final now = DateTime.now().toUtc();
+    final matchingRates = _rates.where((x) {
+      if (x['category_id'] != c['id'] || x['service_type_id'] != s['id'] || x['skill_level_id'] != l['id']) return false;
+      final from = DateTime.tryParse(x['effective_from']?.toString() ?? '');
+      final to = DateTime.tryParse(x['effective_to']?.toString() ?? '');
+      return (from == null || !from.isAfter(now)) && (to == null || to.isAfter(now));
+    }).toList();
+    if (r == null && matchingRates.isEmpty) { widget.onSelection(null); return; }
+    final unit = r?['pricing_unit']?.toString() ?? 'hour';
     final hp = unit == 'motor_hp' ? _motorHp : null;
     if (unit == 'motor_hp' && hp == null) { widget.onSelection(null); return; }
     widget.onSelection(SrkBackendServiceSelection(
@@ -110,7 +118,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       serviceTypeId: s['id'].toString(), serviceName: s['service_name'].toString(),
       skillId: k['id'].toString(), skillName: k['skill_name'].toString(),
       skillLevelId: l['id'].toString(), skillLevelName: l['level_name'].toString(),
-      pricingUnit: unit, pricingRuleId: r['id']?.toString(), motorHp: hp,
+      pricingUnit: unit, pricingRuleId: r?['id']?.toString(), motorHp: hp,
       availableMotorHp: _hpTiers.where((x) => x['pricing_rule_id'] == r['id'])
         .map((x) => (x['motor_hp'] as num).toDouble()).toList()..sort(),
     ));
@@ -153,7 +161,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
           value: _service?['id']?.toString(), isExpanded: true,
           decoration: const InputDecoration(labelText: 'काम / सर्विस चुनें', border: OutlineInputBorder()),
           items: _availableServices.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(x['service_name'].toString()))).toList(),
-          onChanged: (id) { setState(() { _service = _availableServices.firstWhere((x) => x['id'].toString() == id); _skill = null; _level = null; _rule = _rules.where((x) => x['service_type_id'] == id && x['category_id'] == _category?['id']).firstOrNull; _motorHp = null; }); widget.onSelection(null); },
+          onChanged: (id) { setState(() { _service = _availableServices.firstWhere((x) => x['id'].toString() == id); _skill = null; _level = null; final matches = _rules.where((x) => x['service_type_id'] == id && x['category_id'] == _category?['id']).toList(); _rule = matches.isEmpty ? null : matches.first; _motorHp = null; }); widget.onSelection(null); },
         ),
       ],
       if (_service != null) ...[
