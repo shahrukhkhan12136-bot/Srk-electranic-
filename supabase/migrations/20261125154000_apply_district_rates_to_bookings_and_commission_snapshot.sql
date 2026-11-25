@@ -987,12 +987,12 @@ begin
     delete from public.srk_booking_final_bill_items where bill_id=v_existing.id;
     update public.srk_booking_final_bills
     set bill_number='SRK-BILL-'||lpad(nextval('public.srk_bill_number_seq')::text,6,'0'),
-      revision_no=v_next_revision,service_amount=v_labour,materials_amount=0,cancellation_fee_amount=v_cancellation_fee,
+      revision_no=v_next_revision,service_amount=v_labour,cancellation_fee_amount=v_cancellation_fee,
       discount_amount=0,tax_amount=0,status='issued',prepared_at=clock_timestamp(),updated_at=clock_timestamp()
     where id=v_existing.id returning * into v_bill;
   else
     insert into public.srk_booking_final_bills(
-      booking_id,bill_number,revision_no,service_amount,materials_amount,cancellation_fee_amount,status,prepared_at
+      booking_id,bill_number,revision_no,service_amount,cancellation_fee_amount,status,prepared_at
     ) values (
       p_booking_id,'SRK-BILL-'||lpad(nextval('public.srk_bill_number_seq')::text,6,'0'),
       1,v_labour,0,v_cancellation_fee,'issued',clock_timestamp()
