@@ -441,7 +441,7 @@ begin
    count(*) filter(where bw.accepted_at is not null or bw.assignment_status in ('accepted','assigned','working','paused','completed'))::bigint offers_accepted,
    count(*) filter(where bw.rejected_at is not null or bw.assignment_status='rejected')::bigint offers_rejected,
    count(*) filter(where bw.assignment_status='offered' and bw.offer_expires_at<statement_timestamp())::bigint offers_expired,
-   count(distinct w.id) filter(where bw.assignment_status in ('working','paused'))::bigint currently_working
+   count(distinct w.id) filter(where bw.assignment_status in ('working','paused') and b.status not in ('completed','cancelled','rejected'))::bigint currently_working
   from public.srk_booking_workers bw join public.service_bookings b on b.id=bw.booking_id join public.srk_worker_profiles w on w.id=bw.worker_id
   group by b.category_id,w.worker_type
  )
@@ -476,7 +476,7 @@ as $function$ select * from srk_private.get_admin_category_workforce_overview();
 drop function if exists public.srk_admin_list_category_applications(uuid,text,text,integer);
 drop function if exists srk_private.list_admin_category_applications(uuid,text,text,integer);
 create or replace function srk_private.list_admin_category_applications(
- p_category_id uuid,p_worker_type text,p_status text default 'pending',p_limit integer default 200
+ p_category_id uuid,p_worker_type text,p_status text default 'pending',p_skill_status text default 'all',p_limit integer default 200
 )
 returns table(
  application_id uuid,user_id uuid,worker_type text,full_name text,phone text,state text,district text,pincode text,
@@ -489,6 +489,7 @@ begin
  if auth.uid() is null or not public.is_srk_admin() then raise exception 'Main Admin permission required' using errcode='42501'; end if;
  if p_category_id is null or p_worker_type is null or p_worker_type not in ('technician','helper') then raise exception 'Category and valid worker type are required' using errcode='22023'; end if;
  if p_status is null or p_status not in ('all','pending','under_review','more_info','approved','rejected','withdrawn') then raise exception 'Unsupported application status filter' using errcode='22023'; end if;
+ if p_skill_status is null or p_skill_status not in ('all','pending','approved','rejected','more_info') then raise exception 'Unsupported skill status filter' using errcode='22023'; end if;
  return query
  select a.id,a.user_id,a.worker_type,a.full_name,a.phone,a.state,a.district,a.pincode,a.experience_years,a.about,a.status,a.created_at,a.reviewed_at,a.admin_note,
   coalesce(d.document_count,0),coalesce(d.review_statuses,array[]::text[]),
@@ -511,13 +512,26 @@ begin
   left join public.srk_skill_levels sl on sl.id=aps.skill_level_id
   where aps.application_id=a.id
  ) s on true
- where a.category_id=p_category_id and a.worker_type=p_worker_type
+ where a.worker_type=p_worker_type
+  and (a.category_id=p_category_id or exists(
+    select 1 from public.srk_worker_application_skills aps
+    join public.srk_service_skills sk on sk.id=aps.skill_id
+    join public.srk_service_types st on st.id=sk.service_type_id
+    where aps.application_id=a.id and st.category_id=p_category_id
+  ))
   and (p_status='all' or (p_status='pending' and a.status in ('pending','under_review','more_info')) or (p_status not in ('all','pending') and a.status=p_status))
+  and (p_skill_status='all' or exists(
+    select 1 from public.srk_worker_application_skills aps
+    join public.srk_service_skills sk on sk.id=aps.skill_id
+    join public.srk_service_types st on st.id=sk.service_type_id
+    where aps.application_id=a.id and st.category_id=p_category_id
+     and ((p_skill_status='pending' and aps.status in ('pending','more_info')) or aps.status=p_skill_status)
+  ))
  order by a.created_at desc limit least(greatest(coalesce(p_limit,200),1),500);
 end;
 $function$;
 create or replace function public.srk_admin_list_category_applications(
- p_category_id uuid,p_worker_type text,p_status text default 'pending',p_limit integer default 200
+ p_category_id uuid,p_worker_type text,p_status text default 'pending',p_skill_status text default 'all',p_limit integer default 200
 )
 returns table(
  application_id uuid,user_id uuid,worker_type text,full_name text,phone text,state text,district text,pincode text,
@@ -525,7 +539,7 @@ returns table(
  document_count bigint,document_review_statuses text[],skill_count bigint,skill_summary jsonb
 )
 language sql stable security invoker set search_path=pg_catalog,public,auth,srk_private
-as $function$ select * from srk_private.list_admin_category_applications(p_category_id,p_worker_type,p_status,p_limit); $function$;
+as $function$ select * from srk_private.list_admin_category_applications(p_category_id,p_worker_type,p_status,p_skill_status,p_limit); $function$;
 
 create or replace function srk_private.list_admin_category_skill_workers(
  p_category_id uuid,p_worker_type text,p_status text default 'all',p_limit integer default 500
@@ -563,8 +577,8 @@ begin
    when 'approved' then ws.verification_status='approved'
    when 'active' then ws.verification_status='approved' and w.is_active
    when 'inactive' then ws.verification_status='approved' and not w.is_active
-   when 'working' then exists(select 1 from public.srk_booking_workers bw
-     where bw.worker_id=w.id and bw.assignment_status in ('working','paused'))
+   when 'working' then exists(select 1 from public.srk_booking_workers bw join public.service_bookings b on b.id=bw.booking_id
+     where bw.worker_id=w.id and b.category_id=p_category_id and b.status not in ('completed','cancelled','rejected') and bw.assignment_status in ('working','paused'))
    else true
   end
  group by w.id,w.worker_code,w.full_name,w.worker_type,w.phone,w.state,w.district,w.pincode,
@@ -593,16 +607,14 @@ grant execute on function public.srk_admin_list_application_skills(uuid) to auth
 revoke all on function public.srk_worker_request_skill(uuid,uuid,integer) from public,anon;
 grant execute on function public.srk_worker_request_skill(uuid,uuid,integer) to authenticated;
 
-revoke all on function public.srk_worker_request_skill(uuid,uuid,integer) from public,anon;
-grant execute on function public.srk_worker_request_skill(uuid,uuid,integer) to authenticated;
 revoke all on function srk_private.get_admin_category_workforce_overview() from public,anon,authenticated;
 grant execute on function srk_private.get_admin_category_workforce_overview() to authenticated;
 revoke all on function public.srk_admin_get_category_workforce_overview() from public,anon;
 grant execute on function public.srk_admin_get_category_workforce_overview() to authenticated;
-revoke all on function srk_private.list_admin_category_applications(uuid,text,text,integer) from public,anon,authenticated;
-grant execute on function srk_private.list_admin_category_applications(uuid,text,text,integer) to authenticated;
-revoke all on function public.srk_admin_list_category_applications(uuid,text,text,integer) from public,anon;
-grant execute on function public.srk_admin_list_category_applications(uuid,text,text,integer) to authenticated;
+revoke all on function srk_private.list_admin_category_applications(uuid,text,text,text,integer) from public,anon,authenticated;
+grant execute on function srk_private.list_admin_category_applications(uuid,text,text,text,integer) to authenticated;
+revoke all on function public.srk_admin_list_category_applications(uuid,text,text,text,integer) from public,anon;
+grant execute on function public.srk_admin_list_category_applications(uuid,text,text,text,integer) to authenticated;
 do $verify_multi$
 begin
  if not exists(select 1 from information_schema.columns where table_schema='public' and table_name='srk_worker_skills' and column_name='years_experience') then
