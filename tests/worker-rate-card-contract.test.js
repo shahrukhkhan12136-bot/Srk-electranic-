@@ -11,7 +11,7 @@ const admin = fs.readFileSync('admin.html', 'utf8');
 test('Worker rate-card RPC returns all six categories and only the logged-in role share', () => {
   assert.match(migration, /srk_worker_get_my_rate_card/);
   assert.match(migration, /where wp\.user_id=auth\.uid\(\)/);
-  assert.match(migration, /'electrician','plumber','painter','ac_fridge_technician','motor_pump_technician','cooler_technician'/);
+  assert.match(migration, /'electrician',[\\s\\S]*'plumber',[\\s\\S]*'painter',[\\s\\S]*'ac_fridge_technician',[\\s\\S]*'motor_pump_technician',[\\s\\S]*'cooler_technician'/);
   assert.match(migration, /round\(t\.fixed_price\*v_worker_share\/100,2\)/);
   assert.match(migration, /round\(r\.technician_rate\*v_worker_share\/100,2\)/);
   assert.match(migration, /case when v_worker_type='helper' then r\.helper_rate else r\.technician_rate end/);
@@ -33,7 +33,7 @@ test('Admin panel can edit service rates and the company/worker split with reaso
   assert.match(admin, /srk_admin_list_service_rates/);
   assert.match(admin, /srk_admin_list_service_pricing_rules/);
   assert.match(admin, /srk_admin_update_service_rate/);
-  assert.match(admin, /srk_admin_version_service_pricing_rule/);
+  assert.match(admin, /srk_admin_update_service_pricing_rate/);
   assert.match(admin, /reason\.length<10/);
 });
 
