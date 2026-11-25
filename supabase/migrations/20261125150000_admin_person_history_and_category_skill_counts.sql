@@ -189,8 +189,10 @@ begin
     ) order by d.created_at desc),'[]'::jsonb)
     into v_documents
     from public.srk_worker_documents d
-    where d.worker_id=v_worker.id
-       or d.application_id in (select a.id from public.srk_worker_applications a where a.user_id=v_user_id);
+    where (d.worker_id=v_worker.id
+       or d.application_id in (select a.id from public.srk_worker_applications a where a.user_id=v_user_id))
+      and d.created_at >= v_from
+      and d.created_at < v_until;
 
   else
     select * into v_customer
@@ -266,7 +268,10 @@ begin
         'verified_at',d.verified_at,'storage_path',d.storage_path
       ) order by d.created_at desc),'[]'::jsonb)
       into v_documents
-      from public.srk_staff_documents d where d.staff_id=v_staff.id;
+      from public.srk_staff_documents d
+      where d.staff_id=v_staff.id
+        and d.created_at >= v_from
+        and d.created_at < v_until;
 
       select coalesce(jsonb_agg(jsonb_build_object(
         'entity_type', a.entity_type, 'entity_id', a.entity_id, 'booking_id', a.booking_id,
