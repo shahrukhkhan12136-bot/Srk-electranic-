@@ -624,3 +624,250 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
     );
   }
 }
+
+
+/// Master hourly bookings use the shared Technician workday ledger.
+/// This is intentionally separate from the legacy single-worker session panel.
+class WorkerWorkdayPanel extends StatefulWidget {
+  const WorkerWorkdayPanel({super.key, required this.bookingId, required this.onChanged});
+  final String bookingId;
+  final Future<void> Function() onChanged;
+  @override
+  State<WorkerWorkdayPanel> createState() => _WorkerWorkdayPanelState();
+}
+
+class _WorkerWorkdayPanelState extends State<WorkerWorkdayPanel> {
+  final client = Supabase.instance.client;
+  List<Map<String, dynamic>> workdays = [];
+  bool loading = true, busy = false;
+  String? error;
+  DateTime fetchedAt = DateTime.now();
+  Timer? ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && current?['status'] == 'running') setState(() {});
+    });
+    load();
+  }
+
+  @override
+  void didUpdateWidget(covariant WorkerWorkdayPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.bookingId != widget.bookingId) load();
+  }
+
+  @override
+  void dispose() {
+    ticker?.cancel();
+    super.dispose();
+  }
+
+  String get today => DateTime.now().toLocal().toIso8601String().substring(0, 10);
+  Map<String, dynamic>? get current {
+    for (final row in workdays) {
+      if (row['work_date']?.toString().startsWith(today) == true) return row;
+    }
+    return null;
+  }
+
+  int get elapsedSeconds {
+    final row = current;
+    if (row == null) return 0;
+    final base = (row['elapsed_work_seconds'] as num?)?.toInt() ?? 0;
+    if (row['status'] != 'running') return base;
+    return base + DateTime.now().difference(fetchedAt).inSeconds.clamp(0, 86400);
+  }
+
+  String get clock {
+    final seconds = elapsedSeconds;
+    return (seconds ~/ 3600).toString().padLeft(2, '0') + ':' +
+      ((seconds % 3600) ~/ 60).toString().padLeft(2, '0') + ':' +
+      (seconds % 60).toString().padLeft(2, '0');
+  }
+
+  Future<void> load() async {
+    if (!mounted) return;
+    setState(() { loading = true; error = null; });
+    try {
+      final result = await client.rpc('srk_technician_get_my_workdays', params: {
+        'p_booking_id': widget.bookingId,
+      });
+      workdays = List<Map<String, dynamic>>.from(result as List);
+      fetchedAt = DateTime.now();
+    } catch (e) {
+      error = 'Workday रिकॉर्ड लोड नहीं हुआ: ' + e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> run(Future<void> Function() action) async {
+    if (busy) return;
+    setState(() { busy = true; error = null; });
+    try {
+      await action();
+      await load();
+      await widget.onChanged();
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> requestStart() => run(() async {
+    await client.rpc('srk_technician_request_workday_start', params: {
+      'p_booking_id': widget.bookingId,
+    });
+  });
+
+  Future<void> pause() => run(() async {
+    await client.rpc('srk_technician_pause_workday', params: {
+      'p_workday_id': current!['workday_id'],
+    });
+  });
+
+  Future<void> resume() => run(() async {
+    await client.rpc('srk_technician_resume_workday', params: {
+      'p_workday_id': current!['workday_id'],
+    });
+  });
+
+  Future<void> stop() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('आज का काम रोकें?'),
+        content: const Text('आज का रिकॉर्ड बंद होगा। ग्राहक को आज के काम की समीक्षा और अगला निर्णय देना होगा।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('वापस')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('आज का काम रोकें')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await run(() async {
+      await client.rpc('srk_technician_stop_workday', params: {
+        'p_workday_id': current!['workday_id'],
+      });
+    });
+  }
+
+  Future<void> emergencyPause() async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🚨 Emergency Pause'),
+        content: const Text('यह सामान्य Break नहीं है। सुरक्षा, स्वास्थ्य या कार्यस्थल के खतरे में Timer रोकें।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('वापस')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'सुरक्षा का खतरा'), child: const Text('सुरक्षा का खतरा')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'चिकित्सकीय आपात स्थिति'), child: const Text('चिकित्सकीय आपात स्थिति')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'कार्यस्थल असुरक्षित है'), child: const Text('कार्यस्थल असुरक्षित है')),
+        ],
+      ),
+    );
+    if (reason == null) return;
+    await run(() async {
+      await client.rpc('srk_technician_emergency_pause_workday', params: {
+        'p_workday_id': current!['workday_id'], 'p_reason': reason,
+      });
+    });
+  }
+
+  Future<void> resumeEmergency() async {
+    final controller = TextEditingController();
+    final note = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Emergency Pause समाप्त करें?'),
+        content: TextField(
+          controller: controller, minLines: 2, maxLines: 3,
+          decoration: const InputDecoration(labelText: 'स्थिति सुरक्षित होने का विवरण (कम-से-कम 5 अक्षर)'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('वापस')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('सुरक्षित — Resume करें')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (note == null || note.length < 5) return;
+    await run(() async {
+      await client.rpc('srk_technician_resume_emergency_workday', params: {
+        'p_workday_id': current!['workday_id'], 'p_note': note,
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final row = current;
+    final status = row?['status']?.toString() ?? '';
+    final label = switch (status) {
+      'start_pending' => 'ग्राहक की मंजूरी बाकी',
+      'start_rejected' => 'ग्राहक ने आज का Timer मंजूर नहीं किया',
+      'running' => 'काम चल रहा है',
+      'paused' => 'सामान्य Pause',
+      'lunch_paused' => 'अनिवार्य Lunch Break — अपने-आप Resume होगा',
+      'emergency_paused' => '🚨 Emergency Pause — सामान्य Break नहीं',
+      'stopped' => 'आज का काम रोक दिया गया',
+      _ => 'आज का Workday शुरू नहीं हुआ',
+    };
+    return Card(
+      color: status == 'emergency_paused' ? Colors.red.shade50 : Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.timer_outlined), const SizedBox(width: 8),
+            Expanded(child: Text('आज का Master Workday Timer', style: Theme.of(context).textTheme.titleMedium)),
+            Text(clock, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          ]),
+          const SizedBox(height: 6),
+          Text('स्थिति: ' + (loading ? 'लोड हो रहा है' : label)),
+          if (status == 'emergency_paused' && (row?['emergency_pause_reason'] ?? '').toString().isNotEmpty)
+            Text('कारण: ${row?['emergency_pause_reason']}'),
+          if (status == 'lunch_paused' && row?['lunch_ends_at'] != null)
+            Text('Lunch समाप्ति: ${row?['lunch_ends_at']}'),
+          if (loading) const LinearProgressIndicator(),
+          if (!loading && row == null)
+            FilledButton.icon(
+              onPressed: busy ? null : requestStart,
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('ग्राहक से आज का Timer शुरू करने की मंजूरी माँगें'),
+            ),
+          if (status == 'start_pending')
+            const Text('ग्राहक की मंजूरी मिलने के बाद ही सर्वर Timer शुरू होगा।'),
+          if (status == 'start_rejected')
+            const Text('आज के लिए नया Timer बनाने हेतु Admin / Support से संपर्क करें।'),
+          if (status == 'running') Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton.icon(onPressed: busy ? null : pause, icon: const Icon(Icons.pause), label: const Text('सामान्य Pause')),
+            OutlinedButton.icon(onPressed: busy ? null : emergencyPause, icon: const Icon(Icons.sos), label: const Text('Emergency Pause')),
+            OutlinedButton.icon(onPressed: busy ? null : stop, icon: const Icon(Icons.stop), label: const Text('आज का काम रोकें')),
+          ]),
+          if (status == 'paused') Wrap(spacing: 8, runSpacing: 8, children: [
+            FilledButton.icon(onPressed: busy ? null : resume, icon: const Icon(Icons.play_arrow), label: const Text('Resume')),
+            OutlinedButton.icon(onPressed: busy ? null : stop, icon: const Icon(Icons.stop), label: const Text('आज का काम रोकें')),
+          ]),
+          if (status == 'emergency_paused')
+            SizedBox(width: double.infinity, child: FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: busy ? null : resumeEmergency,
+              icon: const Icon(Icons.verified_user), label: const Text('स्थिति सुरक्षित है — Resume करें'),
+            )),
+          if (status == 'stopped')
+            const Text('आज का समय सुरक्षित है। ग्राहक की समीक्षा और अगले दिन / काम पूरा करने के निर्णय की प्रतीक्षा करें।'),
+          if (error != null) Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(error!, style: const TextStyle(color: Colors.red)),
+          ),
+          if (busy) const LinearProgressIndicator(),
+        ]),
+      ),
+    );
+  }
+}
