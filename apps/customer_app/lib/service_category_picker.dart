@@ -245,12 +245,13 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
           final selected = _skill?['id'] == skill['id'];
           return Card(
             margin: const EdgeInsets.only(bottom: 6),
-            child: CheckboxListTile(
-              value: selected,
+            child: RadioListTile<String>(
+              value: skill['id'].toString(),
+              groupValue: _skill?['id']?.toString(),
               controlAffinity: ListTileControlAffinity.leading,
               title: Text(skill['skill_name'].toString()),
-              onChanged: (checked) {
-                setState(() => _skill = checked == true ? skill : null);
+              onChanged: (selectedId) {
+                setState(() => _skill = selectedId == null ? null : skill);
                 _emitSelection();
               },
             ),
