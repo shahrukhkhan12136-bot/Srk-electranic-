@@ -25,6 +25,9 @@ test('Technician app connects the GPS work-session controls to active assignment
   assert.match(workerModules, /srk_worker_record_session_location/);
   assert.match(workerModules, /srk_worker_session_action/);
   assert.match(workerModules, /srk_worker_complete_assignment/);
+  assert.match(workerModules, /Geolocator\.getPositionStream/);
+  assert.match(workerModules, /distanceFilter: 15/);
+  assert.match(workerModules, /srk_worker_record_session_location/);
 });
 
 test('Worker app declares the file and GPS packages used by registration and work sessions', () => {
