@@ -277,6 +277,72 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
   double _number(dynamic value) => value is num ? value.toDouble() : (double.tryParse(value?.toString() ?? '') ?? 0);
   String _money(dynamic value) => '₹' + _number(value).toStringAsFixed(2);
 
+  Future<void> createDynamicQr(Map<String, dynamic> bill) async {
+    final bookingId = bill['booking_id']?.toString();
+    final finalBillId = bill['final_bill_id']?.toString();
+    if (bookingId == null || bookingId.isEmpty || finalBillId == null || finalBillId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('इस बुकिंग का Final Bill ID उपलब्ध नहीं है।')),
+      );
+      return;
+    }
+    try {
+      final result = await client.functions.invoke(
+        'create-razorpay-dynamic-qr',
+        body: {
+          'booking_id': bookingId,
+          'final_bill_id': finalBillId,
+          'idempotency_key': 'srk-qr-$bookingId-$finalBillId',
+        },
+      );
+      final data = Map<String, dynamic>.from(result.data as Map);
+      final imageUrl = data['image_url']?.toString() ?? '';
+      if (data['success'] != true || !imageUrl.startsWith('https://')) {
+        final status = data['status']?.toString() ?? data['error']?.toString() ?? 'QR अभी तैयार नहीं हुआ।';
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(status == 'RECONCILIATION_REQUIRED'
+            ? 'QR Provider स्थिति जाँची जा रही है। कुछ देर बाद Refresh करें।'
+            : 'Dynamic QR नहीं बना: $status')),
+        );
+        return;
+      }
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Customer On-site UPI QR'),
+          content: SizedBox(
+            width: 320,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Final Bill: ' + (bill['bill_number']?.toString() ?? bookingId)),
+                const SizedBox(height: 8),
+                Text('भुगतान राशि: ' + _money(bill['bill_total']),
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Image.network(imageUrl, width: 260, height: 260,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Text('QR Image लोड नहीं हुई। Refresh करके फिर कोशिश करें।')),
+                const SizedBox(height: 8),
+                const Text('यह QR केवल इसी Final Bill के लिए है। भुगतान Razorpay Merchant Account में जाएगा।'),
+                if (data['short_url']?.toString().isNotEmpty == true)
+                  SelectableText(data['short_url'].toString()),
+              ],
+            ),
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('बंद करें'))],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Dynamic QR तैयार नहीं हुआ: ' + e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
   Future<void> openFinancialDetails(Map<String, dynamic> earning) async {
     final bookingId = earning['booking_id']?.toString();
     if (bookingId == null || bookingId.isEmpty) return;
@@ -328,7 +394,18 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
               ],
             )),
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('बंद करें'))],
+          actions: [
+            if (!isCash && d['payment_status'] != 'paid' && d['bill_status'] == 'issued')
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  createDynamicQr(d);
+                },
+                icon: const Icon(Icons.qr_code_2),
+                label: const Text('On-site QR बनाएँ'),
+              ),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('बंद करें')),
+          ],
         ),
       );
     } catch (_) {
