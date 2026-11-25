@@ -67,9 +67,10 @@
 
 <div class="card" id="adminCategorySkillCountsCard">
 <h2>छह कैटेगरी — स्किल वाले Technician / Helper</h2>
-<p class="muted">हर कैटेगरी में आवेदन, जाँच, स्वीकृति, सक्रिय और इस समय काम पर मौजूद लोगों की संख्या देखें। किसी संख्या का विवरण खोलने की सुविधा अगले चरण में जोड़ी जाएगी।</p>
+<p class="muted">हर कैटेगरी में Technician और Helper की अलग-अलग स्किल संख्या देखें। किसी भी संख्या पर क्लिक करके संबंधित लोगों की सूची खोलें।</p>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="alt" onclick="loadAdminCategorySkillCounts()">स्किल संख्या रीफ़्रेश करें</button><span id="adminCategorySkillCountsStatus" class="muted" aria-live="polite"></span></div>
 <div id="adminCategorySkillCountsRows" class="scroll" style="margin-top:12px">स्किल संख्या लोड हो रही है…</div>
+<div id="adminCategorySkillWorkerDetail" class="scroll" style="margin-top:14px">किसी संख्या पर क्लिक करने पर संबंधित प्रोफाइल यहाँ दिखाई देंगी।</div>
 </div>
 <div class="card" id="adminUniversalPersonHistoryCard">
 <h2>Universal ID Search — पूरा रिकॉर्ड और PDF</h2>
@@ -1491,18 +1492,35 @@ function renderAdminPersonHistory(data){
  const notes='<section class="history-pdf-section"><h3>डेटा संबंधी नोट</h3><ul>'+(data.data_notes||[]).map(n=>'<li>'+adminHistoryEscape(n)+'</li>').join('')+'</ul><p>यह रिपोर्ट केवल सिस्टम में उपलब्ध रिकॉर्ड दिखाती है। अनुपलब्ध जानकारी को अनुमान से नहीं भरा गया है।</p></section>';
  return profile+summary+bookings+sessions+earnings+payouts+ledger+complaints+activity+notes;
 }
+
+async function openAdminCategorySkillWorkers(categoryId,workerType,status){
+ const box=document.getElementById('adminCategorySkillWorkerDetail');if(!box||!sb||!user)return;
+ const title=document.getElementById('adminCategorySkillCountsStatus');
+ box.textContent='संबंधित Technician / Helper की सूची लोड हो रही है…';
+ try{
+  const {data,error}=await sb.rpc('srk_admin_list_category_skill_workers',{p_category_id:categoryId,p_worker_type:workerType,p_status:status,p_limit:1000});
+  if(error)throw error;
+  const rows=Array.isArray(data)?data:[];
+  if(title)title.textContent=rows.length+' प्रोफाइल मिलीं';
+  if(!rows.length){box.textContent='इस फ़िल्टर में कोई रिकॉर्ड नहीं मिला।';return;}
+  box.innerHTML='<h3>'+adminHistoryEscape(workerType==='helper'?'Helper':'Technician')+' — '+adminHistoryEscape(status)+' ('+rows.length+')</h3><table><thead><tr><th>ID / नाम</th><th>फोन</th><th>कैटेगरी की सेवाएँ / Skills</th><th>Skill Level / स्थिति</th><th>काम क्षेत्र</th><th>प्रोफाइल</th></tr></thead><tbody>'+
+  rows.map(r=>'<tr><td><b>'+adminHistoryEscape(r.worker_code)+'</b><br>'+adminHistoryEscape(r.full_name)+'</td><td>'+adminHistoryEscape(r.phone||'—')+'</td><td>'+adminHistoryEscape((r.service_names||[]).join(', '))+'<br>'+adminHistoryEscape((r.skill_names||[]).join(', '))+'</td><td>'+adminHistoryEscape((r.skill_levels||[]).join(', ')||'—')+'<br>'+adminHistoryEscape((r.skill_statuses||[]).join(', '))+'</td><td>'+adminHistoryEscape([r.district,r.state,r.pincode].filter(Boolean).join(', ')||'—')+'</td><td>'+adminHistoryEscape(r.profile_status||'—')+'<br>'+(r.is_active?'Active':'Inactive')+' · '+(r.is_online?'Online':'Offline')+'<br>'+Number(r.experience_years||0)+' वर्ष</td></tr>').join('')+
+  '</tbody></table>';
+ }catch(e){box.textContent='Worker सूची नहीं खुली: '+(e.message||'Admin permission / migration जाँचें।');}
+}
 async function loadAdminCategorySkillCounts(){
  const box=document.getElementById('adminCategorySkillCountsRows'),status=document.getElementById('adminCategorySkillCountsStatus');
  if(!box||!sb||!user)return;
  const endInput=document.getElementById('adminPersonHistoryEnd');if(endInput&&!endInput.value){endInput.value=adminHistoryDateValue(new Date());syncAdminHistoryFromDate();}
  box.textContent='छह कैटेगरी की स्किल संख्या लोड हो रही है…';
  try{
-  const {data,error}=await sb.rpc('srk_admin_get_category_skill_counts');if(error)throw error;
+  const {data,error}=await sb.rpc('srk_admin_get_category_skill_counts_v2');if(error)throw error;
   const rows=Array.isArray(data)?data:[];
-  if(!rows.length){box.textContent='अभी कोई Worker Skill रिकॉर्ड उपलब्ध नहीं है।';if(status)status.textContent='0 रिकॉर्ड';return;}
+  if(!rows.length){box.textContent='अभी कोई Category रिकॉर्ड उपलब्ध नहीं है।';if(status)status.textContent='0 रिकॉर्ड';return;}
   const cats=[...new Set(rows.map(r=>r.category_name))];
-  box.innerHTML='<table><thead><tr><th>कैटेगरी</th><th>भूमिका</th><th>कुल स्किल वाले</th><th>पेंडिंग</th><th>अप्रूव्ड</th><th>एक्टिव</th><th>अभी काम पर</th></tr></thead><tbody>'+
-  rows.map(r=>'<tr><td>'+adminHistoryEscape(r.category_name)+'</td><td>'+adminHistoryEscape(r.worker_type==='helper'?'Helper':'Technician')+'</td><td>'+Number(r.total_skill_holders||0)+'</td><td>'+Number(r.pending_skill_holders||0)+'</td><td>'+Number(r.approved_skill_holders||0)+'</td><td>'+Number(r.active_skill_holders||0)+'</td><td>'+Number(r.currently_working||0)+'</td></tr>').join('')+
+  const countButton=(r,field,filter)=>'<button type="button" class="alt" onclick="openAdminCategorySkillWorkers(\''+r.category_id+'\',\''+r.worker_type+'\',\''+filter+'\')">'+Number(r[field]||0)+'</button>';
+  box.innerHTML='<table><thead><tr><th>कैटेगरी</th><th>भूमिका</th><th>कुल स्किल वाले</th><th>पेंडिंग</th><th>अप्रूव्ड</th><th>एक्टिव</th><th>इनएक्टिव</th><th>अभी काम पर</th></tr></thead><tbody>'+
+  rows.map(r=>'<tr><td>'+adminHistoryEscape(r.category_name)+'</td><td>'+adminHistoryEscape(r.worker_type==='helper'?'Helper':'Technician')+'</td><td>'+countButton(r,'total_skill_holders','all')+'</td><td>'+countButton(r,'pending_skill_holders','pending')+'</td><td>'+countButton(r,'approved_skill_holders','approved')+'</td><td>'+countButton(r,'active_skill_holders','active')+'</td><td>'+countButton(r,'inactive_skill_holders','inactive')+'</td><td>'+countButton(r,'currently_working','working')+'</td></tr>').join('')+
   '</tbody></table>';
   if(status)status.textContent=cats.length+' कैटेगरी · '+rows.length+' भूमिका रिकॉर्ड';
  }catch(e){box.textContent='स्किल रिपोर्ट लोड नहीं हुई। Admin अनुमति या migration जाँचें।';if(status)status.textContent=e.message||'लोड विफल';}
