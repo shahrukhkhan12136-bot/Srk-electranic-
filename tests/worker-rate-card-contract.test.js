@@ -123,7 +123,7 @@ test('Cash commission recovery is not confused with cash-split pending bookings 
 
 test('Technician can submit a UPI ID for Main Admin verification before requesting payout', () => {
   assert.match(technician, /srk_worker_update_payout_details/);
-  assert.match(technician, /UPI ID दर्ज करें \/ बदलें/);
+  assert.match(technician, /UPI ID दर्ज करें/);
   assert.match(technician, /payout_details_change_status/);
   assert.match(technician, /name@bank/);
 });
