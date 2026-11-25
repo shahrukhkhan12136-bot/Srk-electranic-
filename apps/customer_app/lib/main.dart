@@ -92,7 +92,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         if (target != null) await Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
         break;
       case 2:
-        await _openBookingForm();
+        await _openWallet();
         if (mounted) setState(() => _selectedNavIndex = 0);
         break;
       case 3:
@@ -548,6 +548,86 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     }
   }
 
+  Future<void> _openWallet() async {
+    try {
+      final raw = await _client.rpc('srk_get_my_wallet_summary');
+      final summary = Map<String, dynamic>.from(raw as Map);
+      final customer = Map<String, dynamic>.from(summary['customer'] as Map);
+      final walletId = customer['wallet_id']?.toString();
+      if (walletId == null || walletId.isEmpty) {
+        throw StateError('Customer Wallet अभी उपलब्ध नहीं है।');
+      }
+      final rows = await _client
+          .from('srk_wallet_ledger')
+          .select('entry_type,direction,amount,status,description,created_at')
+          .eq('wallet_id', walletId)
+          .order('created_at', ascending: false)
+          .limit(20);
+      final ledger = List<Map<String, dynamic>>.from(rows);
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('मेरा Wallet', style: Theme.of(ctx).textTheme.headlineSmall),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('उपलब्ध लेजर बैलेंस'),
+                          const SizedBox(height: 4),
+                          Text('₹\${(customer['balance'] as num?)?.toStringAsFixed(2) ?? '0.00'}',
+                            style: Theme.of(ctx).textTheme.headlineMedium),
+                          const SizedBox(height: 8),
+                          const Text('यह SRK का आंतरिक लेजर बैलेंस है। फिलहाल Wallet में पैसे जोड़ने/टॉप-अप की सुविधा चालू नहीं है।',
+                            style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('लेन-देन का इतिहास', style: Theme.of(ctx).textTheme.titleMedium),
+                  if (ledger.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Text('अभी कोई Wallet लेन-देन दर्ज नहीं है।'),
+                    )
+                  else
+                    ...ledger.map((entry) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(entry['direction'] == 'credit'
+                          ? Icons.arrow_downward : Icons.arrow_upward),
+                      title: Text(entry['description']?.toString().isNotEmpty == true
+                          ? entry['description'].toString()
+                          : entry['entry_type'].toString()),
+                      subtitle: Text('\${entry['status']} • \${entry['created_at']}'),
+                      trailing: Text('\${entry['direction'] == 'credit' ? '+' : '-'}₹\${(entry['amount'] as num?)?.toStringAsFixed(2) ?? '0.00'}'),
+                    )),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Wallet जानकारी नहीं खुली: ' + e.toString().replaceFirst('Exception: ', '')),
+      ));
+    }
+  }
+
   Future<void> _logout() async {
     await _client.auth.signOut();
   }
@@ -576,11 +656,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ],
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openBookingForm,
-        icon: const Icon(Icons.add),
-        label: const Text('नई बुकिंग'),
       ),
       body: Container(
         decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFE8F4FF), Color(0xFFF8FBFF), Color(0xFFFFF4E8)])),
@@ -666,7 +741,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'होम'),
           NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'बुकिंग'),
-          NavigationDestination(icon: Icon(Icons.add_circle_outline), selectedIcon: Icon(Icons.add_circle), label: 'नई बुकिंग'),
+          NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: 'Wallet'),
           NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'सहायता'),
           NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'प्रोफाइल'),
         ],
