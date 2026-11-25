@@ -48,3 +48,18 @@ The candidate file's version `20261109002500` is **not present** in the Main mig
 Read-only checks only: migration list, information_schema column metadata, pg_constraint definitions/validation flags, and Git file/tree/commit metadata.
 
 No SQL migration, DDL, history repair, cherry-pick, merge, deployment, APK build, test account, live payment or Main database write was performed.
+
+
+## 5. Definitive Main migration-body check
+
+The stored Main migration body for version `20261108095928` was read from `supabase_migrations.schema_migrations.statements` (read-only). It explicitly:
+
+- adds `public.service_bookings.amount_paid numeric(12,2)` if absent;
+- adds the validated-in-Main nonnegative check `service_bookings_amount_paid_nonnegative`;
+- defines the commission trigger and service-booking status-history objects.
+
+This exact Main migration version is earlier than `20261108184815_protect_commission_columns_and_admin_report`. Therefore the Main replay order for this column is supported by the actual stored migration SQL body.
+
+The original Main statements for all 539 migration entries have now been preserved in the JSON source archive at `docs/recovered-main-migrations/` on the mobile integration branch. See its README for capture and verification boundaries.
+
+**Final corrected result:** the live Main `amount_paid` column and its source migration are verified. The separate Git-only `20261109002500` candidate is not needed and must not be applied to Main.
