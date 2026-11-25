@@ -213,7 +213,7 @@ void main() {
         previewOfferSkillMatchAgainstDraftCatalogue(
           offer: {
             'category_id': 'electrician',
-            'subcategory_id': 'electrical_wiring',
+            'subcategory_id': 'expert_electrician',
             'task_id': 'rewiring',
             'catalogue_version': srkServiceCatalogDraftVersion,
           },
