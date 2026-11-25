@@ -407,9 +407,16 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
   @override
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator());
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: SizedBox(
+          width: double.infinity,
+          child: Card(
+            margin: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Technician / Helper Registration', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
@@ -551,6 +558,9 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
             ),
           ),
         ]),
+            ),
+          ),
+        ),
       ),
     );
   }
