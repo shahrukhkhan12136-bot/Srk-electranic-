@@ -37,8 +37,8 @@ test('Admin person history supports all four permanent ID types and date windows
   assert.match(migration, /srk_staff_profiles/);
   assert.match(migration, /srk_worker_documents/);
   assert.match(migration, /srk_staff_documents/);
-  assert.match(migration, /from public\\.srk_worker_documents d[\\s\\S]*?d\\.created_at >= v_from[\\s\\S]*?d\\.created_at < v_until/);
-  assert.match(migration, /from public\\.srk_staff_documents d[\\s\\S]*?d\\.created_at >= v_from[\\s\\S]*?d\\.created_at < v_until/);
+  assert.match(migration, /from public\.srk_worker_documents d[\s\S]*?d\.created_at >= v_from[\s\S]*?d\.created_at < v_until/);
+  assert.match(migration, /from public\.srk_staff_documents d[\s\S]*?d\.created_at >= v_from[\s\S]*?d\.created_at < v_until/);
   assert.match(migration, /improvement_areas/);
   assert.match(migration, /'helper'/);
   assert.match(migration, /'technician'/);
@@ -66,10 +66,10 @@ test('Admin district directory and rate management require LGD snapshot and audi
   assert.match(admin, /srk_admin_list_india_districts/);
   assert.match(admin, /srk_admin_list_district_rate_matrix/);
   assert.match(admin, /srk_admin_save_district_rate_override/);
-  assert.match(districtMigration, /jsonb_array_length\\(p_districts\\) < 780/);
-  assert.match(districtMigration, /count\\(distinct state_code\\)[\\s\\S]*?<> 36/);
-  assert.match(admin, /statesPayload\\.data\\.length!==36/);
-  assert.match(admin, /districtsPayload\\.data\\.length<780/);
+  assert.match(districtMigration, /jsonb_array_length\(p_districts\) < 780/);
+  assert.match(districtMigration, /count\\(distinct state_code\\)[\s\S]*?<> 36/);
+  assert.match(admin, /statesPayload\.data\\.length!==36/);
+  assert.match(admin, /districtsPayload\.data\\.length<780/);
   assert.match(districtMigration, /srk_district_service_rate_overrides/);
   assert.match(districtMigration, /admin_district_rate_audit_log/);
   assert.match(districtMigration, /effective_to=clock_timestamp\(\)/);
