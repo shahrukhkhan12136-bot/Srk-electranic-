@@ -134,18 +134,22 @@ JOIN public.srk_service_categories c ON c.id=s.category_id
 ON CONFLICT(service_code) DO NOTHING;
 
 -- Winding is outside SRK ELECTRONIC. Preserve all old records, but keep winding skills and offerings inactive.
+-- Explicit codes cover both motor and cooler winding; name matching safely catches legacy aliases.
 UPDATE public.srk_service_skills s SET is_active=false
-FROM public.srk_service_categories c
-WHERE c.id=s.category_id
-  AND c.category_code='motor_pump'
-  AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%');
+WHERE s.skill_code IN ('motor_winding','cooler_motor_winding')
+   OR EXISTS (
+     SELECT 1 FROM public.srk_service_categories c
+     WHERE c.id=s.category_id AND c.category_code='motor_pump'
+       AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%')
+   );
 UPDATE public.srk_service_offerings o SET is_active=false,updated_at=clock_timestamp()
-WHERE o.skill_code IN (
-  SELECT s.skill_code FROM public.srk_service_skills s
-  JOIN public.srk_service_categories c ON c.id=s.category_id
-  WHERE c.category_code='motor_pump'
-    AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%')
-);
+WHERE o.skill_code IN ('motor_winding','cooler_motor_winding')
+   OR o.skill_code IN (
+     SELECT s.skill_code FROM public.srk_service_skills s
+     JOIN public.srk_service_categories c ON c.id=s.category_id
+     WHERE c.category_code='motor_pump'
+       AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%')
+   );
 
 -- Rates are seeded only when the exact service code exists; otherwise Admin must configure a verified rate.
 INSERT INTO public.srk_service_rates
