@@ -84,6 +84,42 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         _ => value,
       };
 
+  Future<void> _requestAccountDeletion() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Account Deletion Request'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Request का कारण (वैकल्पिक)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('वापस')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Request भेजें')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null) return;
+    try {
+      await _client.rpc('srk_request_account_deletion', params: {'p_reason': reason});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Account deletion request Admin समीक्षा के लिए भेज दी गई। Account अभी delete नहीं हुआ है।'),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Request नहीं भेजी गई: ' + e.toString().replaceFirst('Exception: ', '')),
+      ));
+    }
+  }
+
   Future<void> _loadBookings() async {
     setState(() {
       _loading = true;
@@ -481,6 +517,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             tooltip: 'Refresh',
             onPressed: _loadBookings,
             icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
+            tooltip: 'Account Deletion Request',
+            onPressed: _requestAccountDeletion,
+            icon: const Icon(Icons.person_remove_outlined),
           ),
           IconButton(
             tooltip: 'Logout',
