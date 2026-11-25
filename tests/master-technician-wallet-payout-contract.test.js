@@ -45,3 +45,14 @@ test('Master Technician wallet and new payout requests count service net only',(
  assert.doesNotMatch(serviceOnly,/sum\(total_payable_paise\)/);
  assert.doesNotMatch(serviceOnly,/UPDATE public\.srk_master_technician_payables SET materials_reimbursement_paise/);
 });
+
+const refundRequestSync=fs.readFileSync('supabase/migrations/20261125162000_sync_master_payout_requests_with_refund_lifecycle.sql','utf8');
+test('Refund start cancels unpaid payout requests and refund failure preserves cancellation for a fresh request',()=>{
+ assert.match(refundRequestSync,/NEW\.status IN \('requested','processing','unknown'\)/);
+ assert.match(refundRequestSync,/SET status='cancelled'/);
+ assert.match(refundRequestSync,/r\.status IN \('requested','approved'\)/);
+ assert.match(refundRequestSync,/NEW\.status='failed'/);
+ assert.match(refundRequestSync,/Refund failed; payable released for a new payout request/);
+ assert.match(refundRequestSync,/AFTER INSERT ON public\.srk_razorpay_refunds/);
+ assert.match(refundRequestSync,/AFTER UPDATE OF status ON public\.srk_razorpay_refunds/);
+});
