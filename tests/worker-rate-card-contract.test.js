@@ -103,3 +103,20 @@ test('Payout history RPC is limited to the authenticated worker and Admin payout
   assert.match(admin, /UTR|payment_reference/i);
   assert.match(admin, /srk_worker_payout_evidence/);
 });
+
+test('Future Online earnings automatically recover old Cash commission before wallet payout credit', () => {
+  const recovery = fs.readFileSync('supabase/migrations/20261125111000_auto_recover_cash_commission_from_later_online_earning.sql', 'utf8');
+  assert.match(recovery, /v_cash_offset:=least\(greatest\(0,v\.net_earning\),coalesce\(v_cash_due,0\)\)/);
+  assert.match(recovery, /v_wallet_credit:=greatest\(0,v\.net_earning-v_cash_offset\)/);
+  assert.match(recovery, /cash-commission-offset:/);
+  assert.match(recovery, /Prior Cash commission automatically recovered from this later Online earning/);
+  assert.match(recovery, /perform 1 from public\.srk_worker_profiles where id=v\.worker_id for update/);
+  const cashDue = 150, onlineNet = 850;
+  assert.equal(onlineNet - Math.min(onlineNet, cashDue), 700);
+});
+
+test('Cash commission recovery is not confused with cash-split pending bookings that have a Helper', () => {
+  const recovery = fs.readFileSync('supabase/migrations/20261125111000_auto_recover_cash_commission_from_later_online_earning.sql', 'utf8');
+  assert.match(recovery, /if v\.worker_role='technician' and not v_has_helper then/);
+  assert.match(recovery, /settlement_status='cash_split_pending',payout_status='held'/);
+});
