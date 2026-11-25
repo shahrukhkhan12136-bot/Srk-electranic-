@@ -1088,7 +1088,12 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         SrkServiceCategoryPicker(
           initialCategoryCode: widget.initialCategoryCode,
           onSelection: (selection) {
-            setState(() { _selection = selection; _pricePreview = null; _priceError = null; });
+            setState(() {
+              _selection = selection;
+              _pricePreview = null;
+              _priceError = null;
+              if (selection == null || !selection.helperAvailable) _helperCount = 0;
+            });
           },
         ),
         if (_selection != null) ...[
