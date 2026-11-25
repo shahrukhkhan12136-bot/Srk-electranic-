@@ -86,7 +86,7 @@ begin
   if new.service_amount is null or new.service_amount<0 then
     raise exception 'Invalid labour amount' using errcode='22023';
   end if;
-  new.total_amount:=round(new.service_amount,2);
+  new.total_amount:=round(new.service_amount+coalesce(new.cancellation_fee_amount,0)-coalesce(new.discount_amount,0)+coalesce(new.tax_amount,0),2);
   return new;
 end;
 $function$;
@@ -144,9 +144,8 @@ $old$;
   end if;
   v_definition:=replace(v_definition,v_old,'');
 
-  if position('v_material' in v_definition)>0
-     or position('v_cancellation_fee' in v_definition)>0 then
-    raise exception 'Unexpected non-labour bill calculation remains; stop and review manually';
+  if position('v_material' in v_definition)>0 then
+    raise exception 'Non-labour bill calculation remains; stop and review manually';
   end if;
 
   execute v_definition;
