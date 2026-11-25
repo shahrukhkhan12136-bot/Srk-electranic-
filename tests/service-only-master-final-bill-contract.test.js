@@ -14,3 +14,12 @@ test('Obsolete request entry points are disabled and new payables are service-on
  assert.match(migration,/NEW\.materials_reimbursement_paise:=0/);
  assert.match(migration,/NEW\.total_payable_paise:=NEW\.labour_payable_paise/);
 });
+
+test('Automatic final-bill trigger can invoke the service-only builder safely',()=>{
+ assert.match(migration,/auth\.role\(\).*pg_trigger_depth\(\)=0/);
+ assert.match(migration,/v_bill\.materials_amount_paise<>0/);
+ assert.match(migration,/v_bill\.technician_material_reimbursement_paise<>0/);
+});
+test('Service-only payable guard also protects later updates',()=>{
+ assert.match(migration,/BEFORE INSERT OR UPDATE ON public\.srk_master_technician_payables/);
+});
