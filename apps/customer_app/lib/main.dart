@@ -43,7 +43,9 @@ class _CustomerGateState extends State<CustomerGate> {
   Future<Map<String, dynamic>?> _loadProfile() async {
     final result = await Supabase.instance.client.rpc('srk_customer_get_my_profile');
     final rows = List<Map<String, dynamic>>.from(result as List);
-    return rows.isEmpty ? null : rows.first;
+    if (rows.isEmpty) return null;
+    final hasCurrentConsent = await Supabase.instance.client.rpc('srk_customer_has_current_policy_consent');
+    return hasCurrentConsent == true ? rows.first : null;
   }
   @override
   Widget build(BuildContext context) {
