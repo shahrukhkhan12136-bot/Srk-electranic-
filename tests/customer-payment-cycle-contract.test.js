@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const customer = fs.readFileSync('apps/customer_app/lib/main.dart', 'utf8');
-const migration = fs.readFileSync('supabase/migrations/20261125182000_customer_booking_payment_cycle_options.sql', 'utf8');
+const migration = fs.readFileSync('supabase/migrations/20261125094654_expose_customer_booking_online_only_payment_cycle.sql', 'utf8');
 
 test('Customer payment screen hides Cash and explains Online-only booking cycles', () => {
   assert.match(customer, /srk_customer_get_booking_payment_cycle/);
