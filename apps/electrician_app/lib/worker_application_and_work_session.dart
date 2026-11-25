@@ -366,6 +366,7 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
   bool loading = false, busy = false;
   String? error;
   Timer? ticker;
+  StreamSubscription<Position>? locationSubscription;
   bool get fixedPrice => widget.pricingUnit == 'per_item' || widget.pricingUnit == 'motor_hp';
 
   @override
@@ -380,6 +381,7 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
   @override
   void dispose() {
     ticker?.cancel();
+    locationSubscription?.cancel();
     completionNote.dispose();
     super.dispose();
   }
@@ -413,7 +415,12 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
       final result = await client.rpc('srk_worker_open_work_session', params: {
         'p_booking_worker_id': widget.assignmentId,
       });
-      if (mounted) setState(() => session = Map<String, dynamic>.from(result as Map));
+      if (mounted) {
+        setState(() => session = Map<String, dynamic>.from(result as Map));
+        if (session?['session_status'] == 'running' || session?['session_status'] == 'paused') {
+          startLocationTracking();
+        }
+      }
     } catch (e) {
       if (mounted) setState(() => error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -431,7 +438,48 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
       'p_note': note,
       'p_idempotency_key': 'app:' + id + ':' + actionName + ':' + DateTime.now().microsecondsSinceEpoch.toString(),
     });
-    if (mounted) setState(() => session = Map<String, dynamic>.from(result as Map));
+    if (mounted) {
+      setState(() => session = Map<String, dynamic>.from(result as Map));
+      if (session?['session_status'] == 'running' || session?['session_status'] == 'paused') {
+        startLocationTracking();
+      } else if (session?['session_status'] == 'completed') {
+        await locationSubscription?.cancel();
+        locationSubscription = null;
+      }
+    }
+  }
+
+  Future<void> recordPosition(Position pos) async {
+    final id = session?['id']?.toString();
+    if (id == null || id.isEmpty || !['running','paused'].contains(session?['session_status'])) return;
+    await client.rpc('srk_worker_record_session_location', params: {
+      'p_session_id': id,
+      'p_latitude': pos.latitude,
+      'p_longitude': pos.longitude,
+      'p_accuracy_m': pos.accuracy,
+    });
+  }
+
+  void startLocationTracking() {
+    if (locationSubscription != null || fixedPrice) return;
+    try {
+      locationSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 15,
+        ),
+      ).listen((pos) async {
+        try {
+          await recordPosition(pos);
+        } catch (e) {
+          if (mounted) setState(() => error = 'GPS अपडेट सुरक्षित नहीं हुआ: ' + e.toString());
+        }
+      }, onError: (Object e) {
+        if (mounted) setState(() => error = 'Live GPS अपडेट रुक गया। Location अनुमति और नेटवर्क जाँचें।');
+      });
+    } catch (_) {
+      if (mounted) setState(() => error = 'Live GPS चालू नहीं हुआ। Location अनुमति जाँचें।');
+    }
   }
 
   Future<void> run(Future<void> Function() callback) async {
@@ -450,6 +498,7 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
   Future<void> start() => run(() async {
     await recordLocation();
     await action('start', note: 'Worker App से काम शुरू किया।');
+    startLocationTracking();
   });
 
   Future<void> pause() async {
