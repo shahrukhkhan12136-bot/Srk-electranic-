@@ -9,6 +9,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'service_category_picker.dart';
 
+final ValueNotifier<String> customerLanguage = ValueNotifier<String>('hi');
+bool get customerEnglish => customerLanguage.value == 'en';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeSrkSupabase();
@@ -222,15 +225,25 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   int _selectedNavIndex = 0;
   final ScrollController _dashboardScrollController = ScrollController();
   final GlobalKey _bookingsSectionKey = GlobalKey();
+  Timer? _workTimerTicker;
+  int _timerTick = 0;
 
   @override
   void initState() {
     super.initState();
+    final language = _client.auth.currentUser?.userMetadata?['customer_language']?.toString();
+    if (language == 'en' || language == 'hi') customerLanguage.value = language!;
     _loadBookings();
+    _workTimerTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _bookings.any((b) => b['status'] == 'in_progress' && b['work_timer_running'] == true)) {
+        setState(() => _timerTick++);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _workTimerTicker?.cancel();
     _dashboardScrollController.dispose();
     super.dispose();
   }
@@ -280,7 +293,20 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     }
   }
 
-  String _status(String value) => switch (value) {
+  String _status(String value) => customerEnglish ? switch (value) {
+        'new' => 'New booking',
+        'confirmed' => 'Confirmed',
+        'assigned' => 'Technician assigned',
+        'inspection' => 'Inspection in progress',
+        'awaiting_quote_approval' => 'Quote approval pending',
+        'quote_approved' => 'Quote approved',
+        'quote_rejected' => 'Quote changes requested',
+        'in_progress' => 'Work in progress',
+        'completed' => 'Completed',
+        'awaiting_work_start_approval' => 'Work start approval pending',
+        'cancelled' => 'Cancelled',
+        _ => value,
+      } : switch (value) {
         'new' => 'नई बुकिंग',
         'confirmed' => 'पुष्टि हुई',
         'assigned' => 'इलेक्ट्रिशियन नियुक्त',
@@ -294,6 +320,17 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         'cancelled' => 'रद्द',
         _ => value,
       };
+
+  String _customerTimerText(Map<String, dynamic> booking) {
+    final accumulated = (booking['work_timer_elapsed_seconds'] as num?)?.toInt() ?? 0;
+    final startedAt = DateTime.tryParse(booking['work_started_at']?.toString() ?? '')?.toLocal();
+    final running = booking['work_timer_running'] == true;
+    final elapsed = accumulated + (running && startedAt != null
+        ? DateTime.now().difference(startedAt).inSeconds.clamp(0, 60 * 60 * 24 * 365)
+        : 0);
+    final h = elapsed ~/ 3600, m = (elapsed % 3600) ~/ 60, s = elapsed % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
 
   Future<void> _requestAccountDeletion() async {
     final controller = TextEditingController();
@@ -346,7 +383,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       }
       final response = await _client
           .from('service_bookings')
-          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,quote_status,quote_note,district,state,pincode,electrician_quote_kind,work_start_approval_status,work_start_requested_at,completion_approval_status,completion_requested_at,requested_duration_hours,pricing_unit_snapshot')
+          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,quote_status,quote_note,district,state,pincode,electrician_quote_kind,work_start_approval_status,work_start_requested_at,completion_approval_status,completion_requested_at,requested_duration_hours,pricing_unit_snapshot,work_timer_elapsed_seconds,work_started_at,work_timer_running')
           .eq('customer_user_id', user.id)
           .order('created_at', ascending: false)
           .limit(50);
@@ -716,37 +753,60 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('सेटिंग्स', style: Theme.of(ctx).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(Icons.language),
-                title: const Text('ऐप की भाषा'),
-                subtitle: const Text('हिंदी'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.notifications_outlined),
-                title: const Text('सूचनाएँ'),
-                subtitle: const Text('बुकिंग और ऑफर की सूचनाएँ ऐप अनुमति के अनुसार'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.person_outline),
-                title: Text(name),
-                subtitle: Text('ग्राहक ID: ${user?.id ?? '—'}'),
-              ),
-              const SizedBox(height: 4),
-              const Text('भाषा और Notification नियंत्रण का पूरा बदलाव अगली Settings सुविधा में जोड़ा जाएगा।',
-                style: TextStyle(fontSize: 12, color: Colors.black54)),
-            ],
+          child: ValueListenableBuilder<String>(
+            valueListenable: customerLanguage,
+            builder: (context, language, _) {
+              final english = language == 'en';
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(english ? 'Settings' : 'सेटिंग्स', style: Theme.of(ctx).textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    leading: const Icon(Icons.language),
+                    title: Text(english ? 'App language' : 'ऐप की भाषा'),
+                    subtitle: DropdownButton<String>(
+                      value: language,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(value: 'hi', child: Text('हिंदी')),
+                        DropdownMenuItem(value: 'en', child: Text('English')),
+                      ],
+                      onChanged: (value) async {
+                        if (value == null || user == null) return;
+                        try {
+                          await _client.auth.updateUser(UserAttributes(data: {'customer_language': value}));
+                          customerLanguage.value = value;
+                        } catch (e) {
+                          if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text((english ? 'Language could not be saved: ' : 'भाषा सेव नहीं हुई: ') + e.toString())),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.notifications_outlined),
+                    title: Text(english ? 'Notifications' : 'सूचनाएँ'),
+                    subtitle: Text(english ? 'Booking and offer alerts follow device/app permission' : 'बुकिंग और ऑफर की सूचनाएँ ऐप अनुमति के अनुसार'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: Text(name),
+                    subtitle: Text((english ? 'Customer ID: ' : 'ग्राहक ID: ') + (user?.id ?? '—')),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(english ? 'Booking form and service details remain in Hindi.' : 'बुकिंग फॉर्म और सर्विस विवरण हिंदी में ही रहेंगे।',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
-
 
 
   Future<void> _logout() async {
@@ -862,11 +922,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         selectedIndex: _selectedNavIndex,
         onDestinationSelected: _onBottomNavigation,
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'होम'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'बुकिंग'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'सेटिंग्स'),
-          NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'सहायता'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'प्रोफाइल'),
+          NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: customerEnglish ? 'Home' : 'होम'),
+          NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: customerEnglish ? 'Bookings' : 'बुकिंग'),
+          NavigationDestination(icon: const Icon(Icons.settings_outlined), selectedIcon: const Icon(Icons.settings), label: customerEnglish ? 'Settings' : 'सेटिंग्स'),
+          NavigationDestination(icon: const Icon(Icons.support_agent_outlined), selectedIcon: const Icon(Icons.support_agent), label: customerEnglish ? 'Help' : 'सहायता'),
+          NavigationDestination(icon: const Icon(Icons.person_outline), selectedIcon: const Icon(Icons.person), label: customerEnglish ? 'Profile' : 'प्रोफाइल'),
         ],
       ),
     );
@@ -921,6 +981,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       booking['completion_approval_status'] == 'pending' &&
       booking['completion_requested_at'] != null;
     final method = (booking['payment_method'] ?? '').toString().toLowerCase();
+    final timerRunning = booking['work_timer_running'] == true;
+    final showTimer = status == 'in_progress' && booking['work_started_at'] != null;
     final paymentCycle = booking['payment_cycle'] is Map ? Map<String, dynamic>.from(booking['payment_cycle'] as Map) : <String, dynamic>{};
     final onlineOnly = paymentCycle['online_required'] == true;
     final cycleUnverified = paymentCycle['cycle_unverified'] == true;
@@ -934,6 +996,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           const SizedBox(height: 6),
           Text('बुकिंग: ${booking['id']}'),
           Text('स्थिति: ${_status(status)}'),
+          if (showTimer) Card(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: ListTile(
+              leading: Icon(Icons.timer, color: timerRunning ? Colors.green : Colors.orange),
+              title: Text(customerEnglish ? 'Work timer' : 'काम का टाइमर'),
+              subtitle: Text(_customerTimerText(booking), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFeatures: [FontFeature.tabularFigures()])),
+              trailing: Text(timerRunning ? (customerEnglish ? 'Running' : 'चालू') : (customerEnglish ? 'Paused' : 'रुका हुआ')),
+            ),
+          ),
           if ((booking['worker_contacts'] as List? ?? const []).isNotEmpty)
             ...List<Map<String, dynamic>>.from(booking['worker_contacts'] as List).map((worker) {
               final phone = worker['phone'].toString();
