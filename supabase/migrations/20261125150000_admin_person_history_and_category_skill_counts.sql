@@ -110,10 +110,15 @@ begin
     from public.srk_booking_workers bw
     join public.service_bookings b on b.id = bw.booking_id
     where bw.worker_id = v_worker.id
-      and coalesce(bw.worker_completed_at, bw.accepted_at, bw.assigned_at, b.created_at)
-           >= v_from
-      and coalesce(bw.worker_completed_at, bw.accepted_at, bw.assigned_at, b.created_at)
-          < v_until;
+      and (
+        (b.created_at >= v_from and b.created_at < v_until)
+        or (bw.assigned_at >= v_from and bw.assigned_at < v_until)
+        or (bw.accepted_at >= v_from and bw.accepted_at < v_until)
+        or (bw.rejected_at >= v_from and bw.rejected_at < v_until)
+        or (bw.on_the_way_at >= v_from and bw.on_the_way_at < v_until)
+        or (bw.arrived_at >= v_from and bw.arrived_at < v_until)
+        or (bw.worker_completed_at >= v_from and bw.worker_completed_at < v_until)
+      );
 
     select coalesce(jsonb_agg(jsonb_build_object(
       'booking_worker_id', ws.booking_worker_id, 'work_date', ws.work_date,
@@ -222,8 +227,11 @@ begin
       into v_bookings
       from public.service_bookings b
       where (b.customer_id = v_customer.id or b.customer_user_id = v_customer.user_id)
-        and b.created_at >= v_from
-        and b.created_at < v_until;
+        and (
+          (b.created_at >= v_from and b.created_at < v_until)
+          or (b.work_started_at >= v_from and b.work_started_at < v_until)
+          or (b.customer_completed_at >= v_from and b.customer_completed_at < v_until)
+        );
 
       select coalesce(jsonb_agg(jsonb_build_object(
         'complaint_id', c.id, 'booking_id', c.booking_id, 'category', c.category,
