@@ -93,8 +93,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   List<Map<String, dynamic>> get _availableServices => _services.where((service) {
     if (service['category_id'] != _category?['id']) return false;
     final levelId = _level?['id'];
-    if (levelId == null) return false;
-    final hasApprovedRate = _rates.any((rate) =>
+    final hasApprovedRate = levelId != null && _rates.any((rate) =>
       rate['category_id'] == _category?['id'] &&
       rate['service_type_id'] == service['id'] &&
       rate['skill_level_id'] == levelId &&
@@ -114,20 +113,24 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     'electrician' => Icons.electrical_services,
     'plumber' => Icons.plumbing,
     'painter' => Icons.format_paint,
-    'ac_fridge' => Icons.ac_unit,
-    'motor_pump' => Icons.water,
-    'cooler' => Icons.air,
+    'ac_fridge_technician' => Icons.ac_unit,
+    'motor_pump_technician' => Icons.water,
+    'cooler_technician' => Icons.air,
     _ => Icons.home_repair_service,
   };
 
   void _emitSelection() {
     final c = _category, s = _service, k = _skill, l = _level, r = _rule;
-    if (c == null || s == null || k == null || l == null) {
+    if (c == null || s == null || k == null) {
+      widget.onSelection(null); return;
+    }
+    final isFixedPrice = r != null && ['per_item', 'motor_hp'].contains(r['pricing_unit']);
+    if (l == null && !isFixedPrice) {
       widget.onSelection(null); return;
     }
     final now = DateTime.now().toUtc();
     final matchingRates = _rates.where((x) {
-      if (x['category_id'] != c['id'] || x['service_type_id'] != s['id'] || x['skill_level_id'] != l['id']) return false;
+      if (x['category_id'] != c['id'] || x['service_type_id'] != s['id'] || x['skill_level_id'] != l?['id']) return false;
       final from = DateTime.tryParse(x['effective_from']?.toString() ?? '');
       final to = DateTime.tryParse(x['effective_to']?.toString() ?? '');
       return (from == null || !from.isAfter(now)) && (to == null || to.isAfter(now));
@@ -140,7 +143,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       categoryId: c['id'].toString(), categoryName: c['category_name'].toString(),
       serviceTypeId: s['id'].toString(), serviceName: s['service_name'].toString(),
       skillId: k['id'].toString(), skillName: k['skill_name'].toString(),
-      skillLevelId: l['id'].toString(), skillLevelName: l['level_name'].toString(),
+      skillLevelId: l?['id']?.toString(), skillLevelName: l?['level_name']?.toString() ?? 'लागू नहीं',
       pricingUnit: unit,
       helperAvailable: (unit == 'hour') && ((r?['helper_rate'] as num?) ?? 0) > 0 || matchingRates.any((x) => ((x['helper_hourly_rate'] as num?) ?? 0) > 0),
       pricingRuleId: r?['id']?.toString(), motorHp: hp,
@@ -180,7 +183,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
             ]))));
         },
       ),
-      if (_category != null) ...[
+      if (_category != null && _availableLevels.isNotEmpty) ...[
         const SizedBox(height: 12),
         Text('इस कैटेगरी में किस स्तर का काम चाहिए?', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
@@ -204,7 +207,9 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         if (_availableLevels.isEmpty)
           const Text('इस कैटेगरी के लिए स्तर अभी उपलब्ध नहीं है।'),
       ],
-      if (_level != null) ...[
+      if (_category != null && _availableLevels.isEmpty)
+        const Padding(padding: EdgeInsets.only(top: 8), child: Text('इस कैटेगरी में Basic/Expert स्तर लागू नहीं है; निर्धारित Fixed Price / HP सेवा चुनें।')),
+      if (_category != null && (_level != null || _availableLevels.isEmpty)) ...[
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           initialValue: _service?['id']?.toString(), isExpanded: true,
