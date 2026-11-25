@@ -1,0 +1,312 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:srk_customer_app/service_category_picker.dart';
+import 'package:srk_mobile_core/srk_service_catalog.dart' as catalog;
+
+void main() {
+  group('SRK service category picker', () {
+    test('exposes the six approved top-level categories in order', () {
+      expect(
+        srkServiceCategories.map((category) => category.id).toList(),
+        [
+          'electrician',
+          'plumber',
+          'painter',
+          'ac_fridge',
+          'motor_pump',
+          'cooler',
+        ],
+      );
+    });
+
+    test('picker category groups stay aligned with shared rate catalogue', () {
+      const categoryToCatalogName = {
+        'electrician': 'Electrician',
+        'plumber': 'Plumber',
+        'painter': 'Painter',
+        'ac_fridge': 'AC + Fridge',
+        'motor_pump': 'Motor & Pump',
+        'cooler': 'Cooler',
+      };
+
+      for (final pickerCategory in srkServiceCategories) {
+        final catalogName = categoryToCatalogName[pickerCategory.id];
+        expect(catalogName, isNotNull);
+        final catalogCategory = catalog.srkServiceCatalog.singleWhere(
+          (item) => item.name == catalogName,
+        );
+        expect(
+          pickerCategory.subcategories.length,
+          catalogCategory.options.length,
+          reason: 'Picker and shared catalogue differ for ${pickerCategory.id}',
+        );
+      }
+      expect(categoryToCatalogName.length, srkServiceCategories.length);
+    });
+
+    test('picker labels, IDs and task lists come from the shared catalogue', () {
+      for (var i = 0; i < catalog.srkServiceCatalog.length; i++) {
+        final source = catalog.srkServiceCatalog[i];
+        final picker = srkServiceCategories[i];
+        expect(picker.id, source.id);
+        expect(picker.title, source.displayName);
+        expect(
+          picker.subcategories.map((item) => item.id).toList(),
+          source.options.map((item) => item.id).whereType<String>().toList(),
+        );
+        for (var j = 0; j < picker.subcategories.length; j++) {
+          expect(
+            picker.subcategories[j].title,
+            source.options[j].displayName ?? source.options[j].name,
+          );
+          expect(
+            picker.subcategories[j].children,
+            source.options[j].tasks.map((task) => task.name).toList(),
+          );
+        }
+      }
+    });
+
+    testWidgets('shows catalogue skill levels and clears old skill tasks on category change', (tester) async {
+      Object? selected;
+      tester.view.physicalSize = const Size(900, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(
+              onSelection: (selection) => selected = selection,
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('इलेक्ट्रीशियन'));
+      await tester.pumpAndSettle();
+      expect(find.text('कारीगर का स्तर चुनें'), findsOneWidget);
+      expect(find.text('Basic'), findsOneWidget);
+      expect(find.text('Expert Residential'), findsOneWidget);
+      expect(find.text('Factory / Large Project'), findsOneWidget);
+      expect(find.text('Master'), findsOneWidget);
+
+      await tester.tap(find.text('Expert Residential'));
+      await tester.pumpAndSettle();
+      expect(find.text('पूरे घर की नई वायरिंग'), findsOneWidget);
+      await tester.tap(find.text('पूरे घर की नई वायरिंग'));
+      await tester.pump();
+      expect(selected, isNull); // Current backend selection contract has no skill-level field.
+
+      await tester.tap(find.text('प्लंबर'));
+      await tester.pumpAndSettle();
+      expect(find.text('पूरे घर की नई वायरिंग'), findsNothing);
+      expect(find.text('कारीगर का स्तर चुनें'), findsOneWidget);
+      expect(selected, isNull);
+    });
+
+    testWidgets('shows Plumber and Painter approved rates with optional helper note', (tester) async {
+      tester.view.physicalSize = const Size(900, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(onSelection: (_) {}),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('प्लंबर'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Expert'));
+      await tester.pumpAndSettle();
+      expect(find.text('मजदूरी की दर (सामग्री अलग)'), findsOneWidget);
+      expect(
+        find.text('मजदूरी: ₹125 / प्रति घंटा • Helper ₹60 प्रति घंटा; कुल ₹185 प्रति घंटा'),
+        findsOneWidget,
+      );
+      expect(find.text('Helper वैकल्पिक है; चुनने पर ही अतिरिक्त शुल्क लगेगा।'), findsOneWidget);
+
+      await tester.tap(find.text('पेंटर'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Expert'));
+      await tester.pumpAndSettle();
+      expect(find.text('मजदूरी: ₹900 / 8 घंटे • Helper ₹60 प्रति घंटा अतिरिक्त'), findsOneWidget);
+      expect(find.text('Helper वैकल्पिक है; चुनने पर ही अतिरिक्त शुल्क लगेगा।'), findsOneWidget);
+    });
+
+    testWidgets('shows both Expert Electrician wiring options with their own rates', (tester) async {
+      tester.view.physicalSize = const Size(900, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(onSelection: (_) {}),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('इलेक्ट्रीशियन'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('एक्सपर्ट इलेक्ट्रीशियन'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('काम का विकल्प चुनें'), findsOneWidget);
+      await tester.tap(find.text('नॉर्मल वायरिंग (घर / दुकान)'));
+      await tester.pumpAndSettle();
+      expect(find.text('बिना Helper: ₹1,000 / 8 घंटे'), findsOneWidget);
+      expect(
+        find.text('Helper सहित: ₹1,500 / 8 घंटे • ₹62.50 प्रति घंटा अतिरिक्त'),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.text('प्रोजेक्ट वायरिंग (बड़ी फैक्ट्री / कंपनी / औद्योगिक भवन)'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('बिना Helper: ₹400 / प्रति घंटा'), findsOneWidget);
+      expect(
+        find.text('Helper सहित: ₹550 / प्रति घंटा • ₹150 प्रति घंटा अतिरिक्त'),
+        findsOneWidget,
+      );
+      expect(find.text('बिना Helper: ₹1,000 / 8 घंटे'), findsNothing);
+    });
+
+    testWidgets('AC and Fridge show separate task lists', (tester) async {
+      Map<String, String?>? selected;
+      tester.view.physicalSize = const Size(900, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(
+              onSelection: (selection) {
+                selected = selection == null ? null : {
+                  'category': selection.categoryId,
+                  'subcategory': selection.subcategoryId,
+                  'task': selection.taskId,
+                };
+              },
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('AC + फ्रिज'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('AC').first);
+      await tester.pumpAndSettle();
+      expect(find.text('AC रिपेयर'), findsOneWidget);
+      expect(find.text('फ्रिज रिपेयर'), findsNothing);
+
+      await tester.tap(find.text('AC रिपेयर'));
+      await tester.pump();
+      expect(
+        tester.widget<FilterChip>(find.byType(FilterChip).first).selected,
+        isTrue,
+      );
+
+      await tester.tap(find.text('फ्रिज').first);
+      await tester.pumpAndSettle();
+      expect(find.text('फ्रिज रिपेयर'), findsOneWidget);
+      expect(find.text('AC रिपेयर'), findsNothing);
+      expect(
+        tester.widget<FilterChip>(find.byType(FilterChip).first).selected,
+        isFalse,
+      );
+
+      await tester.tap(find.text('फ्रिज रिपेयर'));
+      await tester.pump();
+      expect(
+        tester.widget<FilterChip>(find.byType(FilterChip).first).selected,
+        isTrue,
+      );
+      expect(selected, {
+        'category': 'ac_fridge',
+        'subcategory': 'fridge',
+        'task': 'fridge_repair',
+      });
+    });
+
+    testWidgets('changing parent choice clears previous completed selection', (tester) async {
+      Map<String, String?>? selected;
+      tester.view.physicalSize = const Size(900, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(
+              onSelection: (selection) {
+                selected = selection == null ? null : {
+                  'category': selection.categoryId,
+                  'subcategory': selection.subcategoryId,
+                  'task': selection.taskId,
+                };
+              },
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('कूलर'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('कूलर रिपेयर'));
+      await tester.pump();
+      expect(selected?['category'], 'cooler');
+
+      await tester.tap(find.text('AC + फ्रिज'));
+      await tester.pumpAndSettle();
+      expect(selected, isNull);
+      expect(find.text('कूलर रिपेयर'), findsNothing);
+    });
+
+    testWidgets('Cooler selection exposes Cooler Repair only', (tester) async {
+      Map<String, String?>? selected;
+      tester.view.physicalSize = const Size(900, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: SrkServiceCategoryPicker(
+              onSelection: (selection) {
+                selected = selection == null ? null : {
+                  'category': selection.categoryId,
+                  'subcategory': selection.subcategoryId,
+                  'task': selection.taskId,
+                };
+              },
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('कूलर'));
+      await tester.pumpAndSettle();
+      expect(find.text('कूलर रिपेयर'), findsOneWidget);
+      expect(find.text('वाइंडिंग'), findsNothing);
+      await tester.tap(find.text('कूलर रिपेयर'));
+      await tester.pump();
+      expect(selected, {
+        'category': 'cooler',
+        'subcategory': 'cooler_repair',
+        'task': null,
+      });
+    });
+  });
+}
