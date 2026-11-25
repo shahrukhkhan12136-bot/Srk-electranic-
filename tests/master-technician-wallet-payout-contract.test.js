@@ -41,6 +41,8 @@ test('Master Technician wallet and new payout requests count service net only',(
  assert.match(serviceOnly,/'pending_paise',coalesce\(sum\(p\.labour_payable_paise\) FILTER\(WHERE p\.payout_status='pending'\),0\)/);
  assert.match(serviceOnly,/sum\(labour_payable_paise\)/);
  assert.match(serviceOnly,/SELECT v_req,id,labour_payable_paise/);
+ assert.match(serviceOnly,/SELECT v_req,id,labour_payable_paise[\\s\\S]*?labour_payable_paise>0/);
+ assert.match(serviceOnly,/UPDATE public\\.srk_master_technician_payables SET payout_status='requested'[\\s\\S]*?labour_payable_paise>0/);
  assert.doesNotMatch(serviceOnly,/sum\(total_payable_paise\)/);
  assert.doesNotMatch(serviceOnly,/UPDATE public\.srk_master_technician_payables SET materials_reimbursement_paise/);
 });
