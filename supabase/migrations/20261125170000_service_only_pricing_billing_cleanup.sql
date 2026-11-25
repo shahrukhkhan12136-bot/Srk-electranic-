@@ -798,6 +798,70 @@ AS $function$
     case
       when b.assigned_electrician_id = p.id
        and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')
+      then b.customer_name else null
+    end,
+    case
+      when b.assigned_electrician_id = p.id
+       and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')
+      then b.phone else null
+    end,
+    case
+      when b.assigned_electrician_id = p.id
+       and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')
+      then b.address else null
+    end,
+    case
+      when b.assigned_electrician_id = p.id
+       and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')
+      then b.location_lat else null
+    end,
+    case
+      when b.assigned_electrician_id = p.id
+       and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')
+      then b.location_lng else null
+    end,
+    case
+      when b.assigned_electrician_id = p.id
+       and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')
+      then b.service_charge else null
+    end,
+    case
+      when b.assigned_electrician_id = p.id
+       and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')
+      then b.quote_status else null
+    end,
+    case
+      when b.assigned_electrician_id = p.id
+       and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')
+      then b.quote_note else null
+    end
+  from public.job_offers o
+  join public.electrician_profiles p on p.id = o.electrician_id
+  join public.service_bookings b on b.id = o.booking_id
+  where p.user_id = auth.uid()
+    and p.verification_status = 'approved'
+    and p.active = true
+  order by o.created_at desc
+  limit 100;
+$function$
+  select
+    o.id,
+    o.status,
+    o.match_level,
+    o.created_at,
+    b.id,
+    b.service_type,
+    b.state,
+    b.district,
+    b.pincode,
+    b.preferred_date,
+    b.preferred_time,
+    b.work_details,
+    b.quoted_amount,
+    b.status,
+    case
+      when b.assigned_electrician_id = p.id
+       and b.status in ('assigned','inspection','awaiting_quote_approval','quote_approved','in_progress','completed')
       then b.quote_status else null
     end,
     case
