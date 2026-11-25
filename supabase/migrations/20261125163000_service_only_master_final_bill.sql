@@ -13,7 +13,7 @@ DECLARE
  v_commission bigint;
  v_bill public.srk_booking_final_bills%rowtype;
 BEGIN
- IF coalesce(auth.role(),current_setting('request.jwt.claim.role',true))<>'service_role' THEN
+ IF coalesce(auth.role(),current_setting('request.jwt.claim.role',true))<>'service_role' AND pg_trigger_depth()=0 THEN
   RAISE EXCEPTION 'SERVICE_ROLE_REQUIRED' USING ERRCODE='42501';
  END IF;
  SELECT * INTO v_booking FROM public.service_bookings WHERE id=p_booking_id FOR UPDATE;
@@ -43,10 +43,13 @@ BEGIN
   v_labour-v_commission,v_rows,NULL,'not_requested') ON CONFLICT(booking_id) DO NOTHING;
 
  SELECT * INTO v_bill FROM public.srk_booking_final_bills WHERE booking_id=p_booking_id;
- IF v_bill.labour_amount_paise<>v_labour OR v_bill.subtotal_paise<>v_labour
-  OR v_bill.company_commission_paise<>v_commission
+ IF v_bill.labour_amount_paise<>v_labour OR v_bill.materials_amount_paise<>0
+  OR v_bill.subtotal_paise<>v_labour OR v_bill.company_commission_paise<>v_commission
   OR v_bill.technician_labour_payable_paise<>v_labour-v_commission
-  OR v_bill.labour_ledger_rows<>v_rows THEN
+  OR v_bill.technician_material_reimbursement_paise<>0
+  OR v_bill.technician_total_payable_paise<>v_labour-v_commission
+  OR v_bill.labour_ledger_rows<>v_rows OR v_bill.material_request_id IS NOT NULL
+  OR v_bill.material_decision<>'not_requested' THEN
   RAISE EXCEPTION 'FINAL_BILL_REPLAY_MISMATCH' USING ERRCODE='55000';
  END IF;
  RETURN jsonb_build_object('success',true,'bill_id',v_bill.id,'booking_id',p_booking_id,
@@ -71,7 +74,7 @@ END; $$;
 REVOKE ALL ON FUNCTION public.srk_guard_master_payable_service_only() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS srk_master_payable_service_only_insert ON public.srk_master_technician_payables;
 CREATE TRIGGER srk_master_payable_service_only_insert
-BEFORE INSERT ON public.srk_master_technician_payables
+BEFORE INSERT OR UPDATE ON public.srk_master_technician_payables
 FOR EACH ROW EXECUTE FUNCTION public.srk_guard_master_payable_service_only();
 
 COMMENT ON FUNCTION public.srk_service_role_build_master_final_bill(uuid) IS
