@@ -474,19 +474,31 @@ async function loadPayouts(){
    const worker='<b>'+esc(w.full_name||'Worker')+'</b> <span class="muted">'+esc(w.worker_code||r.worker_id)+'</span><br>'+esc(w.worker_type||'')+' • '+esc(w.phone?('******'+String(w.phone).slice(-4)):'फोन उपलब्ध नहीं');
    const payoutDetails=w.payout_details_change_status==='approved'
     ? '<p>सत्यापित भुगतान गंतव्य: '+(w.upi_id?'UPI '+esc(w.upi_id):'')+(w.bank_account_last4?' • बैंक खाते के अंतिम 4 अंक '+esc(w.bank_account_last4):'')+'</p>'
-    : '<p class="danger">भुगतान विवरण अभी Main Admin द्वारा सत्यापित नहीं हैं ('+esc(w.payout_details_change_status||'अज्ञात')+')।</p>';
+    : '<p class="danger">भुगतान विवरण अभी Main Admin द्वारा सत्यापित नहीं हैं ('+esc(w.payout_details_change_status||'अज्ञात')+')।</p>'
+      +(w.payout_details_change_status==='pending'?'<p>लंबित UPI: '+esc(w.pending_upi_id||'नहीं दिया')+' • बैंक के अंतिम 4 अंक: '+esc(w.pending_bank_account_last4||'नहीं दिए')+'</p><button type="button" onclick="reviewWorkerPayoutDetails(\''+r.worker_id+'\',true)">Payout Details सत्यापित करें</button><button type="button" class="alt" onclick="reviewWorkerPayoutDetails(\''+r.worker_id+'\',false)">Payout Details अस्वीकार करें</button>':'');
    const evidenceText=evidence.length?'<p>अपलोड प्रमाण: '+evidence.length+' • '+evidence.map(e=>esc(e.evidence_type)).join(', ')+'</p>':'<p>ट्रांसफर प्रमाण अभी अपलोड नहीं है।</p>';
    let action='';
    if(['requested','under_review'].includes(r.status)){
     action='<label>स्वीकृत राशि (₹) — अनुरोध '+money(r.requested_amount)+'</label><input id="worker-payout-amount-'+r.id+'" type="number" min="0.01" max="'+Number(r.requested_amount)+'" step="0.01" value="'+Number(r.requested_amount)+'" style="max-width:180px"><label>Admin नोट / Reject कारण</label><input id="worker-payout-note-'+r.id+'" maxlength="500" placeholder="Reject करने पर कारण अनिवार्य"><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" onclick="reviewWorkerPayout(\''+r.id+'\',true)">Approve करें</button><button type="button" class="alt" onclick="reviewWorkerPayout(\''+r.id+'\',false)">Reject करें</button></div>';
    }else if(r.status==='approved'){
-    action='<label>वास्तविक ट्रांसफर तरीका</label><select id="worker-payout-method-'+r.id+'"><option value="upi">UPI</option><option value="phonepe">PhonePe</option><option value="bank_transfer">Bank Transfer</option></select><label>भुगतान का UTR / Transaction Reference</label><input id="worker-payout-ref-'+r.id+'" maxlength="120" placeholder="वास्तविक UTR / Reference"><label>ट्रांसफर प्रमाण (PDF/JPG/PNG, अधिकतम 10 MB)</label><input id="worker-payout-file-'+r.id+'" type="file" accept="application/pdf,image/jpeg,image/png"><label>नोट (वैकल्पिक)</label><input id="worker-payout-paid-note-'+r.id+'" maxlength="500"><button type="button" onclick="markWorkerPayoutPaid(\''+r.id+'\')">प्रमाण अपलोड करके Paid दर्ज करें</button>';
+    action=w.payout_details_change_status==='approved'&&w.upi_id
+     ? '<label>वास्तविक ट्रांसफर तरीका</label><select id="worker-payout-method-'+r.id+'"><option value="upi">UPI</option><option value="phonepe">PhonePe</option></select><label>सत्यापित UPI ID</label><p><b>'+esc(w.upi_id)+'</b></p><label>भुगतान का UTR / Transaction Reference</label><input id="worker-payout-ref-'+r.id+'" maxlength="120" placeholder="वास्तविक UTR / Reference"><label>ट्रांसफर प्रमाण (PDF/JPG/PNG, अधिकतम 10 MB)</label><input id="worker-payout-file-'+r.id+'" type="file" accept="application/pdf,image/jpeg,image/png"><label>नोट (वैकल्पिक)</label><input id="worker-payout-paid-note-'+r.id+'" maxlength="500"><button type="button" onclick="markWorkerPayoutPaid(\''+r.id+'\')">प्रमाण अपलोड करके Paid दर्ज करें</button>'
+     : '<p class="danger">Paid दर्ज करना रोका गया: Main Admin द्वारा सत्यापित UPI ID उपलब्ध नहीं है। केवल बैंक खाते के अंतिम 4 अंक से बैंक ट्रांसफर करना सुरक्षित नहीं है।';
    }else{
     action='<p>स्थिति: '+esc(statusLabel[r.status]||r.status)+'</p>'+(r.payment_reference?'<p>UTR: '+esc(r.payment_reference)+'</p>':'');
    }
    return '<article class="job" style="margin:10px 0"><p>'+worker+'</p><p>Request: <code>'+esc(r.payout_code||r.id)+'</code><br>राशि: <b>'+money(r.approved_amount??r.requested_amount)+'</b><br>स्थिति: <b>'+esc(statusLabel[r.status]||r.status)+'</b><br>तारीख: '+esc(new Date(r.requested_at).toLocaleString('en-IN'))+'</p>'+payoutDetails+evidenceText+action+'</article>';
   }).join('');
  }catch(e){box.innerHTML='<p class="danger">Worker payout queue लोड नहीं हुई। Admin payouts.manage अनुमति और Worker payout tables की जाँच करें।</p>';}
+}
+async function reviewWorkerPayoutDetails(workerId,approve){
+ const reason=prompt(approve?'Payout details सत्यापन का कारण लिखें (कम-से-कम 10 अक्षर):':'Payout details अस्वीकार करने का कारण लिखें (कम-से-कम 10 अक्षर):')||'';
+ if(reason.trim().length<10){document.getElementById('masterPayoutMsg').textContent='कारण कम-से-कम 10 अक्षरों का होना चाहिए।';return;}
+ if(!confirm(approve?'दिखाए गए pending UPI/Bank विवरण जाँचकर सत्यापित करें?':'Pending payout विवरण अस्वीकार करें?'))return;
+ const {error}=await sb.rpc('srk_admin_review_worker_payout_details',{p_worker_id:workerId,p_approve:approve,p_reason:reason.trim()});
+ if(error){document.getElementById('masterPayoutMsg').textContent='Payout details अपडेट नहीं हुए। केवल Main Admin यह कार्रवाई कर सकता है।';return;}
+ document.getElementById('masterPayoutMsg').textContent=approve?'Payout details सत्यापित हुए।':'Payout details अस्वीकार हुए।';
+ await loadMasterPayouts();
 }
 async function reviewWorkerPayout(id,approve){
  const amount=Number(document.getElementById('worker-payout-amount-'+id)?.value);
@@ -505,7 +517,7 @@ async function markWorkerPayoutPaid(id){
  const note=document.getElementById('worker-payout-paid-note-'+id)?.value.trim()||'';
  const file=document.getElementById('worker-payout-file-'+id)?.files?.[0];
  const msg=document.getElementById('masterPayoutMsg');
- if(!['upi','phonepe','bank_transfer'].includes(method)||ref.length<4||ref.length>120){msg.textContent='सही भुगतान तरीका और वास्तविक UTR / transaction reference भरें।';return;}
+ if(!['upi','phonepe'].includes(method)||ref.length<4||ref.length>120){msg.textContent='सही भुगतान तरीका और वास्तविक UTR / transaction reference भरें।';return;}
  if(!file||file.size<=0||file.size>10*1024*1024||!['application/pdf','image/jpeg','image/png'].includes(file.type)){msg.textContent='वास्तविक ट्रांसफर प्रमाण PDF/JPG/PNG में चुनें (अधिकतम 10 MB)।';return;}
  if(note.length>500){msg.textContent='नोट 500 अक्षरों से छोटा रखें।';return;}
  if(!confirm('क्या बैंक/UPI रिकॉर्ड में यह रकम वास्तव में Worker को ट्रांसफर हो चुकी है? प्रमाण अपलोड करने और Paid दर्ज करने की पुष्टि करें।'))return;
