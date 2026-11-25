@@ -75,7 +75,9 @@ class _ElectricianLoginPageState extends State<ElectricianLoginPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('SRK ELECTRONIC — Technician')),
-    body: Center(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: ConstrainedBox(
+    body: Container(
+      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFE4F7F8), Color(0xFFF8FCFF), Color(0xFFFFF3E6)])),
+      child: Center(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 460), child: Card(child: Padding(padding: const EdgeInsets.all(22), child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const SrkWelcomeHeader(),
@@ -94,7 +96,8 @@ class _ElectricianLoginPageState extends State<ElectricianLoginPage> {
           if (message != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(message!, textAlign: TextAlign.center)),
         ],
       ))),
-    ))),
+    )))),
+    ),
   );
 }
 
