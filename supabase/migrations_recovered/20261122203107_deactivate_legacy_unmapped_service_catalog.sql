@@ -1,0 +1,1 @@
+update public.services set is_active=false where is_active=true;

@@ -1,0 +1,1 @@
+revoke all privileges on sequence net.http_request_queue_id_seq from public, anon, authenticated;

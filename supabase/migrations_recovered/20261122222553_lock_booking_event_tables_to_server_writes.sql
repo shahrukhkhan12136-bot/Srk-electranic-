@@ -1,0 +1,3 @@
+revoke insert, update, delete, truncate, references, trigger on table public.srk_booking_cancellation_events from public, anon, authenticated;
+revoke insert, update, delete, truncate, references, trigger on table public.srk_booking_schedule_events from public, anon, authenticated;
+revoke insert, update, delete, truncate, references, trigger on table public.srk_booking_worker_events from public, anon, authenticated;

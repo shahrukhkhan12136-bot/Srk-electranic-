@@ -1,0 +1,6 @@
+
+create index if not exists srk_company_commission_refund_recon_booking_idx
+  on public.srk_company_commission_refund_reconciliations(booking_id);
+
+create index if not exists srk_company_commission_refund_history_reconciliation_idx
+  on public.srk_company_commission_refund_reconciliation_history(reconciliation_id);

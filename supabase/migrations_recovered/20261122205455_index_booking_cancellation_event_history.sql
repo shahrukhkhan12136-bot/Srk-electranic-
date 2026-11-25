@@ -1,0 +1,1 @@
+create index if not exists srk_booking_cancellation_events_booking_idx on public.srk_booking_cancellation_events(booking_id,cancelled_at desc);

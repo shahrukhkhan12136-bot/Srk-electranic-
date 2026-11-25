@@ -1,0 +1,63 @@
+
+create or replace function public.srk_customer_create_booking(
+ p_category_id uuid,
+ p_service_type_id uuid,
+ p_skill_id uuid,
+ p_technician_count integer,
+ p_helper_count integer,
+ p_duration_hours integer,
+ p_state text,
+ p_district text,
+ p_pincode text,
+ p_address text,
+ p_booking_latitude double precision,
+ p_booking_longitude double precision,
+ p_current_gps_latitude double precision default null,
+ p_current_gps_longitude double precision default null
+)
+returns public.service_bookings
+language plpgsql
+security definer
+set search_path to 'pg_catalog','public','auth'
+as $function$
+declare
+ v_customer public.srk_customer_profiles%rowtype;
+ v_service public.srk_service_types%rowtype;
+ v_booking public.service_bookings%rowtype;
+begin
+ if auth.uid() is null then raise exception 'OTP login required'; end if;
+ select * into v_customer from public.srk_customer_profiles where user_id=auth.uid();
+ if not found then raise exception 'Complete customer profile before booking'; end if;
+ if v_customer.account_status<>'active' then raise exception 'Customer account is restricted from new bookings'; end if;
+ if p_technician_count not between 1 and 20 or p_helper_count not between 0 and 20 then raise exception 'Invalid worker count'; end if;
+ if p_duration_hours not between 1 and 1440 then raise exception 'Duration must be 1 hour to 60 days'; end if;
+ if p_pincode !~ '^[0-9]{6}$' or nullif(btrim(p_state),'') is null or nullif(btrim(p_district),'') is null or nullif(btrim(p_address),'') is null then
+  raise exception 'Complete valid booking address required';
+ end if;
+ if p_booking_latitude is null or p_booking_longitude is null or p_booking_latitude not between -90 and 90 or p_booking_longitude not between -180 and 180 then
+  raise exception 'Booking Address GPS coordinates required';
+ end if;
+ if (p_current_gps_latitude is null)<>(p_current_gps_longitude is null) then raise exception 'Current GPS coordinates must be supplied together'; end if;
+ select * into v_service from public.srk_service_types where id=p_service_type_id and category_id=p_category_id and is_active;
+ if not found then raise exception 'Service does not belong to active category'; end if;
+ if not exists(select 1 from public.srk_service_skills where id=p_skill_id and service_type_id=p_service_type_id and is_active) then
+  raise exception 'Work/skill does not belong to selected service';
+ end if;
+
+ insert into public.service_bookings(customer_name,phone,state,district,pincode,address,service_type,payment_method,status,
+  commission_rate,materials_amount,customer_user_id,customer_id,category_id,service_type_id,selected_skill_id,
+  requested_technician_count,requested_helper_count,requested_duration_hours,booking_latitude,booking_longitude,
+  location_lat,location_lng,booking_address_confirmed_at)
+ values(v_customer.full_name,v_customer.phone,btrim(p_state),btrim(p_district),p_pincode,btrim(p_address),v_service.service_name,
+  'Unselected','new',15.00,0,auth.uid(),v_customer.id,p_category_id,p_service_type_id,p_skill_id,
+  p_technician_count,p_helper_count,p_duration_hours,p_booking_latitude,p_booking_longitude,
+  p_current_gps_latitude,p_current_gps_longitude,clock_timestamp())
+ returning * into v_booking;
+
+ insert into public.srk_booking_matching_queue(booking_id,queue_status) values(v_booking.id,'pending');
+ return v_booking;
+end
+$function$;
+
+revoke all on function public.srk_customer_create_booking(uuid,uuid,uuid,integer,integer,integer,text,text,text,text,double precision,double precision,double precision,double precision) from public,anon;
+grant execute on function public.srk_customer_create_booking(uuid,uuid,uuid,integer,integer,integer,text,text,text,text,double precision,double precision,double precision,double precision) to authenticated,service_role;

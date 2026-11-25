@@ -1,0 +1,1 @@
+create unique index if not exists srk_booking_ratings_one_per_rater_idx on public.srk_booking_ratings (booking_id, rater_user_id);
