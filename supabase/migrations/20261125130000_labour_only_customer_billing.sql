@@ -114,6 +114,9 @@ begin
     'service_amount=v_labour,materials_amount=v_material,cancellation_fee_amount=v_cancellation_fee,',
     'service_amount=v_labour,materials_amount=0,cancellation_fee_amount=v_cancellation_fee,');
   v_definition:=replace(v_definition,
+    'revision_no=v_next_revision,service_amount=v_labour,materials_amount=v_material,cancellation_fee_amount=v_cancellation_fee,',
+    'revision_no=v_next_revision,service_amount=v_labour,materials_amount=0,cancellation_fee_amount=v_cancellation_fee,');
+  v_definition:=replace(v_definition,
     '1,v_labour,v_material,v_cancellation_fee,''issued'',clock_timestamp()',
     '1,v_labour,0,v_cancellation_fee,''issued'',clock_timestamp()');
 
