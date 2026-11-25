@@ -418,7 +418,7 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
       if (mounted) {
         setState(() => session = Map<String, dynamic>.from(result as Map));
         if (session?['session_status'] == 'running' || session?['session_status'] == 'paused') {
-          startLocationTracking();
+          await startLocationTracking();
         }
       }
     } catch (e) {
@@ -441,7 +441,7 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
     if (mounted) {
       setState(() => session = Map<String, dynamic>.from(result as Map));
       if (session?['session_status'] == 'running' || session?['session_status'] == 'paused') {
-        startLocationTracking();
+        await startLocationTracking();
       } else if (session?['session_status'] == 'completed') {
         await locationSubscription?.cancel();
         locationSubscription = null;
@@ -460,9 +460,10 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
     });
   }
 
-  void startLocationTracking() {
+  Future<void> startLocationTracking() async {
     if (locationSubscription != null || fixedPrice) return;
     try {
+      await position();
       locationSubscription = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
