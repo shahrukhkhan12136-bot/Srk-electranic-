@@ -28,8 +28,9 @@ class SrkBackendServiceSelection {
 }
 
 class SrkServiceCategoryPicker extends StatefulWidget {
-  const SrkServiceCategoryPicker({super.key, required this.onSelection});
+  const SrkServiceCategoryPicker({super.key, required this.onSelection, this.initialCategoryCode});
   final ValueChanged<SrkBackendServiceSelection?> onSelection;
+  final String? initialCategoryCode;
 
   @override
   State<SrkServiceCategoryPicker> createState() => _SrkServiceCategoryPickerState();
@@ -76,6 +77,10 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         _hpTiers = List<Map<String, dynamic>>.from(results[5] as List);
         _rates = List<Map<String, dynamic>>.from(results[6] as List);
         _loading = false;
+        if (widget.initialCategoryCode != null) {
+          final matches = _categories.where((x) => x['category_code'] == widget.initialCategoryCode);
+          _category = matches.isEmpty ? null : matches.first;
+        }
       });
     } catch (e) {
       if (!mounted) return;
