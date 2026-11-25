@@ -37,3 +37,18 @@ test('Customer booking does not ask for repeated Terms or Privacy consent', () =
   assert.doesNotMatch(bookingForm, /_policyLoading|_hasPolicyConsent|Terms & Privacy Policy|srk_record_registration_policy_consent/);
   assert.match(customer, /srk_customer_has_current_policy_consent/);
 });
+
+test('Customer language preference is saved to the signed-in profile; booking UI stays Hindi', () => {
+  assert.match(customer, /customer_language/);
+  assert.match(customer, /DropdownMenuItem\(value: 'hi'/);
+  assert.match(customer, /DropdownMenuItem\(value: 'en'/);
+  assert.match(customer, /बुकिंग फॉर्म और सर्विस विवरण हिंदी में ही रहेंगे/);
+});
+
+test('Customer booking cards show the server-authoritative running work timer', () => {
+  assert.match(customer, /work_timer_elapsed_seconds/);
+  assert.match(customer, /work_started_at/);
+  assert.match(customer, /work_timer_running/);
+  assert.match(customer, /_customerTimerText\(booking\)/);
+  assert.match(customer, /Timer\.periodic\(const Duration\(seconds: 1\)/);
+});
