@@ -96,7 +96,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     'painter' => Icons.format_paint,
     'ac_fridge' => Icons.ac_unit,
     'motor_pump' => Icons.water,
-    'cooler' => Icons.mode_fan,
+    'cooler' => Icons.air,
     _ => Icons.home_repair_service,
   };
 
