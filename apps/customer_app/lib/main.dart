@@ -524,87 +524,135 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   Widget _bookingCard(Map<String, dynamic> booking) {
     final quoteStatus = booking['quote_status']?.toString() ?? 'not_submitted';
     final status = booking['status']?.toString() ?? '';
-    final waiting = quoteStatus == 'pending' && status == 'awaiting_quote_approval';
+    final waitingQuote = quoteStatus == 'pending' && status == 'awaiting_quote_approval';
     final service = (booking['service_charge'] as num?)?.toDouble() ?? 0;
     final materials = (booking['materials_amount'] as num?)?.toDouble() ?? 0;
-    final total = (booking['quoted_amount'] as num?)?.toDouble() ?? service + materials;
+    final quoteTotal = (booking['quoted_amount'] as num?)?.toDouble() ?? service + materials;
+    final bill = booking['final_bill'] is Map<String, dynamic>
+      ? Map<String, dynamic>.from(booking['final_bill'] as Map) : null;
+    final billIssued = bill != null && ['issued','approved'].contains(bill['status']);
+    final billTotal = (bill?['total_amount'] as num?)?.toDouble() ?? 0;
+    final startWaiting = status == 'awaiting_work_start_approval' &&
+      booking['work_start_approval_status'] == 'pending';
+    final completionWaiting = status == 'in_progress' &&
+      booking['completion_approval_status'] == 'pending' &&
+      booking['completion_requested_at'] != null;
+    final method = (booking['payment_method'] ?? '').toString().toLowerCase();
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(booking['service_type']?.toString() ?? 'सर्विस बुकिंग',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text('बुकिंग: ${booking['id']}'),
-            Text('स्थिति: ${_status(status)}'),
-            if ((booking['electrician_phone'] ?? '').toString().trim().isNotEmpty &&
-                ['assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed'].contains(status))
-              Card(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: ListTile(
-                  leading: const Icon(Icons.call),
-                  title: const Text('इलेक्ट्रिशियन का मोबाइल नंबर'),
-                  subtitle: SelectableText(booking['electrician_phone'].toString()),
-                  trailing: IconButton(
-                    tooltip: 'कॉल करें',
-                    icon: const Icon(Icons.call_outlined),
-                    onPressed: () => _callPhone(booking['electrician_phone'].toString()),
-                  ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(booking['service_type']?.toString() ?? 'सर्विस बुकिंग',
+            style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text('बुकिंग: ${booking['id']}'),
+          Text('स्थिति: ${_status(status)}'),
+          if ((booking['electrician_phone'] ?? '').toString().trim().isNotEmpty &&
+              ['assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed'].contains(status))
+            Card(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: ListTile(
+                leading: const Icon(Icons.call),
+                title: const Text('स्वीकृत Technician का मोबाइल नंबर'),
+                subtitle: SelectableText(booking['electrician_phone'].toString()),
+                trailing: IconButton(
+                  tooltip: 'कॉल करें', icon: const Icon(Icons.call_outlined),
+                  onPressed: () => _callPhone(booking['electrician_phone'].toString()),
                 ),
               ),
-            Text('इलाका: ${booking['district'] ?? ''}, ${booking['state'] ?? ''} • PIN ${booking['pincode'] ?? ''}'),
-            Text('तारीख: ${booking['preferred_date'] ?? '—'} • समय: ${booking['preferred_time'] ?? '—'}'),
-            if (quoteStatus != 'not_submitted') ...[
-              const Divider(),
-              Text(booking['electrician_quote_kind'] == 'counter_offer' ? 'इलेक्ट्रिशियन का Counter Offer' : 'इलेक्ट्रिशियन का कोटेशन',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text('सर्विस / मेहनताना: ₹${service.toStringAsFixed(2)}'),
-              Text('सामान / पार्ट्स: ₹${materials.toStringAsFixed(2)}'),
-              Text('कुल: ₹${total.toStringAsFixed(2)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text('कोटेशन स्थिति: $quoteStatus'),
-              if ((booking['quote_note'] ?? '').toString().isNotEmpty)
-                Text('विवरण: ${booking['quote_note']}'),
-              if (waiting) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    FilledButton(
-                      onPressed: () => _respondQuote(booking['id'].toString(), 'approved'),
-                      child: const Text('कोटेशन मंजूर करें'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () => _respondQuote(booking['id'].toString(), 'rejected'),
-                      child: const Text('अस्वीकार करें'),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-            if (status == 'new' || status == 'confirmed')
-              Align(alignment: Alignment.centerRight, child: TextButton.icon(
-                onPressed: () => _cancelBooking(booking['id'].toString()),
-                icon: const Icon(Icons.cancel_outlined), label: const Text('बुकिंग रद्द करें'),
-              )),
-            if (status != 'cancelled')
-              Align(alignment: Alignment.centerRight, child: TextButton.icon(
-                onPressed: () => _createComplaint(booking['id'].toString()),
-                icon: const Icon(Icons.support_agent), label: const Text('शिकायत / सहायता'),
-              )),
-            if (status == 'completed' && booking['payment_status'] != 'paid' && quoteStatus == 'approved') ...[
-              Text('भुगतान तरीका: ' + (booking['payment_method']?.toString() ?? 'cash')),
-              if ((booking['payment_method'] ?? 'cash').toString().toLowerCase() == 'online')
-                FilledButton.icon(onPressed: () => _payOnline(booking), icon: const Icon(Icons.lock_outline), label: Text('ऑनलाइन भुगतान करें • ₹' + total.toStringAsFixed(2)))
-              else const Text('काम पूरा होने पर इलेक्ट्रिशियन को नकद भुगतान करें।'),
-            ],
-            if (booking['payment_status'] == 'paid')
-              const Text('भुगतान प्राप्त और सत्यापित', style: TextStyle(color: Colors.green,fontWeight:FontWeight.bold)),
+            ),
+          Text('इलाका: ${booking['district'] ?? ''}, ${booking['state'] ?? ''} • PIN ${booking['pincode'] ?? ''}'),
+          if (booking['preferred_date'] != null || booking['preferred_time'] != null)
+            Text('पसंदीदा समय: ${booking['preferred_date'] ?? '—'} • ${booking['preferred_time'] ?? '—'}')
+          else if (booking['requested_duration_hours'] != null)
+            Text('अनुरोधित अवधि: ${booking['requested_duration_hours']} घंटे'),
+          if (startWaiting) ...[
+            const Divider(),
+            const Text('Technician ने काम शुरू करने की अनुमति माँगी है। आपकी मंजूरी से पहले काम शुरू नहीं होगा।',
+              style: TextStyle(fontWeight: FontWeight.w600)),
+            Wrap(spacing: 8, children: [
+              FilledButton(onPressed: () => _respondWorkStart(booking['id'].toString(), 'approved'),
+                child: const Text('काम शुरू मंजूर करें')),
+              OutlinedButton(onPressed: () => _respondWorkStart(booking['id'].toString(), 'rejected'),
+                child: const Text('अभी मंजूर नहीं')),
+            ]),
           ],
-        ),
+          if (completionWaiting) ...[
+            const Divider(),
+            const Text('Technician ने काम पूरा होने की पुष्टि माँगी है। जाँचकर जवाब दें।',
+              style: TextStyle(fontWeight: FontWeight.w600)),
+            Wrap(spacing: 8, runSpacing: 6, children: [
+              FilledButton(onPressed: () => _respondWorkCompletion(booking['id'].toString(), 'approved'),
+                child: const Text('काम पूरा मंजूर करें')),
+              OutlinedButton(onPressed: () => _respondWorkCompletion(booking['id'].toString(), 'rejected'),
+                child: const Text('अभी पूरा नहीं')),
+              TextButton(onPressed: () => _respondWorkCompletion(booking['id'].toString(), 'disputed'),
+                child: const Text('विवाद दर्ज करें')),
+            ]),
+          ],
+          if (quoteStatus != 'not_submitted' && quoteStatus.isNotEmpty) ...[
+            const Divider(),
+            Text(booking['electrician_quote_kind'] == 'counter_offer' ? 'पुराना Counter Offer' : 'पुराना कोटेशन',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('सर्विस / मेहनताना: ₹${service.toStringAsFixed(2)}'),
+            Text('सामान / पार्ट्स: ₹${materials.toStringAsFixed(2)}'),
+            Text('कुल: ₹${quoteTotal.toStringAsFixed(2)}'),
+            Text('कोटेशन स्थिति: $quoteStatus'),
+            if ((booking['quote_note'] ?? '').toString().isNotEmpty) Text('विवरण: ${booking['quote_note']}'),
+            if (waitingQuote) Wrap(spacing: 8, children: [
+              FilledButton(onPressed: () => _respondQuote(booking['id'].toString(), 'approved'),
+                child: const Text('कोटेशन मंजूर करें')),
+              OutlinedButton(onPressed: () => _respondQuote(booking['id'].toString(), 'rejected'),
+                child: const Text('अस्वीकार करें')),
+            ]),
+          ],
+          if (billIssued) ...[
+            const Divider(),
+            Text('अंतिम बिल • ${bill!['bill_number'] ?? '—'}',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('मजदूरी / सर्विस: ₹${(bill['service_amount'] as num?)?.toStringAsFixed(2) ?? '0.00'}'),
+            if (((bill['materials_amount'] as num?)?.toDouble() ?? 0) > 0)
+              Text('अलग सामग्री राशि: ₹${(bill['materials_amount'] as num).toStringAsFixed(2)}'),
+            if (((bill['discount_amount'] as num?)?.toDouble() ?? 0) > 0)
+              Text('छूट: ₹${(bill['discount_amount'] as num).toStringAsFixed(2)}'),
+            Text('कुल अंतिम बिल: ₹${billTotal.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ...((bill['items'] as List? ?? const []).whereType<Map>().map((item) =>
+              Padding(padding: const EdgeInsets.only(top: 4),
+                child: Text('• ${item['description'] ?? 'काम'}: ₹${(item['line_total'] as num?)?.toStringAsFixed(2) ?? '0.00'}')))),
+            if (status == 'completed' && booking['payment_status'] != 'paid') ...[
+              const SizedBox(height: 8),
+              if (method == 'unselected' || method.isEmpty)
+                const Text('अंतिम बिल के बाद भुगतान का तरीका चुनें।')
+              else
+                Text('चुना गया भुगतान तरीका: ${booking['payment_method']}'),
+              Wrap(spacing: 8, runSpacing: 6, children: [
+                FilledButton.icon(
+                  onPressed: () => _choosePaymentMethod(booking, bill, 'cash'),
+                  icon: const Icon(Icons.payments), label: const Text('नकद पुष्टि करें')),
+                OutlinedButton.icon(
+                  onPressed: () => _choosePaymentMethod(booking, bill, 'online'),
+                  icon: const Icon(Icons.qr_code_2), label: const Text('ऑनलाइन UPI / Checkout')),
+              ]),
+              if (method == 'cash')
+                const Text('नकद तभी Paid होगा जब ग्राहक और Technician दोनों अपनी पुष्टि करेंगे।'),
+            ],
+          ] else if (status == 'completed')
+            const Text('अंतिम बिल Admin द्वारा तैयार होने के बाद भुगतान विकल्प दिखाई देंगे।'),
+          if (status == 'new')
+            Align(alignment: Alignment.centerRight, child: TextButton.icon(
+              onPressed: () => _cancelBooking(booking['id'].toString()),
+              icon: const Icon(Icons.cancel_outlined), label: const Text('बुकिंग रद्द करें'),
+            )),
+          if (status != 'cancelled')
+            Align(alignment: Alignment.centerRight, child: TextButton.icon(
+              onPressed: () => _createComplaint(booking['id'].toString()),
+              icon: const Icon(Icons.support_agent), label: const Text('शिकायत / सहायता'),
+            )),
+          if (booking['payment_status'] == 'paid')
+            const Text('भुगतान प्राप्त और सत्यापित', style: TextStyle(color: Colors.green,fontWeight:FontWeight.bold)),
+        ]),
       ),
     );
   }
