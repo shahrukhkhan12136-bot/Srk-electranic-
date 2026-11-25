@@ -11,7 +11,8 @@ security definer
 set search_path to 'pg_catalog','public','auth','pg_temp'
 as $function$
 declare
-  v_profile_id uuid;
+  v_worker_id uuid;
+  v_booking_worker_id uuid;
   v_booking public.service_bookings%rowtype;
   v_total numeric(12,2);
 begin
@@ -25,29 +26,41 @@ begin
     raise exception 'Invalid labour quote' using errcode='22023';
   end if;
 
-  select id into v_profile_id
-  from public.electrician_profiles
-  where (user_id=auth.uid() or auth_user_id=auth.uid())
+  select id into v_worker_id
+  from public.srk_worker_profiles
+  where user_id=auth.uid()
     and verification_status='approved'
-    and active=true
+    and is_active=true
   order by created_at desc
   limit 1;
 
-  if v_profile_id is null then
-    raise exception 'Approved active technician required' using errcode='42501';
+  if v_worker_id is null then
+    raise exception 'Approved active Technician required' using errcode='42501';
+  end if;
+
+  select id into v_booking_worker_id
+  from public.srk_booking_workers
+  where booking_id=p_booking_id
+    and worker_id=v_worker_id
+    and assignment_status in ('accepted','assigned','working','paused')
+  order by assigned_at desc
+  limit 1
+  for update;
+
+  if v_booking_worker_id is null then
+    raise exception 'Accepted booking assignment not found' using errcode='42501';
   end if;
 
   select * into v_booking
   from public.service_bookings
   where id=p_booking_id
-    and assigned_electrician_id=v_profile_id
   for update;
 
   if not found then
-    raise exception 'Assigned booking not found' using errcode='42501';
+    raise exception 'Booking not found' using errcode='42501';
   end if;
 
-  if v_booking.status not in ('assigned','inspection','quote_rejected') then
+  if v_booking.status not in ('confirmed','assigned','inspection','quote_rejected') then
     raise exception 'Booking is not ready for a labour quote' using errcode='22023';
   end if;
 
