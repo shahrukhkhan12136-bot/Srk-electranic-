@@ -36,6 +36,6 @@ test('Customer and shared final bill contracts accept only a labour-equal total'
 
 test('Database migration creates labour-only quotes and final bill totals', () => {
   assert.match(files.migration, /create or replace function public\.srk_submit_labour_quote/);
-  assert.match(files.migration, /new\.total_amount:=round\(new\.service_amount,2\)/);
+  assert.match(files.migration, /new\.total_amount:=round\(new\.service_amount\+coalesce\(new\.cancellation_fee_amount,0\)/);
   assert.match(files.migration, /grant execute on function public\.srk_submit_labour_quote/);
 });
