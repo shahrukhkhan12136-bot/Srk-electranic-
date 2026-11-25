@@ -933,7 +933,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         if (place != null) {
           final stateName = (place.administrativeArea ?? '').trim();
           final districtName = (place.subAdministrativeArea ?? place.locality ?? '').trim();
-          final pin = (place.postalCode ?? '').replaceAll(RegExp(r'\\D'), '');
+          final pin = (place.postalCode ?? '').replaceAll(RegExp(r'\D'), '');
           if (stateName.isNotEmpty) _state.text = stateName;
           if (districtName.isNotEmpty) _district.text = districtName;
           if (RegExp(r'^[0-9]{6}
