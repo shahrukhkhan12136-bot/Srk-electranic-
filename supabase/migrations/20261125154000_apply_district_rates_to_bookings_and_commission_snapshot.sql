@@ -201,6 +201,10 @@ begin
       commission_rate=v_commission
   where id=v_booking.id returning * into v_booking;
 
+  -- Start matching in the same booking transaction after district-rate snapshots exist.
+  -- The minute cron remains as a retry/recovery path for later matching attempts.
+  perform public.srk_process_booking_matching_queue();
+
   return v_booking;
 end;
 $function$;
