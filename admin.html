@@ -1559,6 +1559,7 @@ async function downloadAdminPersonHistoryPdf(){
 
 window.adminIndiaDistricts=[];
 window.adminDistrictRateRows=[];
+window.adminIndiaDistrictDirectoryReady=false;
 function adminDistrictStatus(message){const el=document.getElementById('adminDistrictSyncStatus');if(el)el.textContent=message||'';}
 async function syncAdminLgdDistricts(){
  if(!sb||!user){adminDistrictStatus('Main Admin login आवश्यक है।');return;}
@@ -1581,27 +1582,40 @@ async function syncAdminLgdDistricts(){
  }catch(e){adminDistrictStatus('सिंक नहीं हुआ: '+(e.message||'कृपया बाद में प्रयास करें।'));}
 }
 async function loadAdminIndiaDistricts(){
- const stateSelect=document.getElementById('adminDistrictState'),status=document.getElementById('adminDistrictRateStatus');
+ const stateSelect=document.getElementById('adminDistrictState'),districtSelect=document.getElementById('adminDistrictSelect'),status=document.getElementById('adminDistrictRateStatus');
  if(!sb||!user||!stateSelect)return;
  if(status)status.textContent='भारत की जिला सूची लोड हो रही है…';
  try{
   const {data,error}=await sb.rpc('srk_admin_list_india_districts');if(error)throw error;
   window.adminIndiaDistricts=Array.isArray(data)?data:[];
   const states=[...new Map(window.adminIndiaDistricts.map(x=>[x.state_lgd_code,{code:x.state_lgd_code,name:x.state_name}])).values()].sort((a,b)=>a.name.localeCompare(b.name));
+  const sourceDates=[...new Set(window.adminIndiaDistricts.map(x=>String(x.source_date||'').trim()).filter(Boolean))];
+  window.adminIndiaDistrictDirectoryReady=window.adminIndiaDistricts.length>=790&&states.length===36&&sourceDates.length===1;
   const previous=stateSelect.value;
   stateSelect.innerHTML='<option value="">राज्य / UT चुनें</option>'+states.map(x=>'<option value="'+adminHistoryEscape(x.code)+'">'+adminHistoryEscape(x.name)+'</option>').join('');
-  if(states.some(x=>x.code===previous))stateSelect.value=previous;
+  stateSelect.disabled=!window.adminIndiaDistrictDirectoryReady;
+  if(districtSelect)districtSelect.disabled=!window.adminIndiaDistrictDirectoryReady;
+  if(window.adminIndiaDistrictDirectoryReady&&states.some(x=>x.code===previous))stateSelect.value=previous;
+  else stateSelect.value='';
   filterAdminDistrictOptions();
-  if(status)status.textContent=window.adminIndiaDistricts.length+' जिले · '+states.length+' State/UT';
- }catch(e){if(status)status.textContent='जिला सूची उपलब्ध नहीं: '+(e.message||'Migration लागू होना बाकी है।');}
+  if(status)status.textContent=window.adminIndiaDistrictDirectoryReady
+   ?window.adminIndiaDistricts.length+' जिले · '+states.length+' State/UT · स्रोत '+sourceDates[0]
+   :'⚠️ जिला सूची अधूरी/पुरानी है ('+window.adminIndiaDistricts.length+' जिले, '+states.length+' State/UT)। पहले नवीनतम LGD सूची Sync करें; तब तक जिला रेट बदलना बंद है।';
+ }catch(e){
+  window.adminIndiaDistrictDirectoryReady=false;
+  stateSelect.disabled=true;if(districtSelect)districtSelect.disabled=true;
+  if(status)status.textContent='जिला सूची उपलब्ध नहीं: '+(e.message||'Migration लागू होना बाकी है।');
+ }
 }
 function filterAdminDistrictOptions(){
  const state=document.getElementById('adminDistrictState')?.value||'',select=document.getElementById('adminDistrictSelect');
  if(!select)return;
  const rows=window.adminIndiaDistricts.filter(x=>x.state_lgd_code===state);
  select.innerHTML='<option value="">जिला चुनें</option>'+rows.map(x=>'<option value="'+adminHistoryEscape(x.district_lgd_code)+'">'+adminHistoryEscape(x.district_name)+'</option>').join('');
- const status=document.getElementById('adminDistrictRateStatus');if(status)status.textContent=state?rows.length+' जिले उपलब्ध':'पहले State / UT चुनें';
- document.getElementById('adminDistrictRateRows').textContent='रेट देखने के लिए जिला चुनें।';
+ select.disabled=!window.adminIndiaDistrictDirectoryReady;
+ const status=document.getElementById('adminDistrictRateStatus');
+ if(status&&window.adminIndiaDistrictDirectoryReady)status.textContent=state?rows.length+' जिले उपलब्ध':'पहले State / UT चुनें';
+ document.getElementById('adminDistrictRateRows').textContent=window.adminIndiaDistrictDirectoryReady?'रेट देखने के लिए जिला चुनें।':'पहले पूरी नवीनतम LGD सूची Sync करें।';
 }
 async function loadAdminDistrictRateMatrix(){
  const district=document.getElementById('adminDistrictSelect')?.value||'',box=document.getElementById('adminDistrictRateRows');
@@ -1644,6 +1658,7 @@ async function loadAdminDistrictRateHistory(){
  }catch(e){box.textContent='रेट इतिहास उपलब्ध नहीं: '+(e.message||'Admin अनुमति / migration जाँचें।');}
 }
 async function saveAdminDistrictRateRow(index){
+ if(!window.adminIndiaDistrictDirectoryReady){adminDistrictStatus('पहले पूरी नवीनतम LGD जिला सूची Sync करें; पुराने/अधूरे डेटा पर Rate सेव नहीं होगा।');return;}
  const row=window.adminDistrictRateRows[index],district=document.getElementById('adminDistrictSelect')?.value||'';
  const reason=document.getElementById('adminDistrictRateReason')?.value.trim()||'';
  const status=document.getElementById('adminDistrictRateStatus');
