@@ -91,8 +91,6 @@ class SrkCustomerWorkConfirmationCardPreview {
 class SrkCustomerFinalBillPreview {
   const SrkCustomerFinalBillPreview({
     required this.labourAmountPaise,
-    required this.approvedMaterialsAmountPaise,
-    required this.otherChargesAmountPaise,
     required this.totalAmountPaise,
     required this.currency,
     required this.paymentStatus,
@@ -102,8 +100,6 @@ class SrkCustomerFinalBillPreview {
   });
 
   final int? labourAmountPaise;
-  final int? approvedMaterialsAmountPaise;
-  final int? otherChargesAmountPaise;
   final int? totalAmountPaise;
   final String? currency;
   final String? paymentStatus;
@@ -111,27 +107,16 @@ class SrkCustomerFinalBillPreview {
   final bool? paymentEligibility;
   final String? receiptId;
 
-  bool get hasValidNonNegativeAmounts {
-    final values = [
-      labourAmountPaise,
-      approvedMaterialsAmountPaise,
-      otherChargesAmountPaise,
-      totalAmountPaise,
-    ];
-    return values.every((value) => value != null && value >= 0);
-  }
+  bool get hasValidNonNegativeAmounts =>
+      labourAmountPaise != null &&
+      totalAmountPaise != null &&
+      labourAmountPaise! >= 0 &&
+      totalAmountPaise! >= 0;
 
-  /// A consistency warning only. Server total remains authoritative; a
-  /// mismatch must be shown as needing refresh/review, not silently fixed.
+  /// The only billable amount is the server-returned labour charge.
   bool get isBreakdownConsistent =>
-      hasValidNonNegativeAmounts &&
-      labourAmountPaise! +
-              approvedMaterialsAmountPaise! +
-              otherChargesAmountPaise! ==
-          totalAmountPaise;
+      hasValidNonNegativeAmounts && labourAmountPaise == totalAmountPaise;
 
-  /// Informational server flag only. Do not use this getter to call a payment
-  /// API: backend must revalidate eligibility on every payment request.
   bool get serverReportsPaymentEligible => paymentEligibility == true;
 
   factory SrkCustomerFinalBillPreview.fromProposedJson(
@@ -151,9 +136,6 @@ class SrkCustomerFinalBillPreview {
 
     return SrkCustomerFinalBillPreview(
       labourAmountPaise: readPaise('labour_amount_paise'),
-      approvedMaterialsAmountPaise:
-          readPaise('approved_materials_amount_paise'),
-      otherChargesAmountPaise: readPaise('other_charges_amount_paise'),
       totalAmountPaise: readPaise('total_amount_paise'),
       currency: readString('currency'),
       paymentStatus: readString('payment_status'),
