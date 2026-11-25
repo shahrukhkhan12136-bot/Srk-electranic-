@@ -13,9 +13,7 @@ CREATE TABLE IF NOT EXISTS public.srk_service_offerings (
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   created_by uuid REFERENCES auth.users(id) ON DELETE RESTRICT,
-  updated_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  CHECK ((category_code='electrician' AND skill_code IN ('residential_wiring','factory_wiring'))
-      OR category_code<>'electrician')
+  updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
 );
 CREATE INDEX IF NOT EXISTS srk_service_offerings_category_idx
   ON public.srk_service_offerings(category_code,skill_code,is_active);
@@ -111,37 +109,55 @@ CREATE TRIGGER srk_service_rate_events_append_only
 BEFORE UPDATE OR DELETE ON public.srk_service_rate_events
 FOR EACH ROW EXECUTE FUNCTION public.srk_guard_service_rate_events_append_only();
 
--- Existing skills become the initial service offerings. Admin may add more granular services later.
-INSERT INTO public.srk_service_offerings(category_code,skill_code,service_code,display_name,billing_model,unit_label)
+-- Existing 93 skills become offerings. Preserve inactive historical skills as inactive offerings.
+INSERT INTO public.srk_service_offerings
+(category_code,skill_code,service_code,display_name,billing_model,unit_label,is_active)
 SELECT c.category_code,s.skill_code,s.skill_code,s.display_name,
-  CASE WHEN s.skill_code IN ('motor_winding','cooler_motor_winding','cooler_repair') THEN 'fixed_per_unit' ELSE 'hourly' END,
-  CASE WHEN s.skill_code IN ('motor_winding','cooler_motor_winding') THEN 'मोटर' WHEN s.skill_code='cooler_repair' THEN 'कूलर' ELSE 'घंटा' END
+  CASE
+    WHEN c.category_code='motor_pump'
+      AND (s.display_name ILIKE '%checking%' OR s.display_name ILIKE '%inspection%' OR s.display_name ILIKE '%fitting%')
+      THEN 'fixed_per_unit'
+    WHEN s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%'
+      THEN 'fixed_per_unit'
+    ELSE 'hourly'
+  END,
+  CASE
+    WHEN c.category_code='motor_pump'
+      AND (s.display_name ILIKE '%checking%' OR s.display_name ILIKE '%inspection%' OR s.display_name ILIKE '%fitting%')
+      THEN 'HP'
+    WHEN s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%' THEN 'मोटर'
+    ELSE 'घंटा'
+  END,
+  s.is_active
 FROM public.srk_service_skills s
 JOIN public.srk_service_categories c ON c.id=s.category_id
 ON CONFLICT(service_code) DO NOTHING;
 
--- Winding is outside SRK ELECTRONIC. Preserve historical rows, but disable both winding skills and offerings.
-UPDATE public.srk_service_skills SET is_active=false
-WHERE skill_code IN ('motor_winding','cooler_motor_winding');
-UPDATE public.srk_service_offerings SET is_active=false,updated_at=clock_timestamp()
-WHERE service_code IN ('motor_winding','cooler_motor_winding');
+-- Winding is outside SRK ELECTRONIC. Preserve all old records, but keep winding skills and offerings inactive.
+UPDATE public.srk_service_skills s SET is_active=false
+FROM public.srk_service_categories c
+WHERE c.id=s.category_id
+  AND c.category_code='motor_pump'
+  AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%');
+UPDATE public.srk_service_offerings o SET is_active=false,updated_at=clock_timestamp()
+WHERE o.skill_code IN (
+  SELECT s.skill_code FROM public.srk_service_skills s
+  JOIN public.srk_service_categories c ON c.id=s.category_id
+  WHERE c.category_code='motor_pump'
+    AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%')
+);
 
--- AC Installation and AC Repair are distinct customer-selectable services under the separately assessed AC skill.
-UPDATE public.srk_service_offerings SET is_active=false,updated_at=clock_timestamp()
-WHERE service_code='ac_technician';
-INSERT INTO public.srk_service_offerings(category_code,skill_code,service_code,display_name,billing_model,unit_label)
-VALUES
-  ('ac_fridge_technician','ac_technician','ac_installation','AC Installation','hourly','घंटा'),
-  ('ac_fridge_technician','ac_technician','ac_repair','AC Repair','hourly','घंटा')
-ON CONFLICT(service_code) DO NOTHING;
-
--- Plumber rates are explicitly confirmed. Conflicting category prices are deliberately not activated.
+-- Rates are seeded only when the exact service code exists; otherwise Admin must configure a verified rate.
 INSERT INTO public.srk_service_rates
 (service_code,level_code,level_label,technician_hourly_paise,helper_hourly_paise,rate_version,status)
-VALUES
-('residential_plumbing','basic','Basic',10000,5000,'SRK-PLUMBER-2026-11-21-V1','active'),
-('residential_plumbing','expert','Expert',15000,7500,'SRK-PLUMBER-2026-11-21-V1','active'),
-('industrial_plumbing','master_industrial','Master / Industrial',22500,10000,'SRK-PLUMBER-2026-11-21-V1','active')
+SELECT v.service_code,v.level_code,v.level_label,v.technician_hourly_paise,v.helper_hourly_paise,
+       v.rate_version,'active'
+FROM (VALUES
+ ('residential_plumbing','basic','Basic',10000::bigint,5000::bigint,'SRK-PLUMBER-2026-11-21-V1'),
+ ('residential_plumbing','expert','Expert',15000::bigint,7500::bigint,'SRK-PLUMBER-2026-11-21-V1'),
+ ('industrial_plumbing','master_industrial','Master / Industrial',22500::bigint,10000::bigint,'SRK-PLUMBER-2026-11-21-V1')
+) AS v(service_code,level_code,level_label,technician_hourly_paise,helper_hourly_paise,rate_version)
+JOIN public.srk_service_offerings o ON o.service_code=v.service_code AND o.is_active
 ON CONFLICT(service_code,level_code,rate_version) DO NOTHING;
 
 -- Legacy electrician rate constraints were tied to the obsolete hard-coded card.
