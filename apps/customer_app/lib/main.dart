@@ -1149,7 +1149,6 @@ class CustomerBookingFormPage extends StatefulWidget {
 
 class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final _phone = TextEditingController();
   final _state = TextEditingController();
   final _district = TextEditingController();
   final _pincode = TextEditingController();
@@ -1173,7 +1172,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
 
   @override
   void dispose() {
-    _phone.dispose(); _state.dispose();
+    _state.dispose();
     _district.dispose(); _pincode.dispose(); _address.dispose();
     super.dispose();
   }
@@ -1441,9 +1440,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
             child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('अनुमानित सर्विस चार्ज', style: Theme.of(context).textTheme.titleMedium),
               Text(_money(_pricePreview!['estimated_customer_total']), style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
-              Text('कुल मजदूरी: ${_money(_pricePreview!['estimated_base_total'])}'),
-              Text('कंपनी कमीशन (अनुमान): ${_money(_pricePreview!['estimated_company_commission'])}'),
-              Text('Technician / Helper का हिस्सा (अनुमान): ${_money(_pricePreview!['estimated_worker_net'])}'),
               Text((_pricePreview!['price_note']??'').toString()),
             ]))),
         const SizedBox(height: 12),
