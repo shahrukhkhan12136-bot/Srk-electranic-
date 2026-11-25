@@ -127,3 +127,10 @@ test('Technician can submit a UPI ID for Main Admin verification before requesti
   assert.match(technician, /payout_details_change_status/);
   assert.match(technician, /name@bank/);
 });
+
+test('Cash commission recovery cannot be applied twice when an Online earning is retried', () => {
+  const idempotency = fs.readFileSync('supabase/migrations/20261125111500_prevent_duplicate_cash_commission_recovery.sql', 'utf8');
+  assert.match(idempotency, /An earning already posted before this recovery rule must not be offset twice on retry/);
+  assert.match(idempotency, /if exists\(select 1 from public\.srk_worker_wallet_ledger l where l\.idempotency_key='earning:'\|\|v\.id::text\) then/);
+  assert.match(idempotency, /return;/);
+});
