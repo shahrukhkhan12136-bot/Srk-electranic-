@@ -49,20 +49,25 @@ test('earnings and payout history failures are displayed separately, never as an
   assert.match(earnings, /utr|UTR/i);
 });
 
-test('wallet bank and ledger reads are owner scoped and query failures are not rendered as no records', () => {
+test('Master wallet is primary; legacy bank and ledger fallback is owner-scoped and reports read failures', () => {
   const wallet = body('loadPartnerWallet');
+  assert.match(wallet, /srk_master_wallet_summary/);
+  assert.match(wallet, /srk_technician_request_master_payout/);
   assert.match(wallet, /srk_get_my_wallet_summary/);
   assert.match(wallet, /srk_wallet_bank_links/);
   assert.match(wallet, /srk_wallet_ledger/);
   assert.match(wallet, /eq\('user_id',user\.id\)/);
   assert.match(wallet, /bankResult\.error\?[\s\S]*?बैंक लिंक की स्थिति लोड नहीं हो सकी/);
-  assert.match(wallet, /ledgerResult\.error\?[\s\S]*?वॉलेट लेन-देन सूची अभी उपलब्ध नहीं है/);
-  assert.match(wallet, /यह ऐप का आंतरिक लेजर बैलेंस है/);
+  assert.match(wallet, /ledgerResult\.error\?[\s\S]*?पुराना लेन-देन विवरण उपलब्ध नहीं है/);
+  assert.match(wallet, /legacyPartnerWallet/);
 });
 
-test('electrician app does not initiate wallet withdrawal or bank transfer actions', () => {
+test('Technician can request payout but cannot directly transfer or mark a payout paid', () => {
   assert.doesNotMatch(electrician, /srk_wallet_withdraw|srk_create_withdrawal|create_bank_transfer|razorpay_route_transfer/i);
-  assert.match(electrician, /बैंक खाता जोड़ना और निकासी अभी बंद है/);
+  assert.match(electrician, /srk_technician_request_master_payout/);
+  assert.match(electrician, /निकासी अनुरोध भेजें/);
+  assert.match(electrician, /वास्तविक भुगतान Admin द्वारा सत्यापन के बाद ही होगा/);
+  assert.doesNotMatch(electrician, /srk_admin_mark_master_payout_paid/);
 });
 
 test('profile display-name updates validate input and use the self-service RPC', () => {
