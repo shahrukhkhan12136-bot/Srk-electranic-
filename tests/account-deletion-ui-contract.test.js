@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const customer = fs.readFileSync('apps/customer_app/lib/main.dart', 'utf8');
 const worker = fs.readFileSync('apps/electrician_app/lib/main.dart', 'utf8');
 const admin = fs.readFileSync('admin.html', 'utf8');
+const migration = fs.readFileSync('supabase/migrations/20261125120555_allow_worker_applicants_to_request_account_deletion.sql', 'utf8');
 
 test('Customer and Worker apps submit account deletion requests without deleting the account directly', () => {
   assert.match(customer, /srk_request_account_deletion/);
@@ -20,4 +21,9 @@ test('Main Admin can review account deletion requests with reason and retention 
   assert.match(admin, /srk_admin_review_account_deletion/);
   assert.match(admin, /retention/);
   assert.match(admin, /Account अपने-आप delete नहीं होगा/);
+});
+
+test('Worker applicants can request account deletion before Admin approval', () => {
+  assert.match(migration, /from public\.srk_worker_applications/);
+  assert.match(migration, /account_role,request_reason/);
 });
