@@ -31,9 +31,20 @@ class CustomerApp extends StatelessWidget {
       );
 }
 
-class CustomerGate extends StatelessWidget {
+class CustomerGate extends StatefulWidget {
   const CustomerGate({super.key});
+  @override
+  State<CustomerGate> createState() => _CustomerGateState();
+}
 
+class _CustomerGateState extends State<CustomerGate> {
+  String? _profileUserId;
+  Future<Map<String, dynamic>?>? _profileFuture;
+  Future<Map<String, dynamic>?> _loadProfile() async {
+    final result = await Supabase.instance.client.rpc('srk_customer_get_my_profile');
+    final rows = List<Map<String, dynamic>>.from(result as List);
+    return rows.isEmpty ? null : rows.first;
+  }
   @override
   Widget build(BuildContext context) {
     final client = Supabase.instance.client;
@@ -41,11 +52,154 @@ class CustomerGate extends StatelessWidget {
       stream: client.auth.onAuthStateChange,
       builder: (context, snapshot) {
         final user = client.auth.currentUser;
-        if (user == null) return const SrkLoginPage(role: SrkAppRole.customer);
-        return const CustomerDashboard();
+        if (user == null) {
+          _profileUserId = null;
+          _profileFuture = null;
+          return const SrkLoginPage(role: SrkAppRole.customer);
+        }
+        if (_profileUserId != user.id) {
+          _profileUserId = user.id;
+          _profileFuture = _loadProfile();
+        }
+        return FutureBuilder<Map<String, dynamic>?>(
+          key: ValueKey(user.id), future: _profileFuture,
+          builder: (context, profile) {
+            if (profile.connectionState != ConnectionState.done) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+            if (profile.hasError) {
+              return Scaffold(body: Center(child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('आपकी प्रोफाइल सुरक्षित रूप से जाँची नहीं जा सकी। इंटरनेट जाँचकर दोबारा कोशिश करें।', textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  FilledButton(onPressed: () => setState(() => _profileFuture = _loadProfile()), child: const Text('दोबारा कोशिश करें')),
+                ]),
+              )));
+            }
+            if (profile.data == null) return const CustomerProfileSetupPage();
+            return const CustomerDashboard();
+          },
+        );
       },
     );
   }
+}
+
+class CustomerProfileSetupPage extends StatefulWidget {
+  const CustomerProfileSetupPage({super.key});
+  @override
+  State<CustomerProfileSetupPage> createState() => _CustomerProfileSetupPageState();
+}
+class _CustomerProfileSetupPageState extends State<CustomerProfileSetupPage> {
+  final _client = Supabase.instance.client;
+  final _name = TextEditingController();
+  final Map<String, bool> _accepted = {};
+  List<Map<String, dynamic>> _policies = [];
+  bool _loading = true, _saving = false;
+  String? _error;
+  @override
+  void initState() {
+    super.initState();
+    final metadata = _client.auth.currentUser?.userMetadata ?? const <String, dynamic>{};
+    _name.text = (metadata['full_name'] ?? metadata['name'] ?? '').toString();
+    _loadPolicies();
+  }
+  @override
+  void dispose() { _name.dispose(); super.dispose(); }
+  Future<void> _loadPolicies() async {
+    try {
+      final rows = await _client.rpc('srk_get_registration_policy_documents', params: {
+        'p_worker_type': 'customer', 'p_language_code': 'hi',
+      });
+      _policies = List<Map<String, dynamic>>.from(rows as List);
+      if (_policies.length != 2 ||
+          !_policies.any((p) => p['policy_type'] == 'terms') ||
+          !_policies.any((p) => p['policy_type'] == 'privacy')) {
+        _error = 'Main Admin ने अभी दोनों वर्तमान Hindi दस्तावेज़ प्रकाशित नहीं किए हैं। सहायता से संपर्क करें।';
+      }
+    } catch (_) {
+      _error = 'नीति दस्तावेज़ लोड नहीं हुए। इंटरनेट जाँचकर दोबारा कोशिश करें।';
+    } finally { if (mounted) setState(() => _loading = false); }
+  }
+  Future<void> _saveProfile() async {
+    if (_name.text.trim().length < 2) {
+      setState(() => _error = 'कृपया अपना पूरा नाम भरें।'); return;
+    }
+    if (_policies.length != 2 || _policies.any((p) => _accepted[p['id'].toString()] != true)) {
+      setState(() => _error = 'कृपया नियम और शर्तें तथा गोपनीयता नीति स्वीकार करें。'); return;
+    }
+    final user = _client.auth.currentUser;
+    final phone = (user?.phone ?? '').replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^91(?=\d{10}$)'), '');
+    if (user == null || user.phoneConfirmedAt == null || !RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
+      setState(() => _error = 'सत्यापित मोबाइल नंबर उपलब्ध नहीं है। कृपया दोबारा OTP लॉगिन करें。'); return;
+    }
+    setState(() { _saving = true; _error = null; });
+    try {
+      for (final policy in _policies) {
+        await _client.rpc('srk_record_registration_policy_consent', params: {
+          'p_worker_type': 'customer',
+          'p_policy_document_id': policy['id'],
+          'p_user_agent': 'SRK ELECTRONIC Customer Android App',
+        });
+      }
+      await _client.rpc('srk_customer_upsert_profile', params: {
+        'p_full_name': _name.text.trim(), 'p_phone': phone,
+      });
+      await _client.auth.updateUser(UserAttributes(data: {'full_name': _name.text.trim()}));
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const CustomerDashboard()));
+    } catch (e) {
+      if (mounted) setState(() => _error = 'प्रोफाइल सेव नहीं हुई: ' + e.toString().replaceFirst('Exception: ', ''));
+    } finally { if (mounted) setState(() => _saving = false); }
+  }
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('ग्राहक प्रोफाइल')),
+    body: Container(
+      decoration: const BoxDecoration(gradient: LinearGradient(
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+        colors: [Color(0xFFE8F4FF), Color(0xFFF8FBFF), Color(0xFFFFF4E8)],
+      )),
+      child: SafeArea(child: ListView(padding: const EdgeInsets.all(18), children: [
+        const SrkFounderBanner(compact: true),
+        const SizedBox(height: 18),
+        Text('अपना नाम सेव करें', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        TextField(controller: _name, textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(labelText: 'पूरा नाम', border: OutlineInputBorder())),
+        const SizedBox(height: 16),
+        Text('एक बार की सहमति', style: Theme.of(context).textTheme.titleMedium),
+        const Text('ये दस्तावेज़ आपकी ग्राहक प्रोफाइल सेव करते समय स्वीकार किए जाएँगे। सामान्य बुकिंग में दोबारा नहीं पूछे जाएँगे।'),
+        const SizedBox(height: 8),
+        if (_loading) const Center(child: CircularProgressIndicator()),
+        if (!_loading && _policies.length == 2) ..._policies.map((policy) {
+          final id = policy['id'].toString();
+          final title = policy['policy_type'] == 'terms' ? 'नियम और शर्तें' : 'गोपनीयता नीति';
+          return Card(child: ExpansionTile(
+            title: Text(title + ' • संस्करण ' + policy['version'].toString()),
+            children: [
+              Padding(padding: const EdgeInsets.all(12), child: SelectableText(policy['body']?.toString() ?? '')),
+              CheckboxListTile(
+                value: _accepted[id] == true,
+                onChanged: _saving ? null : (v) => setState(() => _accepted[id] = v == true),
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text('मैंने ' + title + ' पढ़ लिया है और स्वीकार करता/करती हूँ।'),
+              ),
+            ],
+          ));
+        }),
+        if (_error != null) Padding(padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Text(_error!, style: const TextStyle(color: Colors.red))),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _loading || _saving || _policies.length != 2 ? null : _saveProfile,
+          icon: _saving ? const SizedBox(width: 18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.save),
+          label: Text(_saving ? 'सेव हो रहा है…' : 'नाम और सहमति सेव करें'),
+        ),
+      ])),
+    ),
+  );
 }
 
 class CustomerDashboard extends StatefulWidget {
@@ -995,7 +1149,6 @@ class CustomerBookingFormPage extends StatefulWidget {
 
 class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
   final _phone = TextEditingController();
   final _state = TextEditingController();
   final _district = TextEditingController();
@@ -1010,46 +1163,20 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   int _previewRequest = 0;
   bool _submitting = false, _locationBusy = false, _priceBusy = false;
   double? _locationLat, _locationLng;
-  List<Map<String, dynamic>> _policies = [];
-  final Map<String, bool> _policyAccepted = {};
-  bool _policyLoading = true;
-  String? _policyError;
 
   @override
   void initState() {
     super.initState();
     final user = _client.auth.currentUser;
     _phone.text = (user?.phone ?? '').replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^91(?=\d{10}$)'), '');
-    _name.text = user?.userMetadata?['full_name']?.toString() ?? '';
-    _loadPolicies();
   }
 
   @override
   void dispose() {
-    _name.dispose(); _phone.dispose(); _state.dispose();
+    _phone.dispose(); _state.dispose();
     _district.dispose(); _pincode.dispose(); _address.dispose();
     super.dispose();
   }
-
-  Future<void> _loadPolicies() async {
-    try {
-      final rows = await _client.rpc('srk_get_registration_policy_documents', params: {
-        'p_worker_type': 'customer', 'p_language_code': 'hi',
-      });
-      _policies = List<Map<String, dynamic>>.from(rows as List);
-      _policyError = null;
-    } catch (e) {
-      _policies = [];
-      _policyError = e.toString();
-    } finally {
-      if (mounted) setState(() => _policyLoading = false);
-    }
-  }
-
-  bool get _hasPolicyConsent => _policies.length == 2 &&
-      _policies.any((p) => p['policy_type'] == 'terms') &&
-      _policies.any((p) => p['policy_type'] == 'privacy') &&
-      _policies.every((p) => _policyAccepted[p['id'].toString()] == true);
 
   String? _required(String? value, String label, {int min = 2}) {
     final v = value?.trim() ?? '';
@@ -1144,12 +1271,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_policyLoading || !_hasPolicyConsent) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('वर्तमान Hindi Terms और Privacy Policy पढ़कर दोनों स्वीकार करें।'),
-      ));
-      return;
-    }
     final selection = _selection;
     if (selection == null || _pricePreview == null || _priceBusy) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('पहले लाइव कैटलॉग से सेवा चुनें और सर्वर दर की पुष्टि करें।')));
@@ -1163,17 +1284,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     }
     setState(() => _submitting = true);
     try {
-      for (final policy in _policies) {
-        await _client.rpc('srk_record_registration_policy_consent', params: {
-          'p_worker_type': 'customer',
-          'p_policy_document_id': policy['id'],
-          'p_user_agent': 'SRK ELECTRONIC Customer Android App',
-        });
-      }
-      await _client.rpc('srk_customer_upsert_profile', params: {
-        'p_full_name': _name.text.trim(),
-        'p_phone': _phone.text.trim(),
-      });
       final response = await _client.rpc('srk_customer_create_booking_v2', params: {
         'p_category_id': selection.categoryId,
         'p_service_type_id': selection.serviceTypeId,
@@ -1306,11 +1416,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           ],
         ],
         const SizedBox(height: 14),
-        Text('4. ग्राहक की जानकारी', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        _field(_name, 'पूरा नाम', maxLength: 100),
-        _field(_phone, 'OTP verified मोबाइल नंबर', keyboard: TextInputType.phone, maxLength: 10, readOnly: true,
-          validator: (v) => RegExp(r'^[0-9]{10}$').hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
         Text('5. काम की लोकेशन', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         _field(_state, 'राज्य', maxLength: 100),
@@ -1341,38 +1446,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
               Text('Technician / Helper का हिस्सा (अनुमान): ${_money(_pricePreview!['estimated_worker_net'])}'),
               Text((_pricePreview!['price_note']??'').toString()),
             ]))),
-        Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Terms & Privacy Policy', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            if (_policyLoading)
-              const LinearProgressIndicator()
-            else if (_policies.length != 2)
-              const Text('Main Admin ने अभी Customer की वर्तमान Hindi Terms और Privacy Policy प्रकाशित नहीं की हैं। सुरक्षा के लिए Booking Submit तब तक बंद रहेगा।',
-                style: TextStyle(color: Colors.red))
-            else
-              ..._policies.map((p) {
-                final id = p['id'].toString();
-                return ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
-                  title: Text((p['policy_type'] == 'terms' ? 'Terms & Conditions — ' : 'Privacy Policy — ') + p['version'].toString()),
-                  children: [
-                    Padding(padding: const EdgeInsets.all(8), child: SelectableText(p['body']?.toString() ?? '')),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: _policyAccepted[id] == true,
-                      onChanged: _submitting ? null : (v) => setState(() => _policyAccepted[id] = v == true),
-                      title: const Text('मैंने पूरा दस्तावेज़ पढ़ा और स्वीकार किया है।'),
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                  ],
-                );
-              }),
-            if (_policyError != null)
-              Text('Policy लोड नहीं हुई: $_policyError', style: const TextStyle(color: Colors.red)),
-          ],
-        ))),
         const SizedBox(height: 12),
         Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Padding(padding: EdgeInsets.all(14), child: Text(
