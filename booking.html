@@ -173,7 +173,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
 
  <section class="panel" id="customerBookingPanel" hidden>
   <h2 class="section-title" style="margin-top:0">सर्विस बुक करें</h2>
-  <p class="small">चुनी गई इलेक्ट्रिशियन श्रेणी, अवधि और लागू दर के आधार पर शुरुआती अनुमान दिखेगा। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। सामान/पार्ट्स का खर्च अलग itemized रहेगा।</p>
+  <p class="small">चुनी गई इलेक्ट्रिशियन श्रेणी, अवधि और लागू दर के आधार पर शुरुआती अनुमान दिखेगा। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। </p>
   <form id="booking">
    <label for="name">आपका नाम</label><input id="name" required placeholder="नाम लिखें">
    <label for="phone">OTP से सत्यापित मोबाइल नंबर</label><input id="phone" type="tel" inputmode="tel" required readonly aria-describedby="verifiedPhoneHelp" placeholder="पहले ग्राहक OTP लॉगिन करें"><small id="verifiedPhoneHelp" class="small">बुकिंग में वही मोबाइल नंबर इस्तेमाल होगा जिससे आपने OTP लॉगिन किया है। इसे यहाँ बदला नहीं जा सकता।</small>
@@ -230,7 +230,7 @@ footer{text-align:center;color:#718096;font-size:12px;padding:24px 12px 34px}
     <div id="labourEstimateAmount" style="font-size:26px;font-weight:850;color:#0b5ed7;margin:4px 0">श्रेणी और अवधि चुनें</div>
     <div id="labourEstimateBreakdown" class="small">अनुमान चुनी गई श्रेणी की 8 घंटे की दर और अवधि के आधार पर है।</div>
    </section>
-   <p class="small">यह केवल अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ग्राहक की चुनी श्रेणी से अलग इलेक्ट्रिशियन नहीं भेजा जाएगा। सामान/पार्ट्स का खर्च मेहनताने से अलग itemized रहेगा।</p>
+   <p class="small">यह केवल अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ग्राहक की चुनी श्रेणी से अलग इलेक्ट्रिशियन नहीं भेजा जाएगा। </p>
    <label for="place">आपका इलाका</label><input id="place" placeholder="गाँव / शहर / एरिया">
    <label for="details">काम की जानकारी</label><textarea id="details" placeholder="काम के बारे में लिखें"></textarea>
    <label for="payment">भुगतान का तरीका</label>
@@ -325,7 +325,7 @@ const customerUiTranslations = {
  'प्रोफ़ाइल सेव करें':'Save Profile',
  'लॉगआउट':'Log Out',
  'सर्विस बुक करें':'Book a Service',
- 'चुनी गई इलेक्ट्रिशियन श्रेणी, अवधि और लागू दर के आधार पर शुरुआती अनुमान दिखेगा। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। सामान/पार्ट्स का खर्च अलग itemized रहेगा।':'Your estimate is based on the selected electrician tier, duration and applicable rate. Final labour is calculated from actual server-recorded work time. Materials and parts are itemized separately.',
+ 'चुनी गई इलेक्ट्रिशियन श्रेणी, अवधि और लागू दर के आधार पर शुरुआती अनुमान दिखेगा। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ':'Your estimate is based on the selected electrician tier, duration and applicable rate. Final labour is calculated from actual server-recorded work time. Materials and parts are itemized separately.',
  'आपका नाम':'Your Name',
  'OTP से सत्यापित मोबाइल नंबर':'Mobile Number Verified by OTP',
  'बुकिंग में वही मोबाइल नंबर इस्तेमाल होगा जिससे आपने OTP लॉगिन किया है। इसे यहाँ बदला नहीं जा सकता।':'Your booking uses the same mobile number verified at OTP login. It cannot be changed here.',
@@ -365,7 +365,7 @@ const customerUiTranslations = {
  '6 घंटे':'6 hours',
  '7 घंटे':'7 hours',
  '8 घंटे':'8 hours',
- 'यह केवल अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ग्राहक की चुनी श्रेणी से अलग इलेक्ट्रिशियन नहीं भेजा जाएगा। सामान/पार्ट्स का खर्च मेहनताने से अलग itemized रहेगा।':'This is an estimate, not an advance or bill cap. Final labour is calculated from actual server-recorded work time. An electrician from a different selected tier will not be assigned. Materials/parts are itemized separately from labour.',
+ 'यह केवल अनुमान है, एडवांस या अधिकतम बिल सीमा नहीं। अंतिम मेहनताना सर्वर द्वारा दर्ज वास्तविक काम के समय से निकलेगा। ग्राहक की चुनी श्रेणी से अलग इलेक्ट्रिशियन नहीं भेजा जाएगा। ':'This is an estimate, not an advance or bill cap. Final labour is calculated from actual server-recorded work time. An electrician from a different selected tier will not be assigned. Materials/parts are itemized separately from labour.',
  'आपका इलाका':'Your Area',
  'गाँव / शहर / एरिया':'Village / City / Area',
  'काम की जानकारी':'Work Details',
@@ -385,7 +385,7 @@ Object.assign(customerUiTranslations, {
  'भुगतान इतिहास देखने के लिए OTP लॉगिन करें।':'Log in with OTP to view payment history.','रिफंड स्थिति देखने के लिए OTP लॉगिन करें।':'Log in with OTP to view refund status.',
  'रसीद खोलने के लिए कृपया इस साइट के pop-ups की अनुमति दें।':'Please allow pop-ups for this site to open the receipt.','रसीद लोड हो रही है…':'Loading receipt…','उपलब्ध नहीं':'Not Available',
  'इलेक्ट्रिशियन मेहनताना':'Electrician Labour','भुगतान सत्यापित है; उपलब्ध रिकॉर्ड से मेहनताना अलग से प्रमाणित नहीं हो सका।':'Payment is verified; labour could not be separately confirmed from available records.',
- 'सामान / पार्ट्स':'Materials / Parts','पुरानी Cancellation Fee':'Previous Cancellation Fee','कुल सत्यापित भुगतान':'Total Verified Payment',
+ 'पुरानी Cancellation Fee':'Previous Cancellation Fee','कुल सत्यापित भुगतान':'Total Verified Payment',
  'भुगतान रसीद · यह टैक्स इनवॉइस नहीं है':'Payment Receipt · This is not a tax invoice','रसीद संदर्भ:':'Receipt Reference:','बुकिंग संदर्भ:':'Booking Reference:','बुकिंग दिनांक:':'Booking Date:','भुगतान दिनांक:':'Payment Date:',
  'ग्राहक:':'Customer:','सेवा:':'Service:','पता:':'Address:','भुगतान तरीका:':'Payment Method:','स्थिति:':'Status:',
  'सत्यापित / प्राप्त':'Verified / Received','यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।':'This receipt confirms only payments verified in the SRK ELECTRONIC system.',
@@ -630,11 +630,11 @@ Object.assign(customerUiTranslations, {
  'बुकिंग से पहले जरूरी जानकारी':'Important Information Before Booking',
  'दिखाई गई रकम चुनी गई श्रेणी और अवधि का अनुमान है—यह एडवांस या अंतिम बिल की अधिकतम सीमा नहीं है।':'The displayed amount is an estimate based on the selected tier and duration—not an advance or a maximum final bill.',
  'अंतिम मेहनताना सर्वर में दर्ज वास्तविक काम के मिनटों के अनुसार बनेगा।':'Final labour is calculated from actual work minutes recorded by the server.',
- 'सामान/पार्ट्स मेहनताने में शामिल नहीं हैं; उनका अलग itemized विवरण और आपकी अलग मंजूरी जरूरी है।':'Materials/parts are not included in labour; they require a separate itemized bill and your separate approval.',
+ 
  'आपकी चुनी हुई श्रेणी ही भेजी जाएगी। उपलब्ध पार्टनर न होने पर श्रेणी अपने-आप नहीं बदलेगी।':'Only your selected tier will be assigned. If no partner is available, the tier will not change automatically.',
  'Cash या Online भुगतान तरीका आपकी अनुमति के बिना नहीं बदलेगा। भुगतान काम पूरा होने के बाद होगा।':'The payment method will not change from Cash or Online without your permission. Payment is due after the work is completed.',
  'यदि कोई पुरानी cancellation fee बाकी है, तो अगली booking के bill में अलग मद के रूप में जोड़ी जाएगी और booking भेजने से पहले दिखाई जाएगी।':'Any previous outstanding cancellation fee will be shown before booking and added as a separate item to the next booking bill.',
- 'मैंने चुनी हुई श्रेणी, अवधि, अनुमान, अलग सामान बिल और भुगतान की शर्तें पढ़ ली हैं और बुकिंग भेजने की पुष्टि करता/करती हूँ।':'I have read the selected tier, duration, estimate, separate materials bill and payment terms, and confirm this booking.',
+ 'मैंने चुनी हुई श्रेणी, अवधि, अनुमान और भुगतान की शर्तें पढ़ ली हैं और बुकिंग भेजने की पुष्टि करता/करती हूँ।':'I have read the selected tier, duration, estimate and payment terms, and confirm this booking.',
  'Razorpay से सुरक्षित भुगतान':'Secure Payment with Razorpay',
  '🔒 Razorpay से भुगतान करें':'🔒 Pay with Razorpay'
 });
@@ -732,7 +732,7 @@ function customerUiText(value) {
   .replace(/भुगतान तरीका:/g,'Payment method: ').replace(/घंटे/g,'hours')
   .replace(/पुरानी फीस अलग line items में रहेगी।/g,'Previous fees remain separate line items.')
   .replace(/यह मेहनताना अनुमान अंतिम बिल की सीमा नहीं है।/g,'This labour estimate is not a cap on the final bill.')
-  .replace(/वास्तविक समय के अनुसार मेहनताना बनेगा और सामान\/पार्ट्स अलग होंगे।/g,'Labour is calculated from actual time, and materials/parts are separate.')
+  .replace(/वास्तविक समय के अनुसार मेहनताना बनेगा।/g,'Service labour is calculated from actual recorded time.')
   .replace(/क्या बुकिंग भेजें\?/g,'Submit this booking?')
   .replace(/स्थिति:/g,'Status: ').replace(/तरीका:/g,'Method: ').replace(/दिनांक:/g,'Date: ')
   .replace(/\bAdmin\b/g,'Admin');
@@ -958,19 +958,17 @@ async function customerPrintPaymentReceipt(bookingId){
   const method=R(({cash:'नकद',upi:'UPI',card:'कार्ड',online:'ऑनलाइन',razorpay:'Razorpay',bank_transfer:'बैंक ट्रांसफर','bank transfer':'बैंक ट्रांसफर',other:'अन्य'})[String(data.payment_method||'').toLowerCase()]||'अन्य');
   const paymentDate=data.payment_date?new Date(data.payment_date).toLocaleString(receiptLang==='en'?'en-IN':'hi-IN',{dateStyle:'medium',timeStyle:'short'}):R('उपलब्ध नहीं');
   const bookingDate=data.booking_date?new Date(data.booking_date).toLocaleDateString(receiptLang==='en'?'en-IN':'hi-IN'):R('उपलब्ध नहीं');
-  const labourRow=Number.isFinite(Number(data.labour_amount))&&data.labour_amount!==null
-   ? '<tr><td>'+R('इलेक्ट्रिशियन मेहनताना')+'</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.labour_amount))+'</td></tr>'
+  const serviceAmount=data.service_amount??data.labour_amount;
+  const serviceRow=Number.isFinite(Number(serviceAmount))&&serviceAmount!==null
+   ? '<tr><td>'+R('सेवा मेहनताना')+'</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(serviceAmount))+'</td></tr>'
    : '<tr><td colspan="2">'+R('भुगतान सत्यापित है; उपलब्ध रिकॉर्ड से मेहनताना अलग से प्रमाणित नहीं हो सका।')+'</td></tr>';
-  const materialsAmount=Number(data.materials_amount||0);
-  const materialsRow=Number.isFinite(materialsAmount)&&materialsAmount>0
-   ? '<tr><td>'+R('सामान / पार्ट्स')+'</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(materialsAmount))+'</td></tr>'
-   : '';
+
   const cancellationFeeRows=(Array.isArray(data.cancellation_fee_items)?data.cancellation_fee_items:[]).map(item=>
    '<tr><td>'+R('पुरानी Cancellation Fee')+' · '+R('बुकिंग संदर्भ:')+' '+customerEsc(String(item.source_booking_id||'').slice(0,8))+'…</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(Number(item.amount_paise)/100))+'</td></tr>'
   ).join('');
   const address=[data.address,data.district,data.state,data.pincode].filter(Boolean).join(', ');
   printWindow.document.open();
-  printWindow.document.write('<!doctype html><html lang="'+receiptLang+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+customerEsc(data.receipt_reference)+'</title><style>body{font-family:Arial,"Noto Sans Devanagari",sans-serif;color:#152536;max-width:760px;margin:24px auto;padding:24px}h1{margin-bottom:4px;color:#0b3557}.muted{color:#526477;font-size:13px}.box{border:1px solid #d8e0e8;border-radius:10px;padding:16px;margin:16px 0}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:11px 7px;border-bottom:1px solid #e3e8ee}.total{font-weight:bold;font-size:19px}button{padding:10px 18px;margin:12px 8px 0 0}@media print{button{display:none}body{margin:0;padding:8px}}</style></head><body><h1>SRK ELECTRONIC</h1><div class="muted">'+R('भुगतान रसीद · यह टैक्स इनवॉइस नहीं है')+'</div><div class="box"><b>'+R('रसीद संदर्भ:')+'</b> '+customerEsc(data.receipt_reference)+'<br><b>'+R('बुकिंग संदर्भ:')+'</b> '+customerEsc(data.booking_id)+'<br><b>'+R('बुकिंग दिनांक:')+'</b> '+customerEsc(bookingDate)+'<br><b>'+R('भुगतान दिनांक:')+'</b> '+customerEsc(paymentDate)+'</div><div class="box"><b>'+R('ग्राहक:')+'</b> '+customerEsc(data.customer_name)+'<br><b>'+R('सेवा:')+'</b> '+customerEsc(data.service_type)+'<br><b>'+R('पता:')+'</b> '+customerEsc(address||R('उपलब्ध नहीं'))+'</div><table><tbody>'+labourRow+materialsRow+cancellationFeeRows+'<tr class="total"><td>'+R('कुल सत्यापित भुगतान')+'</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.amount_paid))+'</td></tr></tbody></table><div class="box"><b>'+R('भुगतान तरीका:')+'</b> '+customerEsc(method)+'<br><b>'+R('स्थिति:')+'</b> '+R('सत्यापित / प्राप्त')+'</div><p class="muted">'+R('यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।')+'</p><button onclick="window.print()">'+R('प्रिंट / PDF सेव करें')+'</button></body></html>');
+  printWindow.document.write('<!doctype html><html lang="'+receiptLang+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+customerEsc(data.receipt_reference)+'</title><style>body{font-family:Arial,"Noto Sans Devanagari",sans-serif;color:#152536;max-width:760px;margin:24px auto;padding:24px}h1{margin-bottom:4px;color:#0b3557}.muted{color:#526477;font-size:13px}.box{border:1px solid #d8e0e8;border-radius:10px;padding:16px;margin:16px 0}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:11px 7px;border-bottom:1px solid #e3e8ee}.total{font-weight:bold;font-size:19px}button{padding:10px 18px;margin:12px 8px 0 0}@media print{button{display:none}body{margin:0;padding:8px}}</style></head><body><h1>SRK ELECTRONIC</h1><div class="muted">'+R('भुगतान रसीद · यह टैक्स इनवॉइस नहीं है')+'</div><div class="box"><b>'+R('रसीद संदर्भ:')+'</b> '+customerEsc(data.receipt_reference)+'<br><b>'+R('बुकिंग संदर्भ:')+'</b> '+customerEsc(data.booking_id)+'<br><b>'+R('बुकिंग दिनांक:')+'</b> '+customerEsc(bookingDate)+'<br><b>'+R('भुगतान दिनांक:')+'</b> '+customerEsc(paymentDate)+'</div><div class="box"><b>'+R('ग्राहक:')+'</b> '+customerEsc(data.customer_name)+'<br><b>'+R('सेवा:')+'</b> '+customerEsc(data.service_type)+'<br><b>'+R('पता:')+'</b> '+customerEsc(address||R('उपलब्ध नहीं'))+'</div><table><tbody>'+serviceRow+cancellationFeeRows+'<tr class="total"><td>'+R('कुल सत्यापित भुगतान')+'</td><td style="text-align:right">'+customerEsc(formatCustomerMoney(data.amount_paid))+'</td></tr></tbody></table><div class="box"><b>'+R('भुगतान तरीका:')+'</b> '+customerEsc(method)+'<br><b>'+R('स्थिति:')+'</b> '+R('सत्यापित / प्राप्त')+'</div><p class="muted">'+R('यह रसीद केवल SRK ELECTRONIC सिस्टम में सत्यापित भुगतान की पुष्टि करती है।')+'</p><button onclick="window.print()">'+R('प्रिंट / PDF सेव करें')+'</button></body></html>');
   printWindow.document.close();
   printWindow.focus();
  }catch(error){
@@ -1401,7 +1399,7 @@ async function loadCustomerBookings() {
         : '';
       const finalPayTotal= bill ? Number(bill.labour_amount_paise)/100 + reservedFeePaise/100 : 0;
       const finalBillMarkup=bill
-        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>नई सेवा का मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p>पुरानी Cancellation Fee: <b>'+customerEsc(formatCustomerMoney(reservedFeePaise/100))+'</b></p><p>कुल देय राशि: <b>'+customerEsc(formatCustomerMoney(finalPayTotal))+'</b></p><p class="small">मेहनताना और पुरानी cancellation fees अलग-अलग दर्ज हैं। सामान/पार्ट्स इस labour bill में शामिल नहीं हैं।</p>'+
+        ? '<div class="job"><b>अंतिम Labour Bill</b><p>वास्तविक काम का समय: <b>'+customerEsc(bill.billable_minutes)+' मिनट</b></p><p>मंजूर Commercial Rate Tier: '+customerEsc(bill.rate_tier)+'</p><p>नई सेवा का मेहनताना: <b>'+customerEsc(formatCustomerMoney(bill.labour_amount))+'</b></p><p>पुरानी Cancellation Fee: <b>'+customerEsc(formatCustomerMoney(reservedFeePaise/100))+'</b></p><p>कुल देय राशि: <b>'+customerEsc(formatCustomerMoney(finalPayTotal))+'</b></p><p class="small">मेहनताना और पुरानी cancellation fees अलग-अलग दर्ज हैं। </p>'+
           (String(row.payment_method||'').toLowerCase()==='razorpay ऑनलाइन भुगतान'&&row.payment_status!=='paid'
             ? '<button type="button" data-booking-id="'+customerEsc(row.id)+'" data-amount="'+finalPayTotal+'" onclick="customerPayBooking(this.dataset.bookingId,Number(this.dataset.amount))">🔒 कुल राशि Razorpay से भुगतान करें</button>'
             : String(row.payment_method||'').toLowerCase().includes('cash')&&row.payment_status!=='paid'
@@ -2471,7 +2469,7 @@ document.getElementById('booking').addEventListener('submit', async function (e)
   const priorFeeText=priorFeePaise>0
     ? '\\nपुरानी Cancellation Fee (अलग मद): ₹'+(priorFeePaise/100).toFixed(2)+'\\n'+priorFeeLines+'\\nअभी का संयुक्त अनुमान: ₹'+((estimatePaise+priorFeePaise)/100).toFixed(2)
     : '\\nपुरानी Cancellation Fee: ₹0.00';
-  if(!confirm('बुकिंग की पुष्टि करें\\n\\nश्रेणी: '+tier+'\\nअवधि: '+hours+' घंटे\\nअनुमानित मेहनताना: ₹'+(estimatePaise/100).toFixed(2)+priorFeeText+'\\nभुगतान तरीका: '+method+'\\n\\nपुरानी फीस अलग line items में रहेगी। यह मेहनताना अनुमान अंतिम बिल की सीमा नहीं है। वास्तविक समय के अनुसार मेहनताना बनेगा और सामान/पार्ट्स अलग होंगे। क्या बुकिंग भेजें?'))return;
+  if(!confirm('बुकिंग की पुष्टि करें\\n\\nश्रेणी: '+tier+'\\nअवधि: '+hours+' घंटे\\nअनुमानित मेहनताना: ₹'+(estimatePaise/100).toFixed(2)+priorFeeText+'\\nभुगतान तरीका: '+method+'\\n\\nपुरानी फीस अलग line items में रहेगी। यह मेहनताना अनुमान अंतिम बिल की सीमा नहीं है। वास्तविक समय के अनुसार सेवा मेहनताना बनेगा। क्या बुकिंग भेजें?'))return;
   if(!isCurrent())return;
   const submitButton = this.querySelector('button[type="submit"]');
   submitButton.disabled = true; submitButton.textContent = 'बुकिंग सेव हो रही है…';
