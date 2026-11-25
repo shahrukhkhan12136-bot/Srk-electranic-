@@ -64,3 +64,10 @@ test('Revenue split updates both audited system settings without duplicate manua
   assert.match(audit, /values\('worker_share_rate',to_jsonb\(v_new_worker\)/);
   assert.doesNotMatch(audit, /insert into public\.srk_admin_audit_events/i);
 });
+
+test('Worker rate-card function uses a stable time reference for active rates', () => {
+  const stable = fs.readFileSync('supabase/migrations/20261125103551_use_stable_time_reference_for_worker_rate_card.sql', 'utf8');
+  assert.match(stable, /language plpgsql\s+stable/);
+  assert.match(stable, /r\.effective_from<=now\(\)/);
+  assert.doesNotMatch(stable, /clock_timestamp\(\)/);
+});
