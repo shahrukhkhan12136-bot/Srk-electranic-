@@ -7,13 +7,11 @@ declare
      ))$old$;
 begin
  select pg_get_functiondef('public.srk_on_booking_payment_completed()'::regprocedure) into v_definition;
- if position(v_old in v_definition)=0 then
-  raise exception 'Expected released-assignment branch not found; refusing to change function';
- end if;
- v_definition := replace(v_definition, v_old, '');
  if position(v_old in v_definition)>0 then
-  raise exception 'Not all released-assignment branches were removed';
+  v_definition := replace(v_definition, v_old, '');
+  execute v_definition;
+ elsif position('bw.assignment_status=''released''' in v_definition)>0 then
+  raise exception 'Payment cycle trigger has an unexpected released-assignment condition';
  end if;
- execute v_definition;
 end
 $migration$;
