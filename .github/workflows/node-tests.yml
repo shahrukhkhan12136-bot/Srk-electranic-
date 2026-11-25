@@ -13,6 +13,7 @@ on:
       - main
       - feature/master-technician-payment-cycle-20261121
       - work/mobile-customer-technician-integration-20261125
+      - work/srk-completion-gap-20261125
   workflow_dispatch:
 
 permissions:
