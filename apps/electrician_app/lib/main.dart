@@ -96,7 +96,7 @@ class _ElectricianLoginPageState extends State<ElectricianLoginPage> {
           if (message != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(message!, textAlign: TextAlign.center)),
         ],
       ))),
-    )))),
+    ))))),
     ),
   );
 }
@@ -143,7 +143,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         Text('मेरी प्रोफाइल', style: Theme.of(ctx).textTheme.titleLarge),
         ListTile(leading: const Icon(Icons.person_outline), title: Text(profile?['display_name']?.toString() ?? 'प्रोफाइल लिंक नहीं हुई'), subtitle: Text(profile?['worker_type']?.toString() ?? 'Technician / Helper')),
         ListTile(leading: const Icon(Icons.location_on_outlined), title: Text('${profile?['district'] ?? '—'}, ${profile?['state'] ?? '—'}'), subtitle: Text('PIN ${profile?['pincode'] ?? '—'}')),
-        FilledButton.icon(onPressed: () { Navigator.pop(ctx); _sendSos(); }, icon: const Icon(Icons.sos), label: const Text('Emergency SOS')),
+        FilledButton.icon(onPressed: () { Navigator.pop(ctx); sendSos(); }, icon: const Icon(Icons.sos), label: const Text('Emergency SOS')),
       ]),
     )));
     if (mounted) setState(() => _selectedNavIndex = 0);
