@@ -82,8 +82,7 @@ const String srkServiceCatalogDraftVersion = 'approved-2026-11-21.11';
 ///
 /// Only the rates explicitly listed below are approved. Where a rate is not
 /// listed (for example, fridge work or above 20 HP winding), do not calculate
-/// or invent a price. Materials/parts are separate from labour and may only be
-/// added after customer approval.
+/// or invent a price. The catalogue is for labour charges only.
 const List<SrkServiceCategory> srkServiceCatalog = [
   SrkServiceCategory(
     id: 'electrician',
@@ -301,7 +300,7 @@ const List<SrkServiceCategory> srkServiceCatalog = [
           SrkServiceRate(label: '15 HP', amount: '₹1,300', unit: 'एक बार का फिक्स चार्ज'),
           SrkServiceRate(label: '20 HP', amount: '₹1,400', unit: 'एक बार का फिक्स चार्ज'),
         ],
-        note: 'इसमें जाँच, खोलना, ले जाना, बनवाकर वापस लाना और फिटिंग शामिल है। मोटर वाइंडिंग SRK ELECTRONIC की सेवा नहीं है और इसकी बुकिंग या बिलिंग यहाँ नहीं होगी। सामान अलग; ग्राहक की मंजूरी के बाद।',
+        note: 'इसमें जाँच, खोलना, ले जाना, बनवाकर वापस लाना और फिटिंग शामिल है। मोटर वाइंडिंग SRK ELECTRONIC की सेवा नहीं है और इसकी बुकिंग या बिलिंग यहाँ नहीं होगी।',
       ),
       SrkServiceOption(id: 'capacitor', name: 'Capacitor', displayName: 'कैपेसिटर'),
       SrkServiceOption(id: 'starter', name: 'Starter', displayName: 'स्टार्टर'),
@@ -317,7 +316,7 @@ const List<SrkServiceCategory> srkServiceCatalog = [
     options: [
       SrkServiceOption(id: 'cooler_repair', name: 'Cooler Repair', displayName: 'कूलर रिपेयर', rates: [
         SrkServiceRate(label: 'लेबर चार्ज', amount: '₹500', unit: 'प्रति कूलर फिक्स'),
-      ], note: 'पार्ट्स अलग; ग्राहक की मंजूरी के बाद। Motor winding इस दर में शामिल नहीं।'),
+      ], note: 'Motor winding इस दर में शामिल नहीं।'),
     ],
   ),
 ];
