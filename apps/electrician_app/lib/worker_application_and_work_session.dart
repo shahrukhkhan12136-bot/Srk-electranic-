@@ -515,11 +515,11 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
               const SizedBox(height: 4),
               const Text('आवेदन भेजने से पहले दोनों दस्तावेज़ पढ़ना और स्वीकार करना जरूरी है।'),
           if (policies.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 'इस Worker Role के लिए Main Admin ने अभी Hindi Terms और Privacy Policy प्रकाशित नहीं की हैं। सुरक्षा के लिए आवेदन तब तक Submit नहीं होगा। Admin को दोनों दस्तावेज़ प्रकाशित करने होंगे।',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             )
           else
