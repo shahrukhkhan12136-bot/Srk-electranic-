@@ -297,6 +297,8 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                   Text('कंपनी को Wallet में देना बाकी: −' + _money(d['my_cash_commission_due'])),
                 ] else ...[
                   Text('आपके Wallet में जमा: ' + _money(d['my_wallet_credit'])),
+                  if (((d['my_cash_commission_recovered'] as num?)?.toDouble() ?? double.tryParse(d['my_cash_commission_recovered']?.toString() ?? '') ?? 0) > 0)
+                    Text('पुराना Cash कमीशन इस Online कमाई से समायोजित: ' + _money(d['my_cash_commission_recovered'])),
                 ],
                 Text('कंपनी का कुल Cash बकाया: ' + _money(d['cash_commission_outstanding'])),
                 Text('भुगतान स्थिति: ' + (d['payment_status']?.toString() ?? '—')),
