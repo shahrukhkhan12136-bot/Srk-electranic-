@@ -313,7 +313,7 @@ class _SrkFounderImage extends StatelessWidget {
     builder: (context, snapshot) {
       if (snapshot.hasData) {
         try {
-          final encoded = snapshot.data!.replaceAll(RegExp(r'\\s+'), '');
+          final encoded = snapshot.data!.replaceAll(RegExp(r'\s+'), '');
           return Image.memory(base64Decode(encoded), fit: fit, alignment: alignment,
             errorBuilder: (_, __, ___) => const _SrkFounderFallback());
         } catch (_) {
