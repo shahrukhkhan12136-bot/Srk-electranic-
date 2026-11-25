@@ -258,7 +258,10 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             const SizedBox(height: 8),
             const Text('बुकिंग से जुड़ी शिकायत के लिए अपनी बुकिंग में शिकायत विकल्प खोलें। आपात स्थिति में Admin को SOS भेजें।'),
             const SizedBox(height: 12),
-            FilledButton.icon(onPressed: () { Navigator.pop(ctx); _sendSos(); }, icon: const Icon(Icons.sos), label: const Text('Emergency SOS भेजें')),
+            if (_bookings.any((booking) => booking['status'] == 'in_progress'))
+              FilledButton.icon(onPressed: () { Navigator.pop(ctx); _sendSos(); }, icon: const Icon(Icons.sos), label: const Text('आपातकालीन SOS भेजें'))
+            else
+              const Text('SOS केवल चालू बुकिंग के दौरान उपलब्ध होगा।'),
           ]),
         )));
         if (mounted) setState(() => _selectedNavIndex = 0);
