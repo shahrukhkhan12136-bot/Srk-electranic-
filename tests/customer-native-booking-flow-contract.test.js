@@ -1,0 +1,55 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.resolve(__dirname, '..');
+const customer = fs.readFileSync(path.join(root, 'apps/customer_app/lib/main.dart'), 'utf8');
+const picker = fs.readFileSync(path.join(root, 'apps/customer_app/lib/service_category_picker.dart'), 'utf8');
+const dispatch = fs.readFileSync(path.join(root, 'supabase/migrations/20261125154000_apply_district_rates_to_bookings_and_commission_snapshot.sql'), 'utf8');
+
+test('Customer dashboard exposes all six exact active catalogue category codes', () => {
+  for (const code of [
+    'electrician', 'plumber', 'painter', 'ac_fridge_technician',
+    'motor_pump_technician', 'cooler_technician'
+  ]) assert.ok(customer.includes("code: '" + code + "'"), 'missing dashboard category ' + code);
+});
+
+test('Customer booking picker order is category, qualification, service, then work skill', () => {
+  const category = picker.indexOf("Text('सेवा की कैटेगरी'");
+  const level = picker.indexOf("Text('इस कैटेगरी में किस स्तर का काम चाहिए?'");
+  const service = picker.indexOf("labelText: 'काम की सर्विस चुनें'");
+  const skill = picker.indexOf("Text('इस काम में कौन-कौन से काम आते हैं?'");
+  assert.ok(category >= 0 && level > category && service > level && skill > service);
+});
+
+test('Customer booking supports 1 hour through 60 days and separate Technician/Helper counts', () => {
+  assert.match(customer, /List\.generate\(60, \(i\) => i \+ 1\)/);
+  assert.match(customer, /days \* 24/);
+  assert.match(customer, /कितने Technician चाहिए/);
+  assert.match(customer, /कितने Helper चाहिए/);
+  assert.match(customer, /p_technician_count/);
+  assert.match(customer, /p_helper_count/);
+});
+
+test('GPS reverse geocoding attempts to fill State, District and PIN before price preview', () => {
+  assert.match(customer, /Geocoding\(\)\.placemarkFromCoordinates/);
+  assert.match(customer, /_state\.text = stateName/);
+  assert.match(customer, /_district\.text = districtName/);
+  assert.match(customer, /_pincode\.text = pin/);
+  assert.match(customer, /पहले राज्य, जिला, 6 अंकों का PIN Code और पूरा पता भरें/);
+});
+
+test('Booking price preview and creation use the district-aware server RPCs', () => {
+  assert.match(customer, /srk_customer_preview_booking_price_v3/);
+  assert.match(customer, /srk_customer_create_booking_v2/);
+  assert.match(dispatch, /create or replace function public\.srk_customer_create_booking_v2/);
+  assert.match(dispatch, /create or replace function public\.srk_customer_preview_booking_price_v3/);
+});
+
+test('Booking matching is dispatched immediately after the district rate snapshot is stored', () => {
+  const snapshot = dispatch.indexOf("where id=v_booking.id returning * into v_booking;");
+  const immediate = dispatch.indexOf('perform public.srk_process_booking_matching_queue();', snapshot);
+  const returnBooking = dispatch.indexOf('return v_booking;', snapshot);
+  assert.ok(snapshot >= 0 && immediate > snapshot && returnBooking > immediate);
+});
