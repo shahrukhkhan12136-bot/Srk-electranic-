@@ -1,0 +1,62 @@
+name: Flutter Analyze and Tests (No APK)
+
+on:
+  push:
+    branches:
+      - work/mobile-customer-technician-integration-20261125
+    paths:
+      - 'apps/customer_app/**'
+      - 'apps/electrician_app/**'
+      - 'packages/srk_mobile_core/**'
+      - 'scripts/prepare_mobile_assets.py'
+      - 'supabase/migrations/**'
+      - 'tests/**'
+      - '.github/workflows/flutter-analyze.yml'
+  pull_request:
+    branches:
+      - feature/master-technician-payment-cycle-20261121
+    paths:
+      - 'apps/customer_app/**'
+      - 'apps/electrician_app/**'
+      - 'packages/srk_mobile_core/**'
+      - 'supabase/migrations/**'
+      - 'tests/**'
+      - '.github/workflows/flutter-analyze.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-analyze-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.38.0'
+          cache: true
+      - name: Prepare bundled founder artwork
+        run: python3 scripts/prepare_mobile_assets.py
+      - name: Analyze and test shared core
+        run: |
+          cd packages/srk_mobile_core
+          flutter pub get
+          dart analyze
+          flutter test
+      - name: Analyze and test Customer app
+        run: |
+          cd apps/customer_app
+          flutter pub get
+          dart analyze
+          flutter test
+      - name: Analyze and test Technician app
+        run: |
+          cd apps/electrician_app
+          flutter pub get
+          dart analyze
+          flutter test
