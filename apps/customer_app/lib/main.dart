@@ -137,6 +137,24 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         _complaintLoadWarning = 'अंतिम बिल का विवरण अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।';
       }
       final contacts = <String, String>{};
+      final workerContacts = <String, List<Map<String, dynamic>>>{};
+      try {
+        final rows = await _client.rpc('srk_customer_get_my_booking_worker_contacts');
+        for (final row in List<Map<String, dynamic>>.from(rows as List)) {
+          final phone = row['worker_phone']?.toString().trim() ?? '';
+          if (phone.isNotEmpty) {
+            final bookingId = row['booking_id'].toString();
+            workerContacts.putIfAbsent(bookingId, () => []).add({
+              'role': row['worker_role']?.toString() ?? 'technician',
+              'name': row['worker_name']?.toString() ?? 'SRK Technician',
+              'phone': phone,
+            });
+          }
+        }
+      } catch (_) {
+        _contactLoadWarning = 'स्वीकृत Technician का संपर्क अभी उपलब्ध नहीं है। बुकिंग सुरक्षित है; Refresh करके फिर कोशिश करें।';
+      }
+      // Legacy electrician contact fallback for existing migrated bookings.
       try {
         final rows = await _client.rpc('srk_customer_get_my_booking_contacts');
         for (final row in List<Map<String, dynamic>>.from(rows as List)) {
@@ -144,7 +162,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           if (phone.isNotEmpty) contacts[row['booking_id'].toString()] = phone;
         }
       } catch (_) {
-        _contactLoadWarning = 'इलेक्ट्रिशियन का संपर्क अभी लोड नहीं हो पाया। बुकिंग सुरक्षित है; Refresh करके फिर कोशिश करें।';
+        if (_contactLoadWarning == null) {
+          _contactLoadWarning = 'Technician का संपर्क अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।';
+        }
       }
       try {
         final complaintRows = await _client.rpc('srk_customer_list_booking_complaints');
@@ -157,6 +177,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         return {
           ...booking,
           if (phone != null) 'electrician_phone': phone,
+          'worker_contacts': workerContacts[booking['id'].toString()] ?? <Map<String, dynamic>>[],
           if (finalBills[booking['id'].toString()] != null) 'final_bill': finalBills[booking['id'].toString()],
         };
       }).toList();
@@ -546,7 +567,24 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           const SizedBox(height: 6),
           Text('बुकिंग: ${booking['id']}'),
           Text('स्थिति: ${_status(status)}'),
-          if ((booking['electrician_phone'] ?? '').toString().trim().isNotEmpty &&
+          if ((booking['worker_contacts'] as List? ?? const []).isNotEmpty)
+            ...List<Map<String, dynamic>>.from(booking['worker_contacts'] as List).map((worker) {
+              final phone = worker['phone'].toString();
+              final role = worker['role'] == 'helper' ? 'Helper' : 'Technician';
+              return Card(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: ListTile(
+                  leading: const Icon(Icons.call),
+                  title: Text(role + ' — ' + worker['name'].toString()),
+                  subtitle: SelectableText(phone),
+                  trailing: IconButton(
+                    tooltip: 'कॉल करें', icon: const Icon(Icons.call_outlined),
+                    onPressed: () => _callPhone(phone),
+                  ),
+                ),
+              );
+            })
+          else if ((booking['electrician_phone'] ?? '').toString().trim().isNotEmpty &&
               ['assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed'].contains(status))
             Card(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
