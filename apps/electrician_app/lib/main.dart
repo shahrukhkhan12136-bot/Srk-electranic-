@@ -77,7 +77,7 @@ class _ElectricianLoginPageState extends State<ElectricianLoginPage> {
       constraints: const BoxConstraints(maxWidth: 460), child: Card(child: Padding(padding: const EdgeInsets.all(22), child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const SrkWelcomeHeader(),
-          Text('इलेक्ट्रिशियन लॉगिन', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
+          Text('टेक्नीशियन लॉगिन', textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 18),
           TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'रजिस्टर्ड मोबाइल नंबर')),
           if (sent) ...[const SizedBox(height: 12), TextField(controller: otp, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'SMS OTP'))],
@@ -274,7 +274,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
       await load();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ऑफर अपडेट नहीं हुआ। संभव है बुकिंग किसी दूसरे इलेक्ट्रिशियन को मिल गई हो।')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ऑफर अपडेट नहीं हुआ। संभव है बुकिंग किसी दूसरे Technician को मिल गई हो।')));
       await load();
     }
   }
