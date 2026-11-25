@@ -12,8 +12,8 @@ test('Master Rate Catalogue supports all service categories, skills, and service
   assert.match(migration, /skill_code text NOT NULL REFERENCES public\.srk_service_skills/);
   assert.match(migration, /billing_model text NOT NULL CHECK \(billing_model IN \('hourly','fixed_per_unit'\)\)/);
   assert.match(migration, /ON CONFLICT\(service_code\) DO NOTHING/);
-  assert.match(migration, /'ac_installation','AC Installation'/);
-  assert.match(migration, /'ac_repair','AC Repair'/);
+  assert.match(migration, /SELECT c\\.category_code,s\\.skill_code,s\\.skill_code,s\\.display_name/);
+  assert.match(migration, /FROM public\\.srk_service_skills s[\\s\\S]*?JOIN public\\.srk_service_categories c ON c\\.id=s\\.category_id[\\s\\S]*?ON CONFLICT\\(service_code\\) DO NOTHING/);
 });
 
 test('rate catalogue supports technician/helper hourly pay and fixed-per-unit labour prices', () => {
