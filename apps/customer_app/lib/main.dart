@@ -590,6 +590,40 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     );
   }
 
+  Future<void> _sendSos() async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🚨 तत्काल सहायता'),
+        content: const Text('यदि आपको तत्काल खतरा है, कारण चुनें। यह अलर्ट SRK Admin के in-app SOS नियंत्रण कक्ष में जाएगा। SMS/Police को स्वतः कॉल या संदेश नहीं जाएगा।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('वापस')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'customer_at_risk'), child: const Text('मुझे खतरा है')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'electrician_at_risk'), child: const Text('Technician से खतरा')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'violence_or_other_emergency'), child: const Text('मारपीट / अन्य आपात स्थिति')),
+        ],
+      ),
+    );
+    if (reason == null) return;
+    try {
+      final result = await _client.rpc('srk_create_sos_alert', params: {'p_reason': reason});
+      if (!mounted) return;
+      final data = Map<String, dynamic>.from(result as Map);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(data['created'] == true
+          ? 'SOS Admin नियंत्रण कक्ष में दर्ज हुआ। केस: ${data['case_id']}'
+          : 'आपका SOS पहले से लंबित है। केस: ${data['case_id']}'),
+        duration: const Duration(seconds: 8),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('SOS दर्ज नहीं हुआ: ' + e.toString().replaceFirst('Exception: ', '')),
+        duration: const Duration(seconds: 8),
+      ));
+    }
+  }
+
   Widget _bookingCard(Map<String, dynamic> booking) {
     final quoteStatus = booking['quote_status']?.toString() ?? 'not_submitted';
     final status = booking['status']?.toString() ?? '';
@@ -649,6 +683,14 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                 ),
               ),
             ),
+          if (status == 'in_progress' && _bookings.where((b) => b['status'] == 'in_progress').length == 1) ...[
+            const SizedBox(height: 10),
+            SizedBox(width: double.infinity, child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+              onPressed: _sendSos,
+              icon: const Icon(Icons.sos), label: const Text('🚨 तत्काल सहायता / SOS'),
+            )),
+          ],
           Text('इलाका: ${booking['district'] ?? ''}, ${booking['state'] ?? ''} • PIN ${booking['pincode'] ?? ''}'),
           if (booking['preferred_date'] != null || booking['preferred_time'] != null)
             Text('पसंदीदा समय: ${booking['preferred_date'] ?? '—'} • ${booking['preferred_time'] ?? '—'}')
