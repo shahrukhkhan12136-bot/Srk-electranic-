@@ -103,7 +103,7 @@ class ElectricianDashboard extends StatefulWidget {
 }
 class _ElectricianDashboardState extends State<ElectricianDashboard> {
   final client = Supabase.instance.client;
-  Map<String, dynamic>? profile, wallet;
+  Map<String, dynamic>? profile, wallet, paymentCycle;
   List<Map<String, dynamic>> offers = [], offerDetails = [], earnings = [], offerPriceDetails = [], bookingDetails = [];
   bool loading = true;
   String? error;
@@ -130,6 +130,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         offerPriceDetails = [];
         bookingDetails = [];
         wallet = null;
+        paymentCycle = null;
         return;
       }
 
@@ -138,6 +139,15 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         'display_name': workerRow['full_name'],
         'active': workerRow['is_active'],
       };
+
+      try {
+        final cycleRows = await client.rpc('srk_worker_get_my_payment_cycle');
+        final rows = List<Map<String, dynamic>>.from(cycleRows as List);
+        paymentCycle = rows.isEmpty ? null : rows.first;
+      } catch (_) {
+        paymentCycle = null;
+        loadWarnings.add('अगले काम की भुगतान स्थिति अभी लोड नहीं हो पाई। कृपया Refresh करें।');
+      }
 
       final assignmentRows = await client.rpc('srk_worker_get_my_assignments');
       final assignments = List<Map<String, dynamic>>.from(assignmentRows as List);
@@ -382,6 +392,25 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
             else Text((p['district'] ?? '').toString() + ', ' + (p['state'] ?? '').toString() + ' • PIN ' + (p['pincode'] ?? '').toString()),
             if (p != null) Padding(padding: const EdgeInsets.only(top: 8), child: Chip(avatar: Icon(active ? Icons.verified : Icons.info_outline), label: Text(active ? 'Approved और Active' : 'Inactive / Approval बाकी'))),
           ]))),
+          if (p != null && active && paymentCycle != null)
+            Card(
+              color: (paymentCycle!['next_booking_requires_online'] == true)
+                  ? Theme.of(context).colorScheme.tertiaryContainer
+                  : Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('मेरा भुगतान चक्र', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 6),
+                  Text('पूरे किए गए काम: ${paymentCycle!['completed_booking_count'] ?? 0}'),
+                  Text('अगला काम क्रमांक: ${paymentCycle!['next_sequence_number'] ?? '—'}'),
+                  const SizedBox(height: 4),
+                  Text(paymentCycle!['next_booking_requires_online'] == true
+                    ? 'इस क्रमांक पर केवल Online भुगतान स्वीकार होगा। Cash विकल्प सर्वर पर भी बंद रहेगा।'
+                    : 'इस क्रमांक पर Cash या Online — दोनों भुगतान विकल्प उपलब्ध रहेंगे।'),
+                ]),
+              ),
+            ),
           if (p == null || !active)
             Card(
               child: Padding(
