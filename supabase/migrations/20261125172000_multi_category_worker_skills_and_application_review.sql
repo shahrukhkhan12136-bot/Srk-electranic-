@@ -104,10 +104,11 @@ begin
  if v_level_count>0 then
   if p_skill_level_id is null then raise exception 'This category requires a qualification level'; end if;
   if not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then raise exception 'Skill level does not match the selected skill category'; end if;
- elsif p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then
-  raise exception 'Skill level does not match the selected skill category';
+ elsif p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then raise exception 'Skill level does not match the selected skill category';
  end if;
  if p_evidence_document_id is not null and not exists(select 1 from public.srk_worker_documents where id=p_evidence_document_id and application_id=p_application_id) then raise exception 'Evidence document must belong to this application'; end if;
+ select * into v_result from public.srk_worker_application_skills where application_id=p_application_id and skill_id=p_skill_id for update;
+ if found and v_result.status='approved' then raise exception 'This skill has already been approved for your application'; end if;
  insert into public.srk_worker_application_skills(application_id,skill_id,skill_level_id,years_experience,evidence_document_id,status)
  values(p_application_id,p_skill_id,p_skill_level_id,p_years_experience,p_evidence_document_id,'pending')
  on conflict(application_id,skill_id) do update set skill_level_id=excluded.skill_level_id,years_experience=excluded.years_experience,
@@ -116,6 +117,7 @@ begin
  return v_result;
 end;
 $function$;
+
 
 
 create or replace function public.srk_admin_list_application_skills(p_application_id uuid)
@@ -153,6 +155,7 @@ declare v_aps public.srk_worker_application_skills%rowtype;v_app public.srk_work
 begin
  if auth.uid() is null or not public.srk_has_admin_permission('workers.verify') then raise exception 'Worker verification permission required' using errcode='42501'; end if;
  if p_decision not in ('approved','rejected','pending','more_info') then raise exception 'Invalid application skill decision' using errcode='22023'; end if;
+ if p_decision in ('rejected','more_info') and length(btrim(coalesce(p_note,'')))<5 then raise exception 'A review note is required for rejection or more information'; end if;
  select * into v_aps from public.srk_worker_application_skills where id=p_application_skill_id for update;
  if not found then raise exception 'Application skill not found'; end if;
  select * into v_app from public.srk_worker_applications where id=v_aps.application_id for update;
@@ -168,9 +171,17 @@ begin
   reviewed_at=case when p_decision='pending' then null else clock_timestamp() end,
   admin_note=p_note,updated_at=clock_timestamp()
  where id=p_application_skill_id returning * into v_aps;
+ if p_decision='more_info' then
+  update public.srk_worker_applications set status='more_info',admin_note=p_note,reviewed_by=auth.uid(),reviewed_at=clock_timestamp(),updated_at=clock_timestamp()
+  where id=v_app.id;
+ end if;
+ insert into public.srk_app_notifications(user_id,notification_type,title,body)
+ values(v_app.user_id,'skill_review','Skill review update',
+  'Your skill "'||(select skill_name from public.srk_service_skills where id=v_aps.skill_id)||'" was marked: '||p_decision||case when nullif(btrim(coalesce(p_note,'')),'') is null then '' else '. Note: '||btrim(p_note) end);
  return v_aps;
 end;
 $function$;
+
 
 
 create or replace function public.srk_worker_request_skill(p_skill_id uuid,p_skill_level_id uuid,p_years_experience integer)
@@ -192,9 +203,10 @@ begin
  if v_level_count>0 then
   if p_skill_level_id is null then raise exception 'This category requires a qualification level'; end if;
   if not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then raise exception 'Skill level does not match the selected skill category'; end if;
- elsif p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then
-  raise exception 'Skill level does not match the selected skill category';
+ elsif p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then raise exception 'Skill level does not match the selected skill category';
  end if;
+ select * into v_result from public.srk_worker_skills where worker_id=v_worker.id and skill_id=p_skill_id for update;
+ if found and v_result.verification_status='approved' then raise exception 'This skill is already approved on your profile'; end if;
  insert into public.srk_worker_skills(worker_id,skill_id,skill_level_id,verification_status,years_experience)
  values(v_worker.id,p_skill_id,p_skill_level_id,'pending',p_years_experience)
  on conflict(worker_id,skill_id) do update set skill_level_id=excluded.skill_level_id,years_experience=excluded.years_experience,
@@ -203,6 +215,7 @@ begin
  return v_result;
 end;
 $function$;
+
 
 
 create or replace function public.srk_worker_request_skill(p_skill_id uuid,p_skill_level_id uuid)
@@ -216,10 +229,11 @@ create or replace function public.srk_admin_review_worker_skill(p_worker_skill_i
 returns public.srk_worker_skills language plpgsql security definer
 set search_path=pg_catalog,public,auth
 as $function$
-declare v_skill public.srk_worker_skills%rowtype;v_category_id uuid;v_level_count integer;
+declare v_skill public.srk_worker_skills%rowtype;v_category_id uuid;v_level_count integer;v_user_id uuid;
 begin
  if auth.uid() is null or not public.srk_has_admin_permission('workers.verify') then raise exception 'Worker verification permission required' using errcode='42501'; end if;
  if p_decision not in ('approved','rejected','pending','more_info') then raise exception 'Invalid skill decision' using errcode='22023'; end if;
+ if p_decision in ('rejected','more_info') and length(btrim(coalesce(p_note,'')))<5 then raise exception 'A review note is required for rejection or more information'; end if;
  select * into v_skill from public.srk_worker_skills where id=p_worker_skill_id for update;
  if not found then raise exception 'Worker skill not found'; end if;
  select st.category_id into v_category_id from public.srk_service_skills sk join public.srk_service_types st on st.id=sk.service_type_id
@@ -227,17 +241,20 @@ begin
  if v_category_id is null then raise exception 'Skill is not active'; end if;
  select count(*) into v_level_count from public.srk_skill_levels where category_id=v_category_id and is_active;
  if p_decision='approved' and v_level_count>0 and p_skill_level_id is null then raise exception 'Approved skill requires a qualification level'; end if;
- if p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then
-  raise exception 'Skill level does not match the selected skill category';
- end if;
+ if p_skill_level_id is not null and not exists(select 1 from public.srk_skill_levels where id=p_skill_level_id and category_id=v_category_id and is_active) then raise exception 'Skill level does not match the selected skill category'; end if;
  update public.srk_worker_skills set verification_status=p_decision,skill_level_id=coalesce(p_skill_level_id,skill_level_id),
   reviewed_by=case when p_decision='pending' then null else auth.uid() end,
   reviewed_at=case when p_decision='pending' then null else clock_timestamp() end,
   admin_note=p_note,updated_at=clock_timestamp()
  where id=p_worker_skill_id returning * into v_skill;
+ select user_id into v_user_id from public.srk_worker_profiles where id=v_skill.worker_id;
+ insert into public.srk_app_notifications(user_id,notification_type,title,body)
+ values(v_user_id,'skill_review','Skill review update',
+  'Your skill "'||(select skill_name from public.srk_service_skills where id=v_skill.skill_id)||'" was marked: '||p_decision||case when nullif(btrim(coalesce(p_note,'')),'') is null then '' else '. Note: '||btrim(p_note) end);
  return v_skill;
 end;
 $function$;
+
 
 CREATE OR REPLACE FUNCTION public.srk_find_eligible_workers(p_booking_id uuid, p_worker_type text)
  RETURNS TABLE(worker_id uuid, worker_code text, worker_type text, distance_km numeric)
