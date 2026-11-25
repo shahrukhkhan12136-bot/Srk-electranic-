@@ -61,9 +61,9 @@ BEGIN
  VALUES(v_tid,v_uid,v_total,p_destination_type,btrim(p_destination_reference),p_idempotency_key) RETURNING id INTO v_req;
  INSERT INTO public.srk_master_payout_request_items(payout_request_id,payable_id,amount_paise)
  SELECT v_req,id,labour_payable_paise FROM public.srk_master_technician_payables
- WHERE technician_id=v_tid AND payout_status='pending';
+ WHERE technician_id=v_tid AND payout_status='pending' AND labour_payable_paise>0;
  UPDATE public.srk_master_technician_payables SET payout_status='requested'
- WHERE technician_id=v_tid AND payout_status='pending';
+ WHERE technician_id=v_tid AND payout_status='pending' AND labour_payable_paise>0;
  RETURN jsonb_build_object('success',true,'request_id',v_req,'amount_paise',v_total,'status','requested');
 END; $$;
 
