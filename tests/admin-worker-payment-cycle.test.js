@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const admin = readFileSync(new URL('../admin.html', import.meta.url), 'utf8');
-const migration = readFileSync(new URL('../supabase/migrations/20261125180000_admin_worker_payment_cycle_monitoring.sql', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../supabase/migrations/20261125093836_admin_worker_payment_cycle_monitoring.sql', import.meta.url), 'utf8');
 
 test('Admin payment-cycle panel uses the permission-checked read-only RPC', () => {
   assert.match(admin, /adminWorkerPaymentCycleCard/);
@@ -30,7 +30,7 @@ test('Admin RPC calculates an independent third-order online rule for each worke
   assert.match(migration, /srk_helper_booking_sequence/);
 });
 
-const completionMigration = readFileSync(new URL('../supabase/migrations/20261125181000_count_only_completed_worker_assignments_in_payment_cycle.sql', import.meta.url), 'utf8');
+const completionMigration = readFileSync(new URL('../supabase/migrations/20261125094228_count_only_completed_worker_assignments_in_payment_cycle.sql', import.meta.url), 'utf8');
 test('Only completed worker assignments advance the payment sequence', () => {
   assert.match(completionMigration, /srk_on_booking_payment_completed/);
   assert.match(completionMigration, /if position\(v_old in v_definition\)>0 then/);
