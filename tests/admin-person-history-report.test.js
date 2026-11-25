@@ -40,6 +40,8 @@ test('Admin person history supports all four permanent ID types and date windows
   assert.match(migration, /from public\.srk_worker_documents d[\s\S]*?d\.created_at >= v_from[\s\S]*?d\.created_at < v_until/);
   assert.match(migration, /from public\.srk_staff_documents d[\s\S]*?d\.created_at >= v_from[\s\S]*?d\.created_at < v_until/);
   assert.match(migration, /improvement_areas/);
+  assert.match(migration, /b\.created_at >= v_from[\s\S]*?bw\.worker_completed_at >= v_from/);
+  assert.match(migration, /b\.work_started_at >= v_from[\s\S]*?b\.customer_completed_at >= v_from/);
   assert.match(admin, /completed_count/);
   assert.match(admin, /performance\.strengths/);
   assert.match(admin, /performance\.improvement_areas/);
