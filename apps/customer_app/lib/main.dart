@@ -120,6 +120,27 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       } catch (_) {
         _complaintLoadWarning = 'अंतिम बिल का विवरण अभी लोड नहीं हो पाया। Refresh करके फिर कोशिश करें।';
       }
+      final paymentCycles = <String, Map<String, dynamic>>{};
+      final eligibleBookings = bookingRows.where((b) =>
+        b['status'] == 'completed' &&
+        b['payment_status'] != 'paid' &&
+        finalBills.containsKey(b['id'].toString())).toList();
+      await Future.wait(eligibleBookings.map((booking) async {
+        final bookingId = booking['id'].toString();
+        try {
+          final rows = await _client.rpc('srk_customer_get_booking_payment_cycle',
+            params: {'p_booking_id': bookingId});
+          final list = List<Map<String, dynamic>>.from(rows as List);
+          if (list.isNotEmpty) paymentCycles[bookingId] = list.first;
+        } catch (_) {
+          // Fail closed in the UI: keep Online available and hide Cash if the
+          // server cannot provide the cycle state. The payment RPC still enforces it.
+          paymentCycles[bookingId] = {
+            'online_required': true,
+            'cycle_unverified': true,
+          };
+        }
+      }));
       final contacts = <String, String>{};
       final workerContacts = <String, List<Map<String, dynamic>>>{};
       try {
@@ -163,6 +184,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           if (phone != null) 'electrician_phone': phone,
           'worker_contacts': workerContacts[booking['id'].toString()] ?? <Map<String, dynamic>>[],
           if (finalBills[booking['id'].toString()] != null) 'final_bill': finalBills[booking['id'].toString()],
+          if (paymentCycles[booking['id'].toString()] != null) 'payment_cycle': paymentCycles[booking['id'].toString()],
         };
       }).toList();
     } catch (_) {
@@ -636,14 +658,22 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             if (status == 'completed' && booking['payment_status'] != 'paid') ...[
               const SizedBox(height: 8),
-              if (method == 'unselected' || method.isEmpty)
+              final onlineOnly = (booking['payment_cycle'] as Map?)?['online_required'] == true;
+              final cycleUnverified = (booking['payment_cycle'] as Map?)?['cycle_unverified'] == true;
+              if (onlineOnly)
+                Text(cycleUnverified
+                  ? 'भुगतान क्रम अभी सत्यापित नहीं हो पाया। सुरक्षित भुगतान के लिए केवल Online विकल्प उपलब्ध है।'
+                  : 'यह Technician / Helper का तीसरा, छठा या अगला हर तीसरा काम है। इस बुकिंग में केवल Online भुगतान होगा।',
+                  style: const TextStyle(fontWeight: FontWeight.w600))
+              else if (method == 'unselected' || method.isEmpty)
                 const Text('अंतिम बिल के बाद भुगतान का तरीका चुनें।')
               else
                 Text('चुना गया भुगतान तरीका: ${booking['payment_method']}'),
               Wrap(spacing: 8, runSpacing: 6, children: [
-                FilledButton.icon(
-                  onPressed: () => _choosePaymentMethod(booking, bill, 'cash'),
-                  icon: const Icon(Icons.payments), label: const Text('नकद पुष्टि करें')),
+                if (!onlineOnly)
+                  FilledButton.icon(
+                    onPressed: () => _choosePaymentMethod(booking, bill, 'cash'),
+                    icon: const Icon(Icons.payments), label: const Text('नकद पुष्टि करें')),
                 OutlinedButton.icon(
                   onPressed: () => _choosePaymentMethod(booking, bill, 'online'),
                   icon: const Icon(Icons.qr_code_2), label: const Text('ऑनलाइन UPI / Checkout')),
