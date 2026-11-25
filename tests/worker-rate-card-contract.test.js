@@ -11,7 +11,7 @@ const admin = fs.readFileSync('admin.html', 'utf8');
 test('Worker rate-card RPC returns all six categories and only the logged-in role share', () => {
   assert.match(migration, /srk_worker_get_my_rate_card/);
   assert.match(migration, /where wp\.user_id=auth\.uid\(\)/);
-  assert.match(migration, /'electrician',[\\s\\S]*'plumber',[\\s\\S]*'painter',[\\s\\S]*'ac_fridge_technician',[\\s\\S]*'motor_pump_technician',[\\s\\S]*'cooler_technician'/);
+  for (const category of ['electrician','plumber','painter','ac_fridge_technician','motor_pump_technician','cooler_technician']) assert.ok(migration.includes("'" + category + "'"));
   assert.match(migration, /round\(t\.fixed_price\*v_worker_share\/100,2\)/);
   assert.match(migration, /round\(r\.technician_rate\*v_worker_share\/100,2\)/);
   assert.match(migration, /case when v_worker_type='helper' then r\.helper_rate else r\.technician_rate end/);
@@ -56,4 +56,11 @@ test('Admin rate editor uses a labour-only RPC without exposing non-labour field
   assert.match(admin, /srk_admin_update_service_pricing_rate/);
   assert.doesNotMatch(admin, /materials|winding/i);
   assert.match(wrapper, /false,false,p_pricing_note/);
+});
+
+test('Revenue split updates both audited system settings without duplicate manual audit inserts', () => {
+  const audit = fs.readFileSync('supabase/migrations/20261125103048_record_worker_share_setting_with_commission_audit_triggers.sql', 'utf8');
+  assert.match(audit, /not public\.is_srk_admin\(\)/);
+  assert.match(audit, /values\('worker_share_rate',to_jsonb\(v_new_worker\)/);
+  assert.doesNotMatch(audit, /insert into public\.srk_admin_audit_events/i);
 });
