@@ -278,46 +278,160 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   }
 
 
-  Future<void> _payOnline(Map<String, dynamic> booking) async {
-    final session = _client.auth.currentSession;
-    if (session == null) return;
-    const base = String.fromEnvironment('SRK_API_BASE_URL', defaultValue: 'https://srk-electronic-india.netlify.app');
-    final root = base.endsWith('/') ? base.substring(0, base.length - 1) : base;
-    HttpClient? http;
+  Future<void> _payOnline(Map<String, dynamic> booking, Map<String, dynamic> bill) async {
+    final billId = bill['id']?.toString();
+    final bookingId = booking['id']?.toString();
+    if (billId == null || bookingId == null) return;
     Razorpay? checkout;
     final done = Completer<String>();
     try {
-      http = HttpClient()..connectionTimeout = const Duration(seconds: 20);
-      final req = await http.postUrl(Uri.parse(root + '/api/create-order'));
-      req.headers.contentType = ContentType.json;
-      req.headers.set(HttpHeaders.authorizationHeader, 'Bearer ' + session.accessToken);
-      req.write(jsonEncode({'booking_id': booking['id'].toString()}));
-      final res = await req.close().timeout(const Duration(seconds: 30));
-      final raw = await res.transform(utf8.decoder).join();
-      final order = Map<String, dynamic>.from(jsonDecode(raw) as Map);
-      if (res.statusCode < 200 || res.statusCode >= 300 || order['success'] != true) throw StateError(order['error']?.toString() ?? 'पेमेंट ऑर्डर नहीं बन पाया।');
+      final result = await _client.functions.invoke(
+        'create-razorpay-checkout-order',
+        body: {
+          'booking_id': bookingId,
+          'idempotency_key': 'srk-checkout-$bookingId',
+        },
+      );
+      final order = Map<String, dynamic>.from(result.data as Map);
+      if (order['success'] != true || order['order_id'] == null) {
+        throw StateError(order['error']?.toString() ?? order['status']?.toString() ?? 'भुगतान ऑर्डर तैयार नहीं हुआ।');
+      }
       checkout = Razorpay();
-      checkout.on(Razorpay.EVENT_PAYMENT_SUCCESS, (PaymentSuccessResponse p) async {
-        try {
-          final verifier = HttpClient()..connectionTimeout = const Duration(seconds: 20);
-          try {
-            final vr = await verifier.postUrl(Uri.parse(root + '/api/verify-payment'));
-            vr.headers.contentType = ContentType.json;
-            vr.headers.set(HttpHeaders.authorizationHeader, 'Bearer ' + session.accessToken);
-            vr.write(jsonEncode({'razorpay_payment_id':p.paymentId,'razorpay_order_id':p.orderId,'razorpay_signature':p.signature}));
-            final vres = await vr.close().timeout(const Duration(seconds: 30));
-            final vdata = Map<String,dynamic>.from(jsonDecode(await vres.transform(utf8.decoder).join()) as Map);
-            if (!done.isCompleted) done.complete(vres.statusCode >= 200 && vres.statusCode < 300 && vdata['success'] == true ? 'ऑनलाइन भुगतान सफल और सत्यापित हो गया।' : (vdata['error']?.toString() ?? 'भुगतान की पुष्टि बाकी है। Refresh करके देखें।'));
-          } finally { verifier.close(force:true); }
-        } catch (_) { if (!done.isCompleted) done.complete('भुगतान हुआ हो सकता है, लेकिन पुष्टि नहीं मिली। Refresh करके भुगतान स्थिति जाँचें।'); }
+      checkout.on(Razorpay.EVENT_PAYMENT_SUCCESS, (PaymentSuccessResponse p) {
+        if (!done.isCompleted) {
+          done.complete('Razorpay ने भुगतान response दिया है। अंतिम पुष्टि webhook से होगी; अभी Refresh करके भुगतान स्थिति देखें।');
+        }
       });
-      checkout.on(Razorpay.EVENT_PAYMENT_ERROR, (PaymentFailureResponse p) { if (!done.isCompleted) done.complete('भुगतान पूरा नहीं हुआ: ' + (p.message ?? 'दोबारा कोशिश करें।')); });
-      checkout.open({'key':order['key_id'],'amount':order['amount'],'currency':order['currency'] ?? 'INR','order_id':order['order_id'],'name':'SRK ELECTRONIC','description':booking['service_type']?.toString() ?? 'Electrical service','prefill':{'contact':_client.auth.currentUser?.phone?.replaceFirst('+91','') ?? ''},'theme':{'color':'#0B5ED7'}});
-      final message = await done.future.timeout(const Duration(minutes:5), onTimeout:()=> 'भुगतान की स्थिति अभी नहीं मिली। Refresh करके जाँचें।');
-      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(message))); await _loadBookings(); }
-    } catch (err) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(err.toString().replaceFirst('Bad state: ','')))); }
-    finally { checkout?.clear(); http?.close(force:true); }
+      checkout.on(Razorpay.EVENT_PAYMENT_ERROR, (PaymentFailureResponse p) {
+        if (!done.isCompleted) done.complete('भुगतान पूरा नहीं हुआ: ${p.message ?? 'दोबारा कोशिश करें।'}');
+      });
+      checkout.open({
+        'key': order['key_id'],
+        'amount': order['amount'],
+        'currency': order['currency'] ?? 'INR',
+        'order_id': order['order_id'],
+        'name': 'SRK ELECTRONIC',
+        'description': booking['service_type']?.toString() ?? 'SRK ELECTRONIC Final Bill',
+        'prefill': {'contact': _client.auth.currentUser?.phone?.replaceFirst('+91', '') ?? ''},
+        'theme': {'color': '#0B5ED7'},
+      });
+      final message = await done.future.timeout(
+        const Duration(minutes: 5),
+        onTimeout: () => 'भुगतान की अंतिम स्थिति अभी नहीं मिली। दोबारा भुगतान न करें; पहले Refresh करके स्थिति जाँचें।',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        await _loadBookings();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('FunctionException: ', ''))),
+      );
+    } finally {
+      checkout?.clear();
+    }
   }
+
+  Future<void> _respondWorkStart(String bookingId, String response) async {
+    final approved = response == 'approved';
+    if (!await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(approved ? 'काम शुरू करने की अनुमति दें?' : 'काम शुरू करने से मना करें?'),
+        content: Text(approved
+          ? 'आपकी अनुमति के बाद ही Technician काम शुरू कर सकेगा।'
+          : 'Technician को काम शुरू करने की अनुमति नहीं मिलेगी।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('वापस')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('पुष्टि करें')),
+        ],
+      ),
+    ) ?? false) return;
+    try {
+      await _client.rpc('srk_customer_respond_work_start', params: {
+        'p_booking_id': bookingId, 'p_response': response,
+      });
+      await _loadBookings();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _respondWorkCompletion(String bookingId, String response) async {
+    String? note;
+    if (response == 'disputed' || response == 'rejected') {
+      final controller = TextEditingController();
+      note = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(response == 'disputed' ? 'काम पर विवाद दर्ज करें' : 'काम पूरा होने से असहमत हैं?'),
+          content: TextField(
+            controller: controller, maxLines: 4, maxLength: 1000,
+            decoration: const InputDecoration(
+              labelText: 'कारण लिखें',
+              hintText: 'समस्या का स्पष्ट विवरण दें (विवाद के लिए कम-से-कम 20 अक्षर)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('वापस')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('जमा करें')),
+          ],
+        ),
+      );
+      controller.dispose();
+      if (note == null) return;
+      if (response == 'disputed' && note.trim().length < 20) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('विवाद का कारण कम-से-कम 20 अक्षरों का होना चाहिए।')));
+        return;
+      }
+    }
+    try {
+      await _client.rpc('srk_customer_respond_work_completion', params: {
+        'p_booking_id': bookingId, 'p_response': response, 'p_note': note,
+      });
+      await _loadBookings();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _choosePaymentMethod(Map<String, dynamic> booking, Map<String, dynamic> bill, String method) async {
+    final bookingId = booking['id'].toString();
+    final amount = (bill['total_amount'] as num?)?.toDouble();
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('अंतिम बिल की सही राशि उपलब्ध नहीं है।')));
+      return;
+    }
+    try {
+      await _client.rpc('srk_customer_choose_payment_method', params: {
+        'p_booking_id': bookingId, 'p_method': method,
+      });
+      if (method == 'cash') {
+        final confirmed = await _client.rpc('srk_confirm_cash_payment', params: {
+          'p_booking_id': bookingId,
+          'p_amount': amount,
+          'p_note': 'Customer confirmed cash payment against final bill',
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
+            confirmed == true
+              ? 'ग्राहक और Technician दोनों की पुष्टि हो गई। नकद भुगतान सत्यापित है।'
+              : 'आपकी नकद भुगतान पुष्टि दर्ज हुई। Technician की पुष्टि बाकी है; भुगतान अभी Paid नहीं माना गया।',
+          )));
+        }
+        await _loadBookings();
+      } else {
+        await _payOnline(booking, bill);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+      await _loadBookings();
+    }
+  }
+
   Future<void> _logout() async {
     await _client.auth.signOut();
   }
