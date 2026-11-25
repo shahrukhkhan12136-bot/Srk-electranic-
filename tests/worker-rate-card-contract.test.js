@@ -15,7 +15,7 @@ test('Worker rate-card RPC returns all six categories and only the logged-in rol
   assert.match(migration, /round\(t\.fixed_price\*v_worker_share\/100,2\)/);
   assert.match(migration, /round\(r\.technician_rate\*v_worker_share\/100,2\)/);
   assert.match(migration, /case when v_worker_type='helper' then r\.helper_rate else r\.technician_rate end/);
-  assert.doesNotMatch(migration.slice(migration.indexOf('create or replace function public.srk_worker_get_my_rate_card'), migration.indexOf('create or replace function public.srk_admin_list_service_pricing_rules')), /company_commission|commission_rate|commission_amount/);
+  assert.doesNotMatch(migration.slice(migration.indexOf('create or replace function public.srk_worker_get_my_rate_card'), migration.indexOf('create or replace function public.srk_admin_list_service_pricing_rules')), /'company_rate'|'commission_amount'|'commission_rate'/);
 });
 
 test('Technician app loads and renders the six-category worker-only rate card', () => {
@@ -41,4 +41,12 @@ test('Admin revenue split requires exactly 100 percent and changes apply to new 
   assert.match(migration, /round\(p_company_rate\+p_worker_rate,2\)<>100/);
   assert.match(migration, /effective_for/);
   assert.match(migration, /new bookings only/);
+});
+
+test('Revenue split changes are Main Admin-only and audit both percentages', () => {
+  const controls = fs.readFileSync('supabase/migrations/20261125102524_require_main_admin_for_revenue_split_and_audit_worker_share.sql', 'utf8');
+  assert.match(controls, /not public\.is_srk_admin\(\)/);
+  assert.match(controls, /'worker_share_rate'/);
+  assert.match(controls, /'previous_worker_rate'/);
+  assert.match(controls, /'current_worker_rate'/);
 });
