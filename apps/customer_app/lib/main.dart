@@ -979,4 +979,3 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     )),
   );
 }
-}
