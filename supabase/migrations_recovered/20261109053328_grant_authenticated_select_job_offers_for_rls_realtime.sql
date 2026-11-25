@@ -1,0 +1,1 @@
+GRANT SELECT ON TABLE public.job_offers TO authenticated;

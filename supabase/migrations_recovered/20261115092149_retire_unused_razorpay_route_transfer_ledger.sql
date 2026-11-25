@@ -1,0 +1,1 @@
+drop table public.srk_route_transfers;

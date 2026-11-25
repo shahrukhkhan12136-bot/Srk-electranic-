@@ -1,0 +1,1 @@
+ALTER ROLE srk_schema_export_ci CONNECTION LIMIT 5;

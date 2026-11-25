@@ -1,0 +1,1 @@
+create policy "service_role_manage_payment_order_locks" on public.srk_payment_order_locks for all to service_role using (true) with check (true);

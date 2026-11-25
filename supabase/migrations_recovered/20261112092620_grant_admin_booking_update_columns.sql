@@ -1,0 +1,1 @@
+GRANT UPDATE (status, quoted_amount, address, district, state, pincode) ON TABLE public.service_bookings TO authenticated;

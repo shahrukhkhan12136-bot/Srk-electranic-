@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.srk_guard_work_approval_transitions() FROM PUBLIC,anon,authenticated;

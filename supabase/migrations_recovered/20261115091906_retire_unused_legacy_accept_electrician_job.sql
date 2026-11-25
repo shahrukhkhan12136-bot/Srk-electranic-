@@ -1,0 +1,1 @@
+drop function public.accept_electrician_job(uuid);

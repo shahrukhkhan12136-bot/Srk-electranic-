@@ -1,0 +1,2 @@
+create index if not exists srk_electrician_payouts_electrician_profile_id_idx on public.srk_electrician_payouts (electrician_profile_id);
+create index if not exists srk_electrician_payouts_paid_by_idx on public.srk_electrician_payouts (paid_by);

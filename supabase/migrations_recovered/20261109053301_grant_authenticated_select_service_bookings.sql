@@ -1,0 +1,1 @@
+GRANT SELECT ON TABLE public.service_bookings TO authenticated;
