@@ -39,3 +39,20 @@ test('Database migration creates labour-only quotes and final bill totals', () =
   assert.match(files.migration, /new\.total_amount:=round\(new\.service_amount\+coalesce\(new\.cancellation_fee_amount,0\)/);
   assert.match(files.migration, /grant execute on function public\.srk_submit_labour_quote/);
 });
+
+test('Technician app uses the shared Worker profile, assignment, contact and wallet APIs', () => {
+  assert.match(files.technician, /from\('srk_worker_profiles'\)/);
+  assert.match(files.technician, /srk_worker_get_my_assignments/);
+  assert.match(files.technician, /srk_worker_respond_assignment/);
+  assert.match(files.technician, /srk_worker_get_my_booking_customer_contacts/);
+  assert.match(files.technician, /srk_worker_get_my_earnings/);
+  assert.match(files.technician, /srk_worker_get_my_wallet_summary/);
+  assert.doesNotMatch(files.technician, /from\('electrician_profiles'\)|from\('job_offers'\)|srk_respond_to_offer|srk_get_my_assigned_booking_quote_details/);
+});
+
+test('Labour quote authorization is bound to an approved shared Worker assignment', () => {
+  assert.match(files.migration, /from public\.srk_worker_profiles/);
+  assert.match(files.migration, /from public\.srk_booking_workers/);
+  assert.match(files.migration, /assignment_status in \('accepted','assigned','working','paused'\)/);
+  assert.doesNotMatch(files.migration, /from public\.electrician_profiles|assigned_electrician_id/);
+});
