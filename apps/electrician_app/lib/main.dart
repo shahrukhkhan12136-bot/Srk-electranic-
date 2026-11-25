@@ -114,10 +114,37 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
   bool loading = true;
   String? error;
   List<String> loadWarnings = [];
+  int _selectedNavIndex = 0;
+  final ScrollController _dashboardScrollController = ScrollController();
+  final GlobalKey _offersKey = GlobalKey();
+  final GlobalKey _workKey = GlobalKey();
+  final GlobalKey _earningsKey = GlobalKey();
   @override
   void initState() { super.initState(); load(); }
   @override
-  void dispose() { upiController.dispose(); super.dispose(); }
+  void dispose() { upiController.dispose(); _dashboardScrollController.dispose(); super.dispose(); }
+
+  Future<void> _goToSection(int index, GlobalKey? key) async {
+    setState(() => _selectedNavIndex = index);
+    if (key == null) {
+      if (_dashboardScrollController.hasClients) await _dashboardScrollController.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+      return;
+    }
+    final target = key.currentContext;
+    if (target != null) await Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
+  }
+
+  Future<void> _showWorkerProfile() async {
+    await showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (ctx) => SafeArea(child: Padding(
+      padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('मेरी प्रोफाइल', style: Theme.of(ctx).textTheme.titleLarge),
+        ListTile(leading: const Icon(Icons.person_outline), title: Text(profile?['display_name']?.toString() ?? 'प्रोफाइल लिंक नहीं हुई'), subtitle: Text(profile?['worker_type']?.toString() ?? 'Technician / Helper')),
+        ListTile(leading: const Icon(Icons.location_on_outlined), title: Text('${profile?['district'] ?? '—'}, ${profile?['state'] ?? '—'}'), subtitle: Text('PIN ${profile?['pincode'] ?? '—'}')),
+        FilledButton.icon(onPressed: () { Navigator.pop(ctx); _sendSos(); }, icon: const Icon(Icons.sos), label: const Text('Emergency SOS')),
+      ]),
+    )));
+    if (mounted) setState(() => _selectedNavIndex = 0);
+  }
   Future<void> requestAccountDeletion() async {
     final controller = TextEditingController();
     final reason = await showDialog<String>(
@@ -688,13 +715,21 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
     final earned = paid.fold<double>(0, (sum, row) => sum + (double.tryParse(row['electrician_earning']?.toString() ?? '0') ?? 0));
     return Scaffold(
       appBar: AppBar(title: const Text('SRK ELECTRONIC'), actions: [
-        IconButton(onPressed: loading ? null : load, icon: const Icon(Icons.refresh)),
-        IconButton(onPressed: requestAccountDeletion, tooltip: 'Account Deletion Request', icon: const Icon(Icons.person_remove_outlined)),
-        IconButton(onPressed: () => client.auth.signOut(), icon: const Icon(Icons.logout)),
+        TextButton.icon(onPressed: loading ? null : load, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
+        PopupMenuButton<String>(tooltip: 'अधिक विकल्प', icon: const Icon(Icons.more_vert),
+          onSelected: (value) { if (value == 'delete') requestAccountDeletion(); if (value == 'logout') client.auth.signOut(); },
+          itemBuilder: (context) => const [
+            PopupMenuItem(value: 'delete', child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(Icons.person_remove_outlined), title: Text('Account Deletion Request'))),
+            PopupMenuItem(value: 'logout', child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(Icons.logout), title: Text('Logout'))),
+          ],
+        ),
       ]),
-      body: RefreshIndicator(onRefresh: load, child: loading
-        ? ListView(children: const [SizedBox(height: 260), Center(child: CircularProgressIndicator())])
-        : ListView(padding: const EdgeInsets.all(16), children: [
+      body: Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFE4F7F8), Color(0xFFF8FCFF), Color(0xFFFFF3E6)])), child: Stack(children: [
+        Positioned(top: 28, right: -48, child: Container(width: 160, height: 160, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x2220A6A6)))),
+        Positioned(bottom: 65, left: -55, child: Container(width: 190, height: 190, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x22F5B544)))),
+        RefreshIndicator(onRefresh: load, child: loading
+        ? ListView(controller: _dashboardScrollController, children: const [SizedBox(height: 260), Center(child: CircularProgressIndicator())])
+        : ListView(controller: _dashboardScrollController, padding: const EdgeInsets.all(16), children: [
           const SrkFounderBanner(),
           if (error != null) Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(error!, style: const TextStyle(color: Colors.red)))),
           ...loadWarnings.map((warning) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Text(warning)))),
@@ -768,7 +803,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
               ),
             ),
           if (p != null && active) ...[
-            Text('बुकिंग ऑफर', style: Theme.of(context).textTheme.titleLarge),
+            Text('बुकिंग ऑफर', key: _offersKey, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(child: _Metric(label: 'नए ऑफर', value: count('offered').toString())),
@@ -828,7 +863,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
               )));
             }),
 
-            Text('मेरी नियुक्त बुकिंग और कोटेशन', style: Theme.of(context).textTheme.titleLarge),
+            Text('मेरी नियुक्त बुकिंग और कोटेशन', key: _workKey, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             if (bookingDetails.where((b) => ['assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed'].contains(b['booking_status'])).isEmpty)
               const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('अभी कोई नियुक्त बुकिंग उपलब्ध नहीं है। नई बुकिंग स्वीकार होने के बाद यहाँ कोटेशन भेज सकेंगे।')))
@@ -903,7 +938,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                 ],
               )));
             }),
-            Text('कमाई', style: Theme.of(context).textTheme.titleLarge),
+            Text('कमाई', key: _earningsKey, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(child: _Metric(label: 'पूरे काम', value: completed.toString())),
@@ -953,6 +988,24 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
             const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('ग्राहक का पूरा मोबाइल नंबर केवल आपकी नियुक्त बुकिंग में दिखता है।'))),
           ],
         ]),
+      ),
+      ])),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedNavIndex,
+        onDestinationSelected: (index) {
+          if (index == 0) _goToSection(0, null);
+          if (index == 1) _goToSection(1, _offersKey);
+          if (index == 2) _goToSection(2, _workKey);
+          if (index == 3) _goToSection(3, _earningsKey);
+          if (index == 4) _showWorkerProfile();
+        },
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'होम'),
+          NavigationDestination(icon: Icon(Icons.notifications_active_outlined), selectedIcon: Icon(Icons.notifications_active), label: 'ऑफर'),
+          NavigationDestination(icon: Icon(Icons.handyman_outlined), selectedIcon: Icon(Icons.handyman), label: 'काम'),
+          NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: 'कमाई'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'प्रोफाइल'),
+        ],
       ),
     );
   }
