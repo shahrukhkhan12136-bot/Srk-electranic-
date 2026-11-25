@@ -18,7 +18,7 @@ void main() {
     });
 
     test('has versioned stable draft category and subcategory keys', () {
-      expect(srkServiceCatalogDraftVersion, 'draft-2026-11-21.1');
+      expect(srkServiceCatalogDraftVersion, 'approved-2026-11-21.11');
       expect(
         srkServiceCatalog.map((category) => category.id).toList(),
         ['electrician', 'plumber', 'painter', 'ac_fridge', 'motor_pump', 'cooler'],
@@ -71,15 +71,19 @@ void main() {
       expect(painter.skillLevels, isNotEmpty);
     });
 
-    test('keeps Motor & Pump winding as fixed HP rates', () {
+    test('excludes Motor Winding while retaining separate HP-based motor and pump fitting rates', () {
       final motor = srkServiceCatalog.singleWhere((item) => item.name == 'Motor & Pump');
-      final winding = motor.options.singleWhere((item) => item.name == 'Winding');
-      expect(winding.rates.map((rate) => rate.label).toList(), [
+      expect(motor.options.any((item) =>
+          item.name.toLowerCase().contains('winding') ||
+          (item.displayName ?? '').contains('वाइंडिंग')), isFalse);
+      final fitting = motor.options.singleWhere(
+        (item) => item.id == 'motor_pump_mechanic_charge',
+      );
+      expect(fitting.rates.map((rate) => rate.label).toList(), [
         '0.5 HP', '1 HP', '1.5 HP', '2 HP', '3 HP', '5 HP',
         '7.5 HP', '10 HP', '15 HP', '20 HP',
       ]);
-      expect(winding.rates.first.unit, 'फिक्स');
-      expect(winding.note, contains('hourly overtime लागू नहीं'));
+      expect(fitting.note, contains('मोटर वाइंडिंग SRK ELECTRONIC की सेवा नहीं है'));
     });
 
     test('keeps Cooler repair fixed at ₹500 with separate parts', () {
