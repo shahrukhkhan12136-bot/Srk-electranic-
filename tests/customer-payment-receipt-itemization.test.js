@@ -4,21 +4,21 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const booking = fs.readFileSync(path.join(__dirname, '..', 'booking.html'), 'utf8');
-const receiptMigration = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261121210000_master_customer_payment_receipt.sql'), 'utf8');
+const receiptMigration = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261125164000_service_only_customer_payment_receipt.sql'), 'utf8');
 const archiveMigration = fs.readFileSync(path.join(__dirname, '..', 'supabase/migrations/20261115210000_legacy_manual_payment_and_itemized_receipt.sql'), 'utf8');
 
-test('customer receipt displays approved legacy labour and materials as separate line items', () => {
-  assert.match(booking, /const materialsAmount=Number\(data\.materials_amount\|\|0\)/);
-  assert.match(booking, /सामान \/ पार्ट्स/);
-  assert.match(booking, /labourRow\+materialsRow\+cancellationFeeRows/);
-  assert.match(receiptMigration, /'materials_amount',v_materials\/100\.0/);
+test('customer booking and receipt UI expose service amount without add-on itemization', () => {
+  assert.match(booking, /const serviceAmount=data\.service_amount/);
+  assert.match(booking, /serviceRow\+cancellationFeeRows/);
+  assert.doesNotMatch(booking, /materials_amount|सामान \/ पार्ट्स|सामान\/पार्ट्स|अलग सामान बिल|Materials\/parts|Materials and parts/);
+  assert.match(receiptMigration, /'service_amount',f\.labour_amount_paise/);
+  assert.doesNotMatch(receiptMigration, /materials_amount|material_items|v_materials/);
 });
 
-test('customer receipt RPC reconciles legacy payment to approved labour plus materials', () => {
-  assert.match(receiptMigration, /legacy_booking_financial_evidence/);
-  assert.match(receiptMigration, /v_labour:=round\(coalesce\(v_legacy\.service_charge,0\)\*100\)::bigint/);
-  assert.match(receiptMigration, /v_materials:=round\(coalesce\(v_legacy\.materials_amount,0\)\*100\)::bigint/);
-  assert.match(receiptMigration, /round\(b\.amount_paid\*100\)::bigint<>v_total/);
+test('new Master receipt reconciles service-only bill and preserves historical payment totals', () => {
+  assert.match(receiptMigration, /f\.subtotal_paise<>f\.labour_amount_paise/);
+  assert.match(receiptMigration, /round\(b\.amount_paid\*100\)::bigint<>p\.amount_paise/);
+  assert.match(receiptMigration, /v_total:=round\(b\.amount_paid\*100\)::bigint/);
   assert.match(archiveMigration, /legacy_booking_financial_evidence/);
 });
 

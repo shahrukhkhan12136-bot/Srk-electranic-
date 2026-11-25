@@ -1,19 +1,21 @@
-begin;
-select plan(7);
-select ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
- 'receipt remains authenticated');
-select ok(position('customer_user_id = v_uid' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
- 'receipt remains owner-scoped');
-select ok(position('srk_booking_labour_bills' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
- 'receipt reads immutable labour bill');
-select ok(position('labour_amount_paise = round(v_booking.amount_paid * 100)::bigint' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
- 'bill labour amount must match verified paid amount');
-select ok(position('not v_has_bill' in lower(pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure)))>0,
- 'legacy service charge fallback is used only when no immutable bill exists');
-select ok(position('materials_amount' in lower(pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure)))=0,
- 'receipt never includes material amounts');
-select ok(not has_function_privilege('anon','public.srk_customer_get_payment_receipt(uuid)','EXECUTE')
+BEGIN;
+SELECT plan(8);
+SELECT ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
+ 'receipt requires an authenticated user');
+SELECT ok(position('customer_user_id=v_uid' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
+ 'receipt is scoped to the booking owner');
+SELECT ok(position('service_amount' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
+ 'new Master receipt returns the service amount');
+SELECT ok(position('MASTER_TAX_SNAPSHOT_REQUIRED' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
+ 'new Master receipt requires a tax snapshot before reconciliation');
+SELECT ok(position('f.subtotal_paise<>f.labour_amount_paise' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
+ 'new Master bill must reconcile to service amount only');
+SELECT ok(position('v_service+v_fee=v_total' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
+ 'legacy receipt fallback reconciles only service and recorded cancellation fee');
+SELECT ok(position('materials_amount' in lower(pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure)))=0,
+ 'receipt RPC exposes no legacy add-on amount field');
+SELECT ok(not has_function_privilege('anon','public.srk_customer_get_payment_receipt(uuid)','EXECUTE')
  and has_function_privilege('authenticated','public.srk_customer_get_payment_receipt(uuid)','EXECUTE'),
  'receipt RPC remains authenticated-only');
-select * from finish();
-rollback;
+SELECT * FROM finish();
+ROLLBACK;
