@@ -1,3 +1,25 @@
+-- Compatibility projection for the canonical Master category/skill catalogue.
+-- The older Worker skill-review RPCs use service-type-shaped names; project those
+-- names from the canonical skill rows instead of maintaining a second catalogue.
+ALTER TABLE public.srk_service_categories
+  ADD COLUMN IF NOT EXISTS category_name text GENERATED ALWAYS AS (display_name) STORED;
+ALTER TABLE public.srk_service_skills
+  ADD COLUMN IF NOT EXISTS service_type_id uuid GENERATED ALWAYS AS (id) STORED,
+  ADD COLUMN IF NOT EXISTS skill_name text GENERATED ALWAYS AS (display_name) STORED,
+  ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0;
+
+DO $compat$
+BEGIN
+  IF to_regclass('public.srk_service_types') IS NULL THEN
+    EXECUTE $view$
+      CREATE VIEW public.srk_service_types AS
+      SELECT id,category_id,display_name AS service_name,is_active,sort_order
+      FROM public.srk_service_skills
+    $view$;
+  END IF;
+END;
+$compat$;
+
 -- Multi-category worker skills, per-skill review, application KYC review and eligibility.
 create table if not exists public.srk_worker_application_skills(
  id uuid primary key default gen_random_uuid(),
