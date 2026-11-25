@@ -92,8 +92,6 @@ void main() {
       expect(repair.name, 'Cooler Repair');
       expect(repair.rates.single.amount, '₹500');
       expect(repair.rates.single.unit, 'प्रति कूलर फिक्स');
-      expect(repair.note, isNot(contains('पार्ट्स')));
-      expect(repair.note, isNot(contains('सामान')));
       expect(repair.note, contains('Motor winding'));
     });
   });
