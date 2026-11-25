@@ -27,7 +27,7 @@ BEGIN
   IF NOT EXISTS(SELECT 1 FROM public.srk_booking_tax_snapshots WHERE booking_id=p_booking_id) THEN
    RAISE EXCEPTION 'MASTER_TAX_SNAPSHOT_REQUIRED' USING ERRCODE='55000';
   END IF;
-  IF NOT FOUND OR f.id IS NULL OR p.final_bill_id<>f.id
+  IF p.id IS NULL OR f.id IS NULL OR p.final_bill_id<>f.id
    OR p.amount_paise<>(SELECT t.total_due_paise FROM public.srk_booking_tax_snapshots t WHERE t.booking_id=p_booking_id)
    OR round(b.amount_paid*100)::bigint<>p.amount_paise OR f.subtotal_paise<>f.labour_amount_paise THEN
    RAISE EXCEPTION 'MASTER_FINAL_BILL_PAYMENT_RECONCILIATION_FAILED' USING ERRCODE='55000';
