@@ -120,6 +120,12 @@ FROM public.srk_service_skills s
 JOIN public.srk_service_categories c ON c.id=s.category_id
 ON CONFLICT(service_code) DO NOTHING;
 
+-- Winding is outside SRK ELECTRONIC. Preserve historical rows, but disable both winding skills and offerings.
+UPDATE public.srk_service_skills SET is_active=false
+WHERE skill_code IN ('motor_winding','cooler_motor_winding');
+UPDATE public.srk_service_offerings SET is_active=false,updated_at=clock_timestamp()
+WHERE service_code IN ('motor_winding','cooler_motor_winding');
+
 -- AC Installation and AC Repair are distinct customer-selectable services under the separately assessed AC skill.
 UPDATE public.srk_service_offerings SET is_active=false,updated_at=clock_timestamp()
 WHERE service_code='ac_technician';
