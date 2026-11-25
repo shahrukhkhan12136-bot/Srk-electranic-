@@ -99,7 +99,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       }
       final response = await _client
           .from('service_bookings')
-          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,materials_amount,quote_status,quote_note,district,state,pincode,electrician_quote_kind,work_start_approval_status,work_start_requested_at,completion_approval_status,completion_requested_at,requested_duration_hours,pricing_unit_snapshot')
+          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,quote_status,quote_note,district,state,pincode,electrician_quote_kind,work_start_approval_status,work_start_requested_at,completion_approval_status,completion_requested_at,requested_duration_hours,pricing_unit_snapshot')
           .eq('customer_user_id', user.id)
           .order('created_at', ascending: false)
           .limit(50);
@@ -109,28 +109,12 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         final bookingIds = bookingRows.map((b) => b['id'].toString()).toList();
         if (bookingIds.isNotEmpty) {
           final billRows = await _client.from('srk_booking_final_bills')
-            .select('id,booking_id,bill_number,service_amount,materials_amount,discount_amount,tax_amount,total_amount,status,prepared_at,revision_no')
+            .select('id,booking_id,bill_number,service_amount,discount_amount,total_amount,status,prepared_at,revision_no')
             .inFilter('booking_id', bookingIds)
             .order('revision_no', ascending: false);
-          final billIds = <String>[];
           for (final row in List<Map<String, dynamic>>.from(billRows)) {
             final bookingId = row['booking_id'].toString();
-            if (!finalBills.containsKey(bookingId)) {
-              finalBills[bookingId] = {...row, 'items': <Map<String, dynamic>>[]};
-              billIds.add(row['id'].toString());
-            }
-          }
-          if (billIds.isNotEmpty) {
-            final itemRows = await _client.from('srk_booking_final_bill_items')
-              .select('id,bill_id,item_type,description,quantity,unit,unit_price,line_total')
-              .inFilter('bill_id', billIds);
-            for (final item in List<Map<String, dynamic>>.from(itemRows)) {
-              final bill = finalBills.values.firstWhere(
-                (x) => x['id'].toString() == item['bill_id'].toString(),
-                orElse: () => <String, dynamic>{},
-              );
-              if (bill.isNotEmpty) (bill['items'] as List<Map<String, dynamic>>).add(item);
-            }
+            finalBills.putIfAbsent(bookingId, () => row);
           }
         }
       } catch (_) {
@@ -261,7 +245,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         title: const Text('शिकायत / सहायता'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
           DropdownButtonFormField<String>(
-            value: category,
+            initialValue: category,
             decoration: const InputDecoration(labelText: 'शिकायत का विषय'),
             items: const ['काम की गुणवत्ता','व्यवहार','कीमत / कोटेशन','समय पर नहीं पहुँचे','भुगतान','अन्य']
               .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
@@ -546,8 +530,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     final status = booking['status']?.toString() ?? '';
     final waitingQuote = quoteStatus == 'pending' && status == 'awaiting_quote_approval';
     final service = (booking['service_charge'] as num?)?.toDouble() ?? 0;
-    final materials = (booking['materials_amount'] as num?)?.toDouble() ?? 0;
-    final quoteTotal = (booking['quoted_amount'] as num?)?.toDouble() ?? service + materials;
+    final quoteTotal = (booking['quoted_amount'] as num?)?.toDouble() ?? service;
     final bill = booking['final_bill'] is Map<String, dynamic>
       ? Map<String, dynamic>.from(booking['final_bill'] as Map) : null;
     final billTotal = (bill?['total_amount'] as num?)?.toDouble() ?? 0;
@@ -632,7 +615,6 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             Text(booking['electrician_quote_kind'] == 'counter_offer' ? 'पुराना Counter Offer' : 'पुराना कोटेशन',
               style: const TextStyle(fontWeight: FontWeight.bold)),
             Text('सर्विस / मेहनताना: ₹${service.toStringAsFixed(2)}'),
-            Text('सामान / पार्ट्स: ₹${materials.toStringAsFixed(2)}'),
             Text('कुल: ₹${quoteTotal.toStringAsFixed(2)}'),
             Text('कोटेशन स्थिति: $quoteStatus'),
             if ((booking['quote_note'] ?? '').toString().isNotEmpty) Text('विवरण: ${booking['quote_note']}'),
@@ -645,18 +627,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           ],
           if (bill != null && ['issued','approved'].contains(bill['status'])) ...[
             const Divider(),
-            Text('अंतिम बिल • ${bill!['bill_number'] ?? '—'}',
+            Text('अंतिम बिल • ${bill['bill_number'] ?? '—'}',
               style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('मजदूरी / सर्विस: ₹${(bill['service_amount'] as num?)?.toStringAsFixed(2) ?? '0.00'}'),
-            if (((bill['materials_amount'] as num?)?.toDouble() ?? 0) > 0)
-              Text('अलग सामग्री राशि: ₹${(bill['materials_amount'] as num).toStringAsFixed(2)}'),
+            Text('लेबर चार्ज: ₹${(bill['service_amount'] as num?)?.toStringAsFixed(2) ?? '0.00'}'),
             if (((bill['discount_amount'] as num?)?.toDouble() ?? 0) > 0)
               Text('छूट: ₹${(bill['discount_amount'] as num).toStringAsFixed(2)}'),
             Text('कुल अंतिम बिल: ₹${billTotal.toStringAsFixed(2)}',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ...((bill['items'] as List? ?? const []).whereType<Map>().map((item) =>
-              Padding(padding: const EdgeInsets.only(top: 4),
-                child: Text('• ${item['description'] ?? 'काम'}: ₹${(item['line_total'] as num?)?.toStringAsFixed(2) ?? '0.00'}')))),
             if (status == 'completed' && booking['payment_status'] != 'paid') ...[
               const SizedBox(height: 8),
               if (method == 'unselected' || method.isEmpty)
@@ -921,7 +898,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           if (_selection!.pricingUnit == 'hour') ...[
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
-              value: _durationHours, decoration: _decoration('काम की अवधि'),
+              initialValue: _durationHours, decoration: _decoration('काम की अवधि'),
               items: [1,3,8].map((v) => DropdownMenuItem(value:v,child:Text('$v घंटे'))).toList(),
               onChanged: (v) { setState(() => _durationHours=v??1); _refreshPricePreview(); },
             ),
@@ -929,21 +906,21 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           if (_selection!.pricingUnit == 'per_item') ...[
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
-              value: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
+              initialValue: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
               items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
               onChanged: (v) { setState(() => _unitCount=v??1); _refreshPricePreview(); },
             ),
           ],
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
-            value: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
+            initialValue: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
             items: [1,2,3].map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
             onChanged: (v) { setState(() => _technicianCount=v??1); _refreshPricePreview(); },
           ),
           const SizedBox(height: 8),
           if (_selection!.pricingUnit == 'hour' && ((_pricePreview?['helper_rate'] as num?) ?? 0) > 0)
             DropdownButtonFormField<int>(
-              value: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
+              initialValue: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
               items: [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
               onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
             ),
@@ -959,7 +936,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
                 Text('कंपनी कमीशन (अनुमान): ${_money(_pricePreview!['estimated_company_commission'])}'),
                 Text('Technician का हिस्सा (अनुमान): ${_money(_pricePreview!['estimated_worker_net'])}'),
                 Text((_pricePreview!['price_note']??'').toString()),
-                const Text('सामान / पार्ट्स इस अनुमान में शामिल नहीं हैं; अलग सूची और आपकी मंजूरी के बाद ही जोड़े जाएँगे।'),
               ],
             ]))),
         ],
