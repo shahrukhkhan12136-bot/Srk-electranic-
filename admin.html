@@ -1254,19 +1254,20 @@ async function loadAdminPricingControls(){
    sb.rpc('srk_admin_list_service_rates'),
    sb.rpc('srk_admin_list_service_pricing_rules')
   ]);
-  const err=split.error||legacy.error||rules.error;if(err)throw err;
-  const company=Number(split.data?.company_rate??15),worker=Number(split.data?.worker_rate??(100-company));
-  document.getElementById('adminCompanyRate').value=company.toFixed(2);
-  document.getElementById('adminWorkerRate').value=worker.toFixed(2);
+  const err=legacy.error||rules.error;if(err)throw err;
+  const splitInputs=['adminCompanyRate','adminWorkerRate','adminRevenueSplitReason'];
+  if(split.error){splitInputs.forEach(id=>document.getElementById(id).disabled=true);document.getElementById('adminRevenueSplitStatus').textContent='प्रतिशत बदलने का अधिकार केवल Main Admin को है।';}
+  else{const company=Number(split.data?.company_rate??15),worker=Number(split.data?.worker_rate??(100-company));document.getElementById('adminCompanyRate').value=company.toFixed(2);document.getElementById('adminWorkerRate').value=worker.toFixed(2);splitInputs.forEach(id=>document.getElementById(id).disabled=false);}
   window.adminVersionedRateCache=rules.data||[];
   const legacyRows=(legacy.data||[]).filter(r=>r.rate_status==='approved'&&!r.effective_to);
   document.getElementById('adminLegacyRateRows').innerHTML=legacyRows.length?'<table><thead><tr><th>कैटेगरी / सेवा / स्तर</th><th>Technician Rate</th><th>Helper Rate</th><th>कारण और सेव करें</th></tr></thead><tbody>'+legacyRows.map(r=>'<tr><td>'+esc(r.category_name)+'<br>'+esc(r.service_name||'सामान्य')+'<br><small>'+esc(r.skill_level_name||'')+'</small></td><td><input type="number" min="0.01" step="0.01" id="legacy-tech-'+r.rate_id+'" value="'+Number(r.technician_hourly_rate||0)+'" style="width:110px"></td><td><input type="number" min="0" step="0.01" id="legacy-help-'+r.rate_id+'" value="'+(r.helper_hourly_rate==null?'':Number(r.helper_hourly_rate))+'" style="width:110px"></td><td><input id="legacy-reason-'+r.rate_id+'" maxlength="500" placeholder="बदलाव का कारण" style="width:180px"><br><button type="button" onclick="saveLegacyServiceRate(\''+r.rate_id+'\')">सेव करें</button></td></tr>').join('')+'</tbody></table>':'अभी कोई Legacy Hourly Rate उपलब्ध नहीं है।';
   document.getElementById('adminVersionedRateRows').innerHTML=(rules.data||[]).length?'<table><thead><tr><th>कैटेगरी / सेवा</th><th>प्रकार</th><th>Technician Rate</th><th>Helper Rate</th><th>HP Tiers (JSON)</th><th>कारण / सेव</th></tr></thead><tbody>'+(rules.data||[]).map(r=>'<tr><td>'+esc(r.category_name)+'<br>'+esc(r.service_name)+'</td><td>'+esc(r.pricing_unit)+'</td><td><input type="number" min="0.01" step="0.01" id="rule-tech-'+r.pricing_rule_id+'" value="'+(r.technician_rate==null?'':Number(r.technician_rate))+'" style="width:105px" '+(r.pricing_unit==='motor_hp'?'disabled':'')+'></td><td><input type="number" min="0.01" step="0.01" id="rule-help-'+r.pricing_rule_id+'" value="'+(r.helper_rate==null?'':Number(r.helper_rate))+'" style="width:105px" '+(r.pricing_unit!=='hour'?'disabled':'')+'></td><td><textarea id="rule-hp-'+r.pricing_rule_id+'" rows="3" style="width:190px" '+(r.pricing_unit!=='motor_hp'?'disabled':'')+'>'+esc(JSON.stringify(r.hp_tiers||[]))+'</textarea></td><td><input id="rule-reason-'+r.pricing_rule_id+'" maxlength="500" placeholder="बदलाव का कारण" style="width:180px"><br><button type="button" onclick="saveVersionedServiceRate(\''+r.pricing_rule_id+'\')">सेव करें</button></td></tr>').join('')+'</tbody></table>':'अभी कोई Fixed / Versioned Rate उपलब्ध नहीं है।';
-  if(status)status.textContent='सक्रिय रेट लोड हो गए।';
+  if(status)status.textContent=split.error?'सक्रिय रेट लोड हो गए। प्रतिशत नियंत्रण केवल Main Admin के लिए है।':'सक्रिय रेट और प्रतिशत लोड हो गए।';
  }catch(e){if(status)status.textContent='रेट कंट्रोल लोड नहीं हुए। Main Admin की catalog.manage अनुमति जाँचें।';}
 }
 async function saveRevenueSplit(){
  const company=Number(document.getElementById('adminCompanyRate').value),worker=Number(document.getElementById('adminWorkerRate').value),reason=document.getElementById('adminRevenueSplitReason').value.trim(),status=document.getElementById('adminRevenueSplitStatus');
+ if(document.getElementById('adminCompanyRate').disabled)return;
  if(!Number.isFinite(company)||!Number.isFinite(worker)||company<0||worker<0||company>100||worker>100||Math.round((company+worker)*100)!==10000||reason.length<10){alert('दोनों प्रतिशत 0–100 के बीच हों, कुल ठीक 100% हो और कारण कम-से-कम 10 अक्षर का हो।');return;}
  if(!confirm('नया प्रतिशत केवल नई बुकिंग पर लागू होगा। क्या सेव करें?'))return;
  status.textContent='सेव हो रहा है…';
