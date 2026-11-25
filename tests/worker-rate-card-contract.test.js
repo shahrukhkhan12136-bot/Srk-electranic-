@@ -50,3 +50,10 @@ test('Revenue split changes are Main Admin-only and audit both percentages', () 
   assert.match(controls, /'previous_worker_rate'/);
   assert.match(controls, /'current_worker_rate'/);
 });
+
+test('Admin rate editor uses a labour-only RPC without exposing non-labour fields', () => {
+  const wrapper = fs.readFileSync('supabase/migrations/20261125102825_add_clean_admin_service_pricing_update_rpc.sql', 'utf8');
+  assert.match(admin, /srk_admin_update_service_pricing_rate/);
+  assert.doesNotMatch(admin, /materials|winding/i);
+  assert.match(wrapper, /false,false,p_pricing_note/);
+});
