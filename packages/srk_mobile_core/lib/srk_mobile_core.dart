@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 export 'srk_work_confirmation_contract.dart';
@@ -298,7 +301,42 @@ class _SrkLoginPageState extends State<SrkLoginPage> {
 }
 
 
-/// Branded welcome artwork shown before login in all three mobile apps.
+/// Loads the founder artwork from a text-encoded bundled asset.
+class _SrkFounderImage extends StatelessWidget {
+  const _SrkFounderImage({this.fit = BoxFit.contain, this.alignment = Alignment.center});
+  final BoxFit fit;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<String>(
+    future: rootBundle.loadString('packages/srk_mobile_core/assets/founder.webp.b64'),
+    builder: (context, snapshot) {
+      if (snapshot.hasData) {
+        try {
+          final encoded = snapshot.data!.replaceAll(RegExp(r'\\s+'), '');
+          return Image.memory(base64Decode(encoded), fit: fit, alignment: alignment,
+            errorBuilder: (_, __, ___) => const _SrkFounderFallback());
+        } catch (_) {
+          return const _SrkFounderFallback();
+        }
+      }
+      return snapshot.hasError ? const _SrkFounderFallback()
+        : const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    },
+  );
+}
+
+class _SrkFounderFallback extends StatelessWidget {
+  const _SrkFounderFallback();
+  @override
+  Widget build(BuildContext context) => Container(
+    color: const Color(0xFFEAF2FF), alignment: Alignment.center,
+    child: const Text('SRK ELECTRONIC', style: TextStyle(
+      color: Color(0xFF073B91), fontSize: 24, fontWeight: FontWeight.w900)),
+  );
+}
+
+/// Branded welcome artwork shown before login in both mobile apps.
 /// Full-width, uncropped SRK ELECTRONIC welcome poster shared by both mobile apps.
 class SrkWelcomeHeader extends StatelessWidget {
   const SrkWelcomeHeader({super.key});
@@ -308,24 +346,9 @@ class SrkWelcomeHeader extends StatelessWidget {
     borderRadius: BorderRadius.circular(16),
     child: AspectRatio(
       aspectRatio: 0.8008,
-      child: Image.asset(
-        'packages/srk_mobile_core/assets/founder(2).webp',
-        width: double.infinity,
+      child: const _SrkFounderImage(
         fit: BoxFit.contain,
         alignment: Alignment.center,
-        errorBuilder: (_, __, ___) => Container(
-          color: const Color(0xFFEAF2FF),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.all(20),
-          child: const Text(
-            'SRK ELECTRONIC',
-            style: TextStyle(
-              color: Color(0xFF073B91),
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
       ),
     ),
   );
@@ -384,14 +407,9 @@ class SrkFounderBanner extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: Image.asset(
-                        'packages/srk_mobile_core/assets/founder(2).webp',
+                      child: const _SrkFounderImage(
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: const Color(0xFF0A347F),
-                          child: const Icon(Icons.person, color: Colors.white, size: 42),
-                        ),
                       ),
                     ),
                   ),
