@@ -10,6 +10,7 @@ const migration = fs.readFileSync(path.join(root, 'supabase/migrations/202611251
 test('Admin exposes six-category skill counts and loads them after login', () => {
   assert.match(admin, /adminCategorySkillCountsCard/);
   assert.match(admin, /srk_admin_get_category_skill_counts/);
+  assert.match(migration, /cross join \(values \('technician'::text\),\('helper'::text\)\)/);
   assert.match(admin, /async function loadAll\(\)\{await loadAdminCategorySkillCounts\(\);/);
   for (const status of ['pending_skill_holders', 'approved_skill_holders', 'active_skill_holders', 'currently_working']) {
     assert.match(migration, new RegExp(status));
