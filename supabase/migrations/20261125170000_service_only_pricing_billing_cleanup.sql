@@ -523,7 +523,7 @@ BEGIN
   END IF;
 
   v_allow := CASE v_entity_type
-    WHEN 'booking' THEN ARRAY['status','payment_status','payment_method','amount_paid','quoted_amount','quote_status','service_charge''assigned_electrician_id','commission_amount']
+    WHEN 'booking' THEN ARRAY['status','payment_status','payment_method','amount_paid','quoted_amount','quote_status','service_charge','assigned_electrician_id','commission_amount']
     WHEN 'electrician_profile' THEN ARRAY['active','verification_status','auth_user_id','user_id']
     WHEN 'electrician_application' THEN ARRAY['verification_status','active']
     WHEN 'manual_payment' THEN ARRAY['booking_id','payment_method','amount']
