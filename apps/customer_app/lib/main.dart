@@ -63,11 +63,62 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   List<Map<String, dynamic>> _complaints = [];
   String? _contactLoadWarning;
   String? _complaintLoadWarning;
+  int _selectedNavIndex = 0;
+  final ScrollController _dashboardScrollController = ScrollController();
+  final GlobalKey _bookingsSectionKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
     _loadBookings();
+  }
+
+  @override
+  void dispose() {
+    _dashboardScrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onBottomNavigation(int index) async {
+    setState(() => _selectedNavIndex = index);
+    switch (index) {
+      case 0:
+        if (_dashboardScrollController.hasClients) {
+          await _dashboardScrollController.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+        }
+        break;
+      case 1:
+        final target = _bookingsSectionKey.currentContext;
+        if (target != null) await Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+        break;
+      case 2:
+        await _openBookingForm();
+        if (mounted) setState(() => _selectedNavIndex = 0);
+        break;
+      case 3:
+        await showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (ctx) => SafeArea(child: Padding(
+          padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('सहायता और सुरक्षा', style: Theme.of(ctx).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            const Text('बुकिंग से जुड़ी शिकायत के लिए अपनी बुकिंग में शिकायत विकल्प खोलें। आपात स्थिति में Admin को SOS भेजें।'),
+            const SizedBox(height: 12),
+            FilledButton.icon(onPressed: () { Navigator.pop(ctx); _sendSos(); }, icon: const Icon(Icons.sos), label: const Text('Emergency SOS भेजें')),
+          ]),
+        )));
+        if (mounted) setState(() => _selectedNavIndex = 0);
+        break;
+      case 4:
+        await showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (ctx) => SafeArea(child: Padding(
+          padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('मेरी प्रोफाइल', style: Theme.of(ctx).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            ListTile(leading: const Icon(Icons.phone_android), title: const Text('लॉगिन मोबाइल'), subtitle: Text(_client.auth.currentUser?.phone ?? '—')),
+            ListTile(leading: const Icon(Icons.verified_user_outlined), title: const Text('Customer Account'), subtitle: Text(_client.auth.currentUser?.id ?? '—')),
+          ]),
+        )));
+        if (mounted) setState(() => _selectedNavIndex = 0);
+        break;
+    }
   }
 
   String _status(String value) => switch (value) {
@@ -514,20 +565,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       appBar: AppBar(
         title: const Text('SRK ELECTRONIC'),
         actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _loadBookings,
-            icon: const Icon(Icons.refresh),
-          ),
-          IconButton(
-            tooltip: 'Account Deletion Request',
-            onPressed: _requestAccountDeletion,
-            icon: const Icon(Icons.person_remove_outlined),
-          ),
-          IconButton(
-            tooltip: 'Logout',
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
+          TextButton.icon(onPressed: _loading ? null : _loadBookings, icon: const Icon(Icons.refresh), label: const Text('Refresh')),
+          PopupMenuButton<String>(
+            tooltip: 'अधिक विकल्प',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) { if (value == 'delete') _requestAccountDeletion(); if (value == 'logout') _logout(); },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'delete', child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(Icons.person_remove_outlined), title: Text('Account Deletion Request'))),
+              PopupMenuItem(value: 'logout', child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(Icons.logout), title: Text('Logout'))),
+            ],
           ),
         ],
       ),
@@ -536,9 +582,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         icon: const Icon(Icons.add),
         label: const Text('नई बुकिंग'),
       ),
-      body: RefreshIndicator(
+      body: Container(
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFE8F4FF), Color(0xFFF8FBFF), Color(0xFFFFF4E8)])),
+        child: Stack(children: [
+          Positioned(top: 34, right: -42, child: Container(width: 150, height: 150, decoration: BoxDecoration(shape: BoxShape.circle, color: Color(0x222B8DEB)))),
+          Positioned(bottom: 80, left: -54, child: Container(width: 180, height: 180, decoration: BoxDecoration(shape: BoxShape.circle, color: Color(0x22F5B544)))),
+          RefreshIndicator(
         onRefresh: _loadBookings,
         child: ListView(
+          controller: _dashboardScrollController,
           padding: const EdgeInsets.all(16),
           children: [
             const SrkFounderBanner(),
@@ -561,7 +613,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
               )).toList(),
             ),
             const SizedBox(height: 18),
-            Text('मेरी बुकिंग',
+            Text('मेरी बुकिंग', key: _bookingsSectionKey,
                 style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 6),
             const Text('आपकी OTP-लिंक की गई बुकिंग और इलेक्ट्रिशियन के कोटेशन यहाँ दिखेंगे।'),
@@ -605,6 +657,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
           ],
         ),
+          ),
+        ]),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedNavIndex,
+        onDestinationSelected: _onBottomNavigation,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'होम'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'बुकिंग'),
+          NavigationDestination(icon: Icon(Icons.add_circle_outline), selectedIcon: Icon(Icons.add_circle), label: 'नई बुकिंग'),
+          NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'सहायता'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'प्रोफाइल'),
+        ],
       ),
     );
   }
