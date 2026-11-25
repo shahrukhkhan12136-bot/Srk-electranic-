@@ -706,11 +706,12 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
             onChanged: (v) { setState(() => _technicianCount=v??1); _refreshPricePreview(); },
           ),
           const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            value: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
-            items: const [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
-            onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
-          ),
+          if (_selection!.pricingUnit == 'hour' && ((_pricePreview?['helper_rate'] as num?) ?? 0) > 0)
+            DropdownButtonFormField<int>(
+              value: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
+              items: const [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
+              onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
+            ),
           const SizedBox(height: 12),
           Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
             child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
