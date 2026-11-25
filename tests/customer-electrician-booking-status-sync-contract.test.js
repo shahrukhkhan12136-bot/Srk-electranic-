@@ -199,7 +199,7 @@ test('customer booking list survives rejected supplementary contact, refund, and
 });
 
 
-test('Electrician earnings and wallet panels isolate rejected network requests', () => {
+test('Electrician earnings and Master wallet panels isolate rejected network requests', () => {
   const earningsStart = electrician.indexOf('async function loadEarnings(){');
   const walletStart = electrician.indexOf('async function loadPartnerWallet(){');
   const respondStart = electrician.indexOf('const electricianOfferResponseBusy', walletStart);
@@ -209,13 +209,14 @@ test('Electrician earnings and wallet panels isolate rejected network requests',
   assert.match(earnings, /Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_get_my_earnings'\)\)\.catch\(error=>\(\{data:null,error\}\)\)/);
   assert.match(earnings, /\.catch\(error=>\(\{data:null,error\}\)\)/);
   assert.match(earnings, /पेआउट स्थिति लोड नहीं हुई/);
+  assert.match(wallet, /srk_master_wallet_summary/);
+  assert.match(wallet, /srk_technician_request_master_payout/);
   assert.match(wallet, /Promise\.resolve\(\)\.then\(\(\)=>sb\.rpc\('srk_get_my_wallet_summary'\)\)\.catch\(error=>\(\{data:null,error\}\)\)/);
   assert.match(wallet, /Promise\.resolve\(\)\.then\(\(\)=>sb\.from\('srk_wallet_bank_links'\)/);
   assert.match(wallet, /Promise\.resolve\(\)\.then\(\(\)=>sb\.from\('srk_wallet_ledger'\)/);
   assert.match(wallet, /बैंक लिंक की स्थिति लोड नहीं हो सकी/);
-  assert.match(wallet, /वॉलेट लेन-देन सूची अभी उपलब्ध नहीं है/);
+  assert.match(wallet, /पुराना लेन-देन विवरण उपलब्ध नहीं है/);
 });
-
 
 test('Electrician area, KYC, support and phone-history loaders handle rejected transports', () => {
   const areaStart=electrician.indexOf('async function loadMyAreaChangeRequests(){');
