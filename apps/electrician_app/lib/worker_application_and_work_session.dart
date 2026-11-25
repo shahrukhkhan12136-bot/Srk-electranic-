@@ -91,7 +91,6 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
           .select('id,level_name,category_id')
           .eq('category_id', id)
           .eq('is_active', true)
-          .order('sort_order')
           .order('level_name');
       skills = List<Map<String, dynamic>>.from(skillRows);
       skillLevels = List<Map<String, dynamic>>.from(levelRows);
