@@ -9,6 +9,8 @@ on:
       - 'apps/electrician_app/**'
       - 'packages/srk_mobile_core/**'
       - 'scripts/prepare_mobile_assets.py'
+      - 'supabase/migrations/**'
+      - 'tests/**'
       - '.github/workflows/flutter-analyze.yml'
   pull_request:
     branches:
@@ -17,6 +19,8 @@ on:
       - 'apps/customer_app/**'
       - 'apps/electrician_app/**'
       - 'packages/srk_mobile_core/**'
+      - 'supabase/migrations/**'
+      - 'tests/**'
       - '.github/workflows/flutter-analyze.yml'
 
 permissions:
