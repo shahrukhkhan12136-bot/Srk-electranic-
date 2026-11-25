@@ -32,5 +32,5 @@ test('Main Admin can publish separate Customer, Technician and Helper policy doc
 
 test('Customer booking form fails closed while policy loading or consent is missing', () => {
   assert.match(customer, /_policyLoading \|\| !_hasPolicyConsent/);
-  assert.match(customer, /current Hindi Terms और Privacy Policy/);
+  assert.match(customer, /वर्तमान Hindi Terms और Privacy Policy/);
 });
