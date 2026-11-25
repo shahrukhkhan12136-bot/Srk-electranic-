@@ -118,6 +118,42 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
   void initState() { super.initState(); load(); }
   @override
   void dispose() { upiController.dispose(); super.dispose(); }
+  Future<void> requestAccountDeletion() async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Account Deletion Request'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'Request का कारण (वैकल्पिक)',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('वापस')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Request भेजें')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason == null) return;
+    try {
+      await client.rpc('srk_request_account_deletion', params: {'p_reason': reason});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Account deletion request Admin समीक्षा के लिए भेजी गई। Account अभी delete नहीं हुआ है।'),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Request नहीं भेजी गई: ' + e.toString().replaceFirst('Exception: ', '')),
+      ));
+    }
+  }
+
   Future<void> load() async {
     if (!mounted) return;
     setState(() { loading = true; error = null; loadWarnings = []; });
@@ -619,6 +655,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
     return Scaffold(
       appBar: AppBar(title: const Text('SRK ELECTRONIC'), actions: [
         IconButton(onPressed: loading ? null : load, icon: const Icon(Icons.refresh)),
+        IconButton(onPressed: requestAccountDeletion, tooltip: 'Account Deletion Request', icon: const Icon(Icons.person_remove_outlined)),
         IconButton(onPressed: () => client.auth.signOut(), icon: const Icon(Icons.logout)),
       ]),
       body: RefreshIndicator(onRefresh: load, child: loading
