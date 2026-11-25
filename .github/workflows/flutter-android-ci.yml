@@ -1,0 +1,115 @@
+name: Flutter Android CI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-build:
+    name: Analyze and build Customer and Technician Android apps
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SRK_API_BASE_URL: ${{ vars.SRK_API_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Show toolchain versions
+        run: |
+          flutter --version
+          dart --version
+          java -version
+
+      - name: Verify mobile backend configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL" || { echo "::error::GitHub Actions Variable SUPABASE_URL is missing."; exit 1; }
+          test -n "$SUPABASE_ANON_KEY" || { echo "::error::GitHub Actions Secret SUPABASE_ANON_KEY is missing."; exit 1; }
+          test -n "$SRK_API_BASE_URL" || { echo "::error::GitHub Actions Variable SRK_API_BASE_URL is missing."; exit 1; }
+          [[ "$SUPABASE_URL" == https://*.supabase.co ]] || { echo "::error::SUPABASE_URL must be the HTTPS Supabase project URL."; exit 1; }
+          [[ "$SRK_API_BASE_URL" == https://* ]] || { echo "::error::SRK_API_BASE_URL must use HTTPS."; exit 1; }
+          echo "Backend configuration is present. Values are intentionally not printed."
+
+      - name: Prepare Android project scaffolding
+        shell: bash
+        run: |
+          set -euo pipefail
+          prepare_android() {
+            local app_dir="$1"
+            local project_name="$2"
+            local app_id="$3"
+            local temp_dir
+            temp_dir="$(mktemp -d)"
+            flutter create --platforms=android --org in.srkelectronic --project-name "$project_name" "$temp_dir"
+            mkdir -p "$app_dir"
+            cp -R "$temp_dir/android" "$app_dir/android"
+            rm -rf "$temp_dir"
+            sed -i "s/applicationId = .*/applicationId = \"$app_id\"/" "$app_dir/android/app/build.gradle.kts"
+            sed -i "s/namespace = .*/namespace = \"$app_id\"/" "$app_dir/android/app/build.gradle.kts"
+          }
+          prepare_android apps/customer_app customer in.srkelectronic.customer
+          prepare_android apps/electrician_app electrician in.srkelectronic.electrician
+          for manifest in apps/customer_app/android/app/src/main/AndroidManifest.xml apps/electrician_app/android/app/src/main/AndroidManifest.xml; do
+            sed -i '/<application/i\\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' "$manifest"
+          done
+
+      - name: Resolve dependencies, analyze and test shared core
+        run: |
+          cd packages/srk_mobile_core
+          flutter pub get
+          dart analyze
+          flutter test
+
+      - name: Analyze and build Customer app
+        run: |
+          cd apps/customer_app
+          flutter pub get
+          dart analyze
+          flutter test
+          flutter build apk --debug \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            --dart-define=SRK_API_BASE_URL="$SRK_API_BASE_URL"
+
+      - name: Analyze and build Technician app
+        run: |
+          cd apps/electrician_app
+          flutter pub get
+          dart analyze
+          flutter test
+          flutter build apk --debug \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            --dart-define=SRK_API_BASE_URL="$SRK_API_BASE_URL"
+
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: srk-electronic-customer-technician-android-debug-apks
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            apps/customer_app/build/app/outputs/flutter-apk/app-debug.apk
+            apps/electrician_app/build/app/outputs/flutter-apk/app-debug.apk
