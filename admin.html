@@ -1569,10 +1569,10 @@ async function syncAdminLgdDistricts(){
   ]);
   if(!statesResponse.ok||!districtsResponse.ok)throw new Error('LGD directory service अभी उपलब्ध नहीं है।');
   const [statesPayload,districtsPayload]=await Promise.all([statesResponse.json(),districtsResponse.json()]);
-  if(!statesPayload.success||!districtsPayload.success||!Array.isArray(statesPayload.data)||!Array.isArray(districtsPayload.data)||districtsPayload.data.length<700||!districtsPayload.meta?.source_date)throw new Error('अधूरी या गलत LGD सूची मिली; Database में कुछ भी नहीं बदला।');
+  if(!statesPayload.success||!districtsPayload.success||!Array.isArray(statesPayload.data)||!Array.isArray(districtsPayload.data)||statesPayload.data.length!==36||districtsPayload.data.length<780||!districtsPayload.meta?.source_date)throw new Error('अधूरी या गलत LGD सूची मिली; Database में कुछ भी नहीं बदला।');
   const stateNames=new Map(statesPayload.data.map(x=>[String(x.code),String(x.name)]));
   const rows=districtsPayload.data.map(d=>({code:String(d.code),name:String(d.name),state_code:String(d.state_code),state_name:stateNames.get(String(d.state_code))||''}));
-  if(rows.some(x=>!x.state_name))throw new Error('कुछ जिलों का State/UT code नहीं मिला; sync रोक दिया गया।');
+  if(rows.some(x=>!x.state_name)||new Set(rows.map(x=>x.code)).size!==rows.length||new Set(rows.map(x=>x.state_code)).size!==36)throw new Error('जिला सूची में State/UT mapping या duplicate LGD code की समस्या मिली; sync रोक दिया गया।');
   const {data,error}=await sb.rpc('srk_admin_sync_lgd_districts',{p_districts:rows,p_source_date:String(districtsPayload.meta.source_date)});
   if(error)throw error;
   adminDistrictStatus(Number(data||rows.length)+' जिले सिंक हुए · LGD स्रोत तिथि '+districtsPayload.meta.source_date);
