@@ -2,6 +2,14 @@ name: Flutter Android CI
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - work/mobile-customer-technician-integration-20261125
+    paths:
+      - 'apps/customer_app/**'
+      - 'apps/electrician_app/**'
+      - 'packages/srk_mobile_core/**'
+      - '.github/workflows/flutter-android-ci.yml'
 
 permissions:
   contents: read
@@ -31,6 +39,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.38.0'
           channel: stable
           cache: true
 
@@ -69,7 +78,7 @@ jobs:
           prepare_android apps/customer_app customer in.srkelectronic.customer
           prepare_android apps/electrician_app electrician in.srkelectronic.electrician
           for manifest in apps/customer_app/android/app/src/main/AndroidManifest.xml apps/electrician_app/android/app/src/main/AndroidManifest.xml; do
-            sed -i '/<application/i\\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' "$manifest"
+            sed -i '/<application/i\    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />' "$manifest"
           done
 
       - name: Resolve dependencies, analyze and test shared core
@@ -97,7 +106,7 @@ jobs:
           flutter test
           flutter build apk --debug \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
-            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
 
       - name: Upload debug APKs
         uses: actions/upload-artifact@v4
