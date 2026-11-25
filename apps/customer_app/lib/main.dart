@@ -92,7 +92,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         if (target != null) await Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
         break;
       case 2:
-        await _openWallet();
+        await _openSettings();
         if (mounted) setState(() => _selectedNavIndex = 0);
         break;
       case 3:
@@ -546,87 +546,49 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       );
       await _loadBookings();
     }
-  }
-
-  Future<void> _openWallet() async {
-    try {
-      final raw = await _client.rpc('srk_get_my_wallet_summary');
-      final summary = Map<String, dynamic>.from(raw as Map);
-      final customer = Map<String, dynamic>.from(summary['customer'] as Map);
-      final walletId = customer['wallet_id']?.toString();
-      if (walletId == null || walletId.isEmpty) {
-        throw StateError('Customer Wallet अभी उपलब्ध नहीं है।');
-      }
-      final rows = await _client
-          .from('srk_wallet_ledger')
-          .select('entry_type,direction,amount,status,description,created_at')
-          .eq('wallet_id', walletId)
-          .order('created_at', ascending: false)
-          .limit(20);
-      final ledger = List<Map<String, dynamic>>.from(rows);
-      if (!mounted) return;
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        builder: (ctx) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('मेरा Wallet', style: Theme.of(ctx).textTheme.headlineSmall),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('उपलब्ध लेजर बैलेंस'),
-                          const SizedBox(height: 4),
-                          Text('₹\${(customer['balance'] as num?)?.toStringAsFixed(2) ?? '0.00'}',
-                            style: Theme.of(ctx).textTheme.headlineMedium),
-                          const SizedBox(height: 8),
-                          const Text('यह SRK का आंतरिक लेजर बैलेंस है। फिलहाल Wallet में पैसे जोड़ने/टॉप-अप की सुविधा चालू नहीं है।',
-                            style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text('लेन-देन का इतिहास', style: Theme.of(ctx).textTheme.titleMedium),
-                  if (ledger.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Text('अभी कोई Wallet लेन-देन दर्ज नहीं है।'),
-                    )
-                  else
-                    ...ledger.map((entry) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(entry['direction'] == 'credit'
-                          ? Icons.arrow_downward : Icons.arrow_upward),
-                      title: Text(entry['description']?.toString().isNotEmpty == true
-                          ? entry['description'].toString()
-                          : entry['entry_type'].toString()),
-                      subtitle: Text('\${entry['status']} • \${entry['created_at']}'),
-                      trailing: Text('\${entry['direction'] == 'credit' ? '+' : '-'}₹\${(entry['amount'] as num?)?.toStringAsFixed(2) ?? '0.00'}'),
-                    )),
-                ],
+  }  Future<void> _openSettings() async {
+    final user = _client.auth.currentUser;
+    final metadata = user?.userMetadata ?? const <String, dynamic>{};
+    final name = (metadata['full_name'] ?? metadata['name'] ?? 'ग्राहक').toString();
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('सेटिंग्स', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.language),
+                title: const Text('ऐप की भाषा'),
+                subtitle: const Text('हिंदी'),
               ),
-            ),
+              ListTile(
+                leading: const Icon(Icons.notifications_outlined),
+                title: const Text('सूचनाएँ'),
+                subtitle: const Text('बुकिंग और ऑफर की सूचनाएँ ऐप अनुमति के अनुसार'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: Text(name),
+                subtitle: Text('Customer ID: \${user?.id ?? '—'}'),
+              ),
+              const SizedBox(height: 4),
+              const Text('भाषा और Notification नियंत्रण का पूरा बदलाव अगली Settings सुविधा में जोड़ा जाएगा।',
+                style: TextStyle(fontSize: 12, color: Colors.black54)),
+            ],
           ),
         ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Wallet जानकारी नहीं खुली: ' + e.toString().replaceFirst('Exception: ', '')),
-      ));
-    }
+      ),
+    );
   }
+
+
 
   Future<void> _logout() async {
     await _client.auth.signOut();
@@ -668,6 +630,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           controller: _dashboardScrollController,
           padding: const EdgeInsets.all(16),
           children: [
+            _CustomerIdentityHeader(user: _client.auth.currentUser),
+            const SizedBox(height: 12),
             const SrkFounderBanner(),
             const SizedBox(height: 14),
             Text('अपनी सर्विस चुनें', style: Theme.of(context).textTheme.titleLarge),
@@ -741,7 +705,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'होम'),
           NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'बुकिंग'),
-          NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: 'Wallet'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'सेटिंग्स'),
           NavigationDestination(icon: Icon(Icons.support_agent_outlined), selectedIcon: Icon(Icons.support_agent), label: 'सहायता'),
           NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'प्रोफाइल'),
         ],
@@ -954,6 +918,51 @@ Future<void> _callPhone(String raw) async {
 
 /// Uses the existing rate-limited Netlify booking endpoint. The service-role
 /// credential remains server-side and is never included in this app.
+
+class _CustomerIdentityHeader extends StatelessWidget {
+  const _CustomerIdentityHeader({required this.user});
+  final User? user;
+
+  @override
+  Widget build(BuildContext context) {
+    final metadata = user?.userMetadata ?? const <String, dynamic>{};
+    final name = (metadata['full_name'] ?? metadata['name'] ?? 'ग्राहक').toString();
+    final photo = (metadata['avatar_url'] ?? metadata['picture'] ?? '').toString();
+    final customerId = user?.id ?? '—';
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 29,
+              backgroundColor: const Color(0xFFE5F0FF),
+              backgroundImage: photo.startsWith('https://') ? NetworkImage(photo) : null,
+              child: photo.startsWith('https://') ? null : const Icon(Icons.person, size: 32),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 3),
+                  const Text('Customer Unique ID', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                  SelectableText(customerId, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+            const Icon(Icons.verified_user_outlined, color: Color(0xFF2677C9)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CustomerCategoryTile extends StatelessWidget {
   const _CustomerCategoryTile({required this.code, required this.title, required this.icon, this.onTap});
   final String code, title;
