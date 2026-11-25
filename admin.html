@@ -1288,7 +1288,7 @@ async function saveVersionedServiceRate(id){
  if(reason.length<10||(row.pricing_unit!=='motor_hp'&&!tech)||(row.pricing_unit==='hour'&&helperRaw!==''&&helper===null)||(row.pricing_unit==='motor_hp'&&(!hp.length||hp.some(x=>!Number.isFinite(Number(x.motor_hp))||Number(x.fixed_price)<=0)))){alert('दर और कारण की जानकारी सही भरें।');return;}
  if(!confirm('नई Pricing Version सेव होगी और नई बुकिंग पर लागू होगी। जारी रखें?'))return;
  try{
-  const {error}=await sb.rpc('srk_admin_version_service_pricing_rule',{p_pricing_rule_id:id,p_pricing_unit:row.pricing_unit,p_technician_rate:tech,p_helper_rate:helper,p_base_hp:row.base_hp,p_base_hp_price:row.base_hp_price,p_hp_step_amount:row.hp_step_amount,p_timer_enabled:row.timer_enabled,p_materials_charged_separately:false,p_winding_charged_separately:false,p_pricing_note:row.pricing_note||'',p_hp_tiers:hp,p_change_reason:reason});
+  const {error}=await sb.rpc('srk_admin_version_service_pricing_rule',{p_pricing_rule_id:id,p_pricing_unit:row.pricing_unit,p_technician_rate:tech,p_helper_rate:helper,p_base_hp:row.base_hp,p_base_hp_price:row.pricing_unit==='motor_hp'?(hp.find(x=>Number(x.motor_hp)===Number(row.base_hp))?.fixed_price??row.base_hp_price):row.base_hp_price,p_hp_step_amount:row.hp_step_amount,p_timer_enabled:row.timer_enabled,p_materials_charged_separately:false,p_winding_charged_separately:false,p_pricing_note:row.pricing_note||'',p_hp_tiers:hp,p_change_reason:reason});
   if(error)throw error;alert('नई Pricing Version सुरक्षित हो गई।');await loadAdminPricingControls();
  }catch(e){alert('Pricing Version सेव नहीं हुई। HP Tier, Rate और Admin अनुमति जाँचें।');}
 }
