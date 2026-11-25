@@ -260,7 +260,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
 
 
 
-  String _money(dynamic value) => '₹' + ((value as num?)?.toDouble() ?? double.tryParse(value?.toString() ?? '') ?? 0).toStringAsFixed(2);
+  String _money(dynamic value) { final amount = value is num ? value.toDouble() : (double.tryParse(value?.toString() ?? '') ?? 0); return '₹' + amount.toStringAsFixed(2); }
 
   Future<void> openFinancialDetails(Map<String, dynamic> earning) async {
     final bookingId = earning['booking_id']?.toString();
