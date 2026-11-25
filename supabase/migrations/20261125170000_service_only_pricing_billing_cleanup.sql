@@ -105,9 +105,9 @@ begin
  return query select v_unit,v_level.level_name,v_tech_rate,v_helper_rate,
   v_total,round(v_total*0.15,2),round(v_total*0.85,2),
   v_unit='hour' and p_duration_hours>8,
-  case when v_unit='hour' then 'Base estimate; 1.5x overtime is added only for each worker''s billable time beyond 8 hours in a booking day. '
-   when v_unit='motor_hp' then 'Fixed Motor/Pump HP price. No timer and '
-   else 'Fixed per-item price. ' end;
+  case when v_unit='hour' then 'Hourly service estimate; overtime may apply after 8 hours per worker per booking day.'
+   when v_unit='motor_hp' then 'Fixed Motor/Pump HP service rate.'
+   else 'Fixed per-item service rate.' end;
 end
 $function$
 ;
@@ -1251,7 +1251,7 @@ alter table public.srk_service_pricing_rules drop column if exists materials_cha
 alter table public.srk_service_pricing_rules drop column if exists winding_charged_separately;
 
 alter table public.srk_booking_final_bill_items add constraint srk_booking_final_bill_items_item_type_check
- check (item_type = any(array['service','labour','discount','other','cancellation_fee']::text[]));
+ check (item_type = any(array['service','labour','discount','cancellation_fee']::text[]));
 alter table public.srk_booking_final_bills add constraint srk_final_bill_amounts_nonnegative
  check (service_amount>=0 and discount_amount>=0 and tax_amount>=0);
 alter table public.srk_booking_final_bills add constraint srk_final_bill_discount_cap check (discount_amount<=service_amount);
