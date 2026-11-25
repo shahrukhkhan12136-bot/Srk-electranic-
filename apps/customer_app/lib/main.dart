@@ -855,11 +855,13 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     }
     setState(() { _priceBusy = true; _priceError = null; _pricePreview = null; });
     try {
-      final data = await _client.rpc('srk_customer_preview_booking_price_v2', params: {
+      final data = await _client.rpc('srk_customer_preview_booking_price_v3', params: {
         'p_category_id': selection.categoryId,
         'p_service_type_id': selection.serviceTypeId,
         'p_skill_id': selection.skillId,
         'p_skill_level_id': selection.skillLevelId,
+        'p_state': _state.text.trim(),
+        'p_district': _district.text.trim(),
         'p_technician_count': _technicianCount,
         'p_helper_count': _helperCount,
         'p_duration_hours': selection.pricingUnit == 'hour' ? _durationHours : 1,
@@ -908,7 +910,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         'p_full_name': _name.text.trim(),
         'p_phone': _phone.text.trim(),
       });
-      final response = await _client.rpc('srk_customer_create_booking', params: {
+      final response = await _client.rpc('srk_customer_create_booking_v2', params: {
         'p_category_id': selection.categoryId,
         'p_service_type_id': selection.serviceTypeId,
         'p_skill_id': selection.skillId,
