@@ -44,7 +44,8 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   List<Map<String, dynamic>> _skills = [];
   List<Map<String, dynamic>> _levels = [];
   List<Map<String, dynamic>> _rules = [];
-  List<Map<String, dynamic>> _hpTiers = [];\n  List<Map<String, dynamic>> _rates = [];
+  List<Map<String, dynamic>> _hpTiers = [];
+  List<Map<String, dynamic>> _rates = [];
   Map<String, dynamic>? _category, _service, _skill, _level, _rule;
   double? _motorHp;
 
@@ -62,7 +63,8 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         _client.from('srk_service_skills').select('id,service_type_id,skill_name,sort_order').eq('is_active', true).order('sort_order'),
         _client.from('srk_skill_levels').select('id,category_id,level_name,sort_order').eq('is_active', true).order('sort_order'),
         _client.from('srk_service_pricing_rules').select('id,category_id,service_type_id,pricing_unit,technician_rate,helper_rate'),
-        _client.from('srk_service_pricing_hp_tiers').select('pricing_rule_id,motor_hp'),\n        _client.from('srk_service_rates').select('category_id,service_type_id,skill_level_id,technician_hourly_rate,helper_hourly_rate,rate_status,effective_from,effective_to').eq('rate_status','approved'),
+        _client.from('srk_service_pricing_hp_tiers').select('pricing_rule_id,motor_hp'),
+        _client.from('srk_service_rates').select('category_id,service_type_id,skill_level_id,technician_hourly_rate,helper_hourly_rate,rate_status,effective_from,effective_to').eq('rate_status','approved'),
       ]);
       if (!mounted) return;
       setState(() {
@@ -71,7 +73,8 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         _skills = List<Map<String, dynamic>>.from(results[2] as List);
         _levels = List<Map<String, dynamic>>.from(results[3] as List);
         _rules = List<Map<String, dynamic>>.from(results[4] as List);
-        _hpTiers = List<Map<String, dynamic>>.from(results[5] as List);\n        _rates = List<Map<String, dynamic>>.from(results[6] as List);
+        _hpTiers = List<Map<String, dynamic>>.from(results[5] as List);
+        _rates = List<Map<String, dynamic>>.from(results[6] as List);
         _loading = false;
       });
     } catch (e) {
