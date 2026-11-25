@@ -735,6 +735,10 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   int _previewRequest = 0;
   bool _submitting = false, _locationBusy = false, _priceBusy = false;
   double? _locationLat, _locationLng;
+  List<Map<String, dynamic>> _policies = [];
+  final Map<String, bool> _policyAccepted = {};
+  bool _policyLoading = true;
+  String? _policyError;
 
   @override
   void initState() {
@@ -742,6 +746,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     final user = _client.auth.currentUser;
     _phone.text = (user?.phone ?? '').replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^91(?=\d{10}$)'), '');
     _name.text = user?.userMetadata?['full_name']?.toString() ?? '';
+    _loadPolicies();
   }
 
   @override
@@ -750,6 +755,26 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     _district.dispose(); _pincode.dispose(); _address.dispose();
     super.dispose();
   }
+
+  Future<void> _loadPolicies() async {
+    try {
+      final rows = await _client.rpc('srk_get_registration_policy_documents', params: {
+        'p_worker_type': 'customer', 'p_language_code': 'hi',
+      });
+      _policies = List<Map<String, dynamic>>.from(rows as List);
+      _policyError = null;
+    } catch (e) {
+      _policies = [];
+      _policyError = e.toString();
+    } finally {
+      if (mounted) setState(() => _policyLoading = false);
+    }
+  }
+
+  bool get _hasPolicyConsent => _policies.length == 2 &&
+      _policies.any((p) => p['policy_type'] == 'terms') &&
+      _policies.any((p) => p['policy_type'] == 'privacy') &&
+      _policies.every((p) => _policyAccepted[p['id'].toString()] == true);
 
   String? _required(String? value, String label, {int min = 2}) {
     final v = value?.trim() ?? '';
@@ -812,6 +837,12 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_policyLoading || !_hasPolicyConsent) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('वर्तमान Hindi Terms और Privacy Policy पढ़कर दोनों स्वीकार करें।'),
+      ));
+      return;
+    }
     final selection = _selection;
     if (selection == null || _pricePreview == null || _priceBusy) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('पहले लाइव कैटलॉग से सेवा चुनें और सर्वर दर की पुष्टि करें।')));
@@ -825,6 +856,13 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     }
     setState(() => _submitting = true);
     try {
+      for (final policy in _policies) {
+        await _client.rpc('srk_record_registration_policy_consent', params: {
+          'p_worker_type': 'customer',
+          'p_policy_document_id': policy['id'],
+          'p_user_agent': 'SRK ELECTRONIC Customer Android App',
+        });
+      }
       await _client.rpc('srk_customer_upsert_profile', params: {
         'p_full_name': _name.text.trim(),
         'p_phone': _phone.text.trim(),
@@ -898,6 +936,38 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           Icon(Icons.verified_user, color: Colors.green), SizedBox(width: 10),
           Expanded(child: Text('बुकिंग आपके OTP-verified मोबाइल खाते से जुड़ेगी। भुगतान काम पूरा होने और अंतिम बिल बनने के बाद ही होगा।')),
         ]))),
+        Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Terms & Privacy Policy', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            if (_policyLoading)
+              const LinearProgressIndicator()
+            else if (_policies.length != 2)
+              const Text('Main Admin ने अभी Customer की वर्तमान Hindi Terms और Privacy Policy प्रकाशित नहीं की हैं। सुरक्षा के लिए Booking Submit तब तक बंद रहेगा।',
+                style: TextStyle(color: Colors.red))
+            else
+              ..._policies.map((p) {
+                final id = p['id'].toString();
+                return ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text((p['policy_type'] == 'terms' ? 'Terms & Conditions — ' : 'Privacy Policy — ') + p['version'].toString()),
+                  children: [
+                    Padding(padding: const EdgeInsets.all(8), child: SelectableText(p['body']?.toString() ?? '')),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _policyAccepted[id] == true,
+                      onChanged: _submitting ? null : (v) => setState(() => _policyAccepted[id] = v == true),
+                      title: const Text('मैंने पूरा दस्तावेज़ पढ़ा और स्वीकार किया है।'),
+                      controlAffinity: ListTileControlAffinity.leading,
+                    ),
+                  ],
+                );
+              }),
+            if (_policyError != null)
+              Text('Policy लोड नहीं हुई: $_policyError', style: const TextStyle(color: Colors.red)),
+          ],
+        ))),
         const SizedBox(height: 12),
         Text('ग्राहक की जानकारी', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
