@@ -921,7 +921,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedNavIndex,
         onDestinationSelected: _onBottomNavigation,
-        destinations: const [
+        destinations: [
           NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: customerEnglish ? 'Home' : 'होम'),
           NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: customerEnglish ? 'Bookings' : 'बुकिंग'),
           NavigationDestination(icon: const Icon(Icons.settings_outlined), selectedIcon: const Icon(Icons.settings), label: customerEnglish ? 'Settings' : 'सेटिंग्स'),
@@ -1001,7 +1001,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             child: ListTile(
               leading: Icon(Icons.timer, color: timerRunning ? Colors.green : Colors.orange),
               title: Text(customerEnglish ? 'Work timer' : 'काम का टाइमर'),
-              subtitle: Text(_customerTimerText(booking), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFeatures: [FontFeature.tabularFigures()])),
+              subtitle: Text(_customerTimerText(booking), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               trailing: Text(timerRunning ? (customerEnglish ? 'Running' : 'चालू') : (customerEnglish ? 'Paused' : 'रुका हुआ')),
             ),
           ),
