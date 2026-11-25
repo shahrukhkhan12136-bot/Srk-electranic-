@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Displays only this logged-in worker's own payable share for all six
-/// service categories. Company/commission values are deliberately absent.
+/// service categories.
 class WorkerRateCard extends StatelessWidget {
   const WorkerRateCard({super.key, required this.categories});
 
