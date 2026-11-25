@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(21);
+SELECT plan(23);
 
 SELECT has_table('public','srk_service_offerings','service offerings are separate from technician skills');
 SELECT has_table('public','srk_service_rates','versioned Admin-controlled labour rates exist');
@@ -50,17 +50,39 @@ SELECT ok(
   'rate and service catalogue tables have RLS enabled'
 );
 SELECT ok(
-  (SELECT count(*)=3 FROM public.srk_service_rates
-    WHERE service_code IN ('residential_plumbing','industrial_plumbing') AND status='active')
+  NOT EXISTS(SELECT 1 FROM public.srk_service_rates r
+    LEFT JOIN public.srk_service_offerings o ON o.service_code=r.service_code
+    WHERE o.service_code IS NULL)
   AND NOT EXISTS(SELECT 1 FROM public.srk_service_rates
     WHERE service_code IN ('residential_wiring','factory_wiring','interior_painting','exterior_painting',
       'ac_technician','ac_installation','ac_repair','fridge_technician','motor_winding','pump_repair','cooler_repair','cooler_motor_winding')
       AND status='active'),
-  'only confirmed Plumber rates are seeded active; conflicting rates remain Admin-configurable'
+  'rates are only created for exact existing offerings; unconfigured services remain fail-closed'
 );
 SELECT ok(
-  (SELECT count(*)=3 FROM public.srk_customer_list_active_service_rates()),
-  'customer list contains only the three active confirmed Plumber levels in the initial seed'
+  (SELECT count(*) FROM public.srk_customer_list_active_service_rates()) =
+  (SELECT count(*) FROM public.srk_service_rates r
+    JOIN public.srk_service_offerings o ON o.service_code=r.service_code AND o.is_active
+    WHERE r.status='active' AND r.effective_from<=clock_timestamp()
+      AND (r.effective_to IS NULL OR r.effective_to>clock_timestamp())),
+  'customer rate list exposes exactly the configured active offering rates'
+);
+SELECT ok(
+  NOT EXISTS(
+    SELECT 1 FROM public.srk_service_offerings o
+    JOIN public.srk_service_skills s ON s.skill_code=o.skill_code
+    WHERE (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%') AND o.is_active
+  ),
+  'all winding offerings are inactive while historical skill rows are preserved'
+);
+SELECT ok(
+  (SELECT count(*) FROM public.srk_service_offerings)=(SELECT count(*) FROM public.srk_service_skills)
+  AND NOT EXISTS(
+    SELECT 1 FROM public.srk_service_skills s
+    LEFT JOIN public.srk_service_offerings o ON o.skill_code=s.skill_code
+    WHERE o.skill_code IS NULL OR o.is_active IS DISTINCT FROM s.is_active
+  ),
+  'each skill has exactly one offering that preserves its active/inactive state'
 );
 SELECT ok(
   position('srk_service_category_code' in pg_get_constraintdef((

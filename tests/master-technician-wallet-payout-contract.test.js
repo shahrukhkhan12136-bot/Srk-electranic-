@@ -32,3 +32,27 @@ test('Existing legacy payout path is not overwritten',()=>{
 test('SQL migration contains balanced function delimiters',()=>{
  assert.equal((sql.match(/\$\$/g)||[]).length%2,0);
 });
+
+const serviceOnly=fs.readFileSync('supabase/migrations/20261125161000_service_only_master_technician_payouts.sql','utf8');
+test('Master Technician wallet and new payout requests count service net only',()=>{
+ assert.match(serviceOnly,/NEW\.materials_reimbursement_paise:=0/);
+ assert.match(serviceOnly,/NEW\.total_payable_paise:=NEW\.labour_payable_paise/);
+ assert.match(serviceOnly,/'earned_paise',coalesce\(sum\(p\.labour_payable_paise\),0\)/);
+ assert.match(serviceOnly,/'pending_paise',coalesce\(sum\(p\.labour_payable_paise\) FILTER\(WHERE p\.payout_status='pending'\),0\)/);
+ assert.match(serviceOnly,/sum\(labour_payable_paise\)/);
+ assert.match(serviceOnly,/SELECT v_req,id,labour_payable_paise/);
+ assert.equal((serviceOnly.match(/WHERE technician_id=v_tid AND payout_status='pending' AND labour_payable_paise>0;/g)||[]).length,2);
+ assert.doesNotMatch(serviceOnly,/sum\(total_payable_paise\)/);
+ assert.doesNotMatch(serviceOnly,/UPDATE public\.srk_master_technician_payables SET materials_reimbursement_paise/);
+});
+
+const refundRequestSync=fs.readFileSync('supabase/migrations/20261125162000_sync_master_payout_requests_with_refund_lifecycle.sql','utf8');
+test('Refund start cancels unpaid payout requests and refund failure preserves cancellation for a fresh request',()=>{
+ assert.match(refundRequestSync,/NEW\.status IN \('requested','processing','unknown'\)/);
+ assert.match(refundRequestSync,/SET status='cancelled'/);
+ assert.match(refundRequestSync,/r\.status IN \('requested','approved'\)/);
+ assert.match(refundRequestSync,/NEW\.status='failed'/);
+ assert.match(refundRequestSync,/Refund failed; payable released for a new payout request/);
+ assert.match(refundRequestSync,/AFTER INSERT ON public\.srk_razorpay_refunds/);
+ assert.match(refundRequestSync,/AFTER UPDATE OF status ON public\.srk_razorpay_refunds/);
+});

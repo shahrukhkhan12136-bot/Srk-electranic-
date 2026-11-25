@@ -537,6 +537,40 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
     _ => status ?? 'स्थिति उपलब्ध नहीं',
   };
 
+  Future<void> sendSos() async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🚨 तत्काल सहायता'),
+        content: const Text('यदि काम के दौरान आपको खतरा है, कारण चुनें। यह अलर्ट SRK Admin के in-app SOS नियंत्रण कक्ष में जाएगा। SMS/Police को स्वतः कॉल या संदेश नहीं जाएगा।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('वापस')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'customer_at_risk'), child: const Text('Customer से खतरा')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'electrician_at_risk'), child: const Text('मुझे खतरा है')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'violence_or_other_emergency'), child: const Text('मारपीट / अन्य आपात स्थिति')),
+        ],
+      ),
+    );
+    if (reason == null) return;
+    try {
+      final result = await Supabase.instance.client.rpc('srk_create_sos_alert', params: {'p_reason': reason});
+      if (!mounted) return;
+      final data = Map<String, dynamic>.from(result as Map);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(data['created'] == true
+          ? 'SOS Admin नियंत्रण कक्ष में दर्ज हुआ। केस: ${data['case_id']}'
+          : 'आपका SOS पहले से लंबित है। केस: ${data['case_id']}'),
+        duration: const Duration(seconds: 8),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('SOS दर्ज नहीं हुआ: ' + e.toString().replaceFirst('Exception: ', '')),
+        duration: const Duration(seconds: 8),
+      ));
+    }
+  }
+
   Future<void> respondToOffer(Map<String, dynamic> offer, String response) async {
     final accept = response == 'accepted';
     final confirmed = await showDialog<bool>(
@@ -800,6 +834,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
               const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('अभी कोई नियुक्त बुकिंग उपलब्ध नहीं है। नई बुकिंग स्वीकार होने के बाद यहाँ कोटेशन भेज सकेंगे।')))
             else ...bookingDetails.where((b) => ['assigned','inspection','awaiting_quote_approval','quote_approved','quote_rejected','in_progress','completed'].contains(b['booking_status'])).map((booking) {
               final status = booking['booking_status']?.toString();
+              final activeBookingCount = bookingDetails.where((b) => b['booking_status'] == 'in_progress').length;
               final canQuote = ['assigned','inspection','quote_rejected'].contains(status);
               final service = (booking['service_charge'] as num?)?.toDouble();
               final total = (booking['quoted_amount'] as num?)?.toDouble();
@@ -842,13 +877,20 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                       onPressed: loading ? null : () => requestWorkStartApproval(booking['assignment_id'].toString()),
                       icon: const Icon(Icons.play_arrow), label: const Text('काम शुरू करने की मंजूरी माँगें'),
                     )),
-                  if (status == 'in_progress')
+                  if (status == 'in_progress') ...[
                     WorkerWorkSessionPanel(
                       assignmentId: booking['assignment_id'].toString(),
                       pricingUnit: booking['pricing_unit_snapshot']?.toString() ?? 'hourly',
                       onChanged: load,
                       onProposeSchedule: () => proposeSchedule(booking),
                     ),
+                    if (activeBookingCount == 1)
+                      SizedBox(width: double.infinity, child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                        onPressed: sendSos,
+                        icon: const Icon(Icons.sos), label: const Text('🚨 तत्काल सहायता / SOS'),
+                      )),
+                  ],
                   if (canQuote) ...[
                     const SizedBox(height: 12),
                     SizedBox(width: double.infinity, child: FilledButton.icon(

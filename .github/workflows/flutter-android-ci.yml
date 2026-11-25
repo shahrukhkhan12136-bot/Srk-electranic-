@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - work/mobile-customer-technician-integration-20261125
+      - work/srk-completion-gap-20261125
     paths:
       - 'apps/customer_app/**'
       - 'apps/electrician_app/**'

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class WorkerApplicationPage extends StatefulWidget {
@@ -29,7 +30,12 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
   PlatformFile? photo;
   PlatformFile? identity;
   List<Map<String, dynamic>> categories = [];
+  List<Map<String, dynamic>> skills = [];
+  List<Map<String, dynamic>> skillLevels = [];
+  final Set<String> selectedSkillIds = {};
+  final Map<String, String> selectedSkillLevels = {};
   List<Map<String, dynamic>> policies = [];
+  bool detectingLocation = false;
   final Map<String, bool> accepted = {};
   bool loading = true, saving = false;
   String? message, error;
@@ -55,12 +61,181 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
           .select('id,category_name').eq('is_active', true).order('sort_order');
       categories = List<Map<String, dynamic>>.from(rows);
       if (categories.isNotEmpty) categoryId = categories.first['id'].toString();
+      await loadSkillOptions();
       await loadPolicies();
+      await detectStateFromLocation();
     } catch (_) {
       error = 'आवेदन फॉर्म लोड नहीं हुआ। इंटरनेट और Database की जाँच करें।';
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Future<void> loadSkillOptions() async {
+    final id = categoryId;
+    selectedSkillIds.clear();
+    selectedSkillLevels.clear();
+    if (id == null) {
+      skills = [];
+      skillLevels = [];
+      if (mounted) setState(() {});
+      return;
+    }
+    try {
+      final skillRows = await client.from('srk_service_skills')
+          .select('id,display_name,category_id')
+          .eq('category_id', id)
+          .eq('is_active', true)
+          .order('display_name');
+      final levelRows = await client.from('srk_skill_levels')
+          .select('id,level_name,category_id')
+          .eq('category_id', id)
+          .eq('is_active', true)
+          .order('level_name');
+      skills = List<Map<String, dynamic>>.from(skillRows);
+      skillLevels = List<Map<String, dynamic>>.from(levelRows);
+    } catch (_) {
+      skills = [];
+      skillLevels = [];
+      error = 'इस कैटेगरी की Skill और Basic / Expert / Master सूची लोड नहीं हुई। Refresh करें।';
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> detectStateFromLocation() async {
+    if (detectingLocation || state.text.trim().isNotEmpty) return;
+    detectingLocation = true;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return;
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) return;
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+      final places = await placemarkFromCoordinates(pos.latitude, pos.longitude);
+      if (places.isEmpty) return;
+      final place = places.first;
+      final detectedState = (place.administrativeArea ?? '').trim();
+      if (detectedState.isNotEmpty && mounted && state.text.trim().isEmpty) {
+        setState(() {
+          state.text = detectedState;
+          if (district.text.trim().isEmpty) {
+            district.text = (place.subAdministrativeArea ?? place.locality ?? '').trim();
+          }
+          if (pincode.text.trim().isEmpty) {
+            pincode.text = (place.postalCode ?? '').trim();
+          }
+          message = 'फोन की Location से राज्य स्वतः भर दिया गया है। कृपया विवरण जाँच लें।';
+        });
+      }
+    } catch (_) {
+      // Location lookup is best-effort; manual entry remains available.
+    } finally {
+      detectingLocation = false;
+    }
+  }
+
+  Future<void> changeCategory(String? value) async {
+    if (value == null) return;
+    setState(() {
+      categoryId = value;
+      skills = [];
+      skillLevels = [];
+      selectedSkillIds.clear();
+      selectedSkillLevels.clear();
+      error = null;
+    });
+    await loadSkillOptions();
+  }
+
+  Widget skillSelectionSection() {
+    if (skills.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text('इस कैटेगरी की Skill सूची अभी उपलब्ध नहीं है। आवेदन भेजने से पहले सूची लोड होना जरूरी है।'),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('अपनी Skills चुनें', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          const Text('एक या अधिक काम चुनें और हर चुनी हुई Skill का स्तर निर्धारित करें।'),
+          const SizedBox(height: 8),
+          ...skills.map((skill) {
+            final skillId = skill['id'].toString();
+            final selected = selectedSkillIds.contains(skillId);
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Column(
+                  children: [
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      value: selected,
+                      title: Text(skill['display_name']?.toString() ?? 'सेवा'),
+                      onChanged: saving ? null : (checked) => setState(() {
+                        if (checked == true) {
+                          selectedSkillIds.add(skillId);
+                        } else {
+                          selectedSkillIds.remove(skillId);
+                          selectedSkillLevels.remove(skillId);
+                        }
+                      }),
+                    ),
+                    if (selected && skillLevels.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                        child: DropdownButtonFormField<String>(
+                          value: selectedSkillLevels[skillId],
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Skill Level — Basic / Expert / Master',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: skillLevels.map((level) => DropdownMenuItem<String>(
+                            value: level['id'].toString(),
+                            child: Text(level['level_name'].toString()),
+                          )).toList(),
+                          onChanged: saving ? null : (value) => setState(() {
+                            if (value == null) {
+                              selectedSkillLevels.remove(skillId);
+                            } else {
+                              selectedSkillLevels[skillId] = value;
+                            }
+                          }),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 
   Future<void> loadPolicies() async {
@@ -132,7 +307,9 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
     if (name.text.trim().length < 2 || father.text.trim().length < 2 ||
         address.text.trim().length < 5 || state.text.trim().isEmpty ||
         district.text.trim().isEmpty || !RegExp(r'^\d{6}$').hasMatch(pincode.text.trim()) ||
-        categoryId == null || dateOfBirth == null || photo == null || identity == null ||
+        categoryId == null || selectedSkillIds.isEmpty ||
+        (skillLevels.isNotEmpty && selectedSkillIds.any((id) => !selectedSkillLevels.containsKey(id))) ||
+        dateOfBirth == null || photo == null || identity == null ||
         years == null || years < 0 || years > 60) {
       setState(() => error = 'सभी आवश्यक विवरण, जन्मतिथि, फोटो और Aadhaar/पहचान दस्तावेज़ भरें।');
       return;
@@ -183,6 +360,15 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
         'p_file_size_bytes': photo!.size,
         'p_application_id': appId,
       });
+      for (final skillId in selectedSkillIds) {
+        await client.rpc('srk_worker_submit_application_skill', params: {
+          'p_application_id': appId,
+          'p_skill_id': skillId,
+          'p_skill_level_id': selectedSkillLevels[skillId],
+          'p_years_experience': years,
+          'p_evidence_document_id': null,
+        });
+      }
       await client.rpc('srk_submit_worker_document', params: {
         'p_document_type': 'identity_proof',
         'p_storage_path': identityPath,
@@ -221,9 +407,16 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
   @override
   Widget build(BuildContext context) {
     if (loading) return const Center(child: CircularProgressIndicator());
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: SizedBox(
+          width: double.infinity,
+          child: Card(
+            margin: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+            clipBehavior: Clip.antiAlias,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Technician / Helper Registration', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
@@ -249,9 +442,11 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
             items: categories.map((c) => DropdownMenuItem(
               value: c['id'].toString(), child: Text(c['category_name'].toString()),
             )).toList(),
-            onChanged: saving ? null : (v) => setState(() => categoryId = v),
+            onChanged: saving ? null : changeCategory,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          skillSelectionSection(),
+          const SizedBox(height: 12),
           field(name, 'पूरा नाम'),
           field(father, 'पिता का नाम'),
           TextFormField(
@@ -271,7 +466,19 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
               dateOfBirth!.month.toString() + '/' + dateOfBirth!.year.toString()),
           ),
           field(address, 'पूरा पता', maxLines: 2),
-          field(state, 'राज्य'),
+          TextFormField(
+            controller: state,
+            decoration: InputDecoration(
+              labelText: 'राज्य',
+              helperText: detectingLocation ? 'Location से राज्य खोजा जा रहा है…' : 'Location से अपने-आप भरा जाएगा; जरूरत पर बदल सकते हैं।',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                tooltip: 'राज्य फिर से पहचानें',
+                onPressed: saving ? null : () { state.clear(); detectStateFromLocation(); },
+                icon: const Icon(Icons.my_location),
+              ),
+            ),
+          ),
           field(district, 'जिला'),
           field(pincode, 'PIN Code', keyboard: TextInputType.number),
           field(experience, 'अनुभव (वर्ष)', keyboard: TextInputType.number),
@@ -294,14 +501,25 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
               label: Text(identity == null ? 'Aadhaar / पहचान दस्तावेज़' : 'दस्तावेज़: ' + identity!.name),
             ),
           ]),
-          const Divider(height: 28),
-          Text('Terms & Privacy Consent', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Terms & Privacy Consent', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              const Text('आवेदन भेजने से पहले दोनों दस्तावेज़ पढ़ना और स्वीकार करना जरूरी है।'),
           if (policies.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 'इस Worker Role के लिए Main Admin ने अभी Hindi Terms और Privacy Policy प्रकाशित नहीं की हैं। सुरक्षा के लिए आवेदन तब तक Submit नहीं होगा। Admin को दोनों दस्तावेज़ प्रकाशित करने होंगे।',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             )
           else
@@ -320,6 +538,8 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
                 ],
               );
             }),
+            ]),
+          ),
           if (error != null) Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(error!, style: const TextStyle(color: Colors.red)),
@@ -338,6 +558,9 @@ class _WorkerApplicationPageState extends State<WorkerApplicationPage> {
             ),
           ),
         ]),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -619,6 +842,253 @@ class _WorkerWorkSessionPanelState extends State<WorkerWorkSessionPanel> {
           if (busy) const LinearProgressIndicator(),
           if (status.isEmpty && !loading)
             OutlinedButton(onPressed: openSession, child: const Text('आज का Session खोलें')),
+        ]),
+      ),
+    );
+  }
+}
+
+
+/// Master hourly bookings use the shared Technician workday ledger.
+/// This is intentionally separate from the legacy single-worker session panel.
+class WorkerWorkdayPanel extends StatefulWidget {
+  const WorkerWorkdayPanel({super.key, required this.bookingId, required this.onChanged});
+  final String bookingId;
+  final Future<void> Function() onChanged;
+  @override
+  State<WorkerWorkdayPanel> createState() => _WorkerWorkdayPanelState();
+}
+
+class _WorkerWorkdayPanelState extends State<WorkerWorkdayPanel> {
+  final client = Supabase.instance.client;
+  List<Map<String, dynamic>> workdays = [];
+  bool loading = true, busy = false;
+  String? error;
+  DateTime fetchedAt = DateTime.now();
+  Timer? ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && current?['status'] == 'running') setState(() {});
+    });
+    load();
+  }
+
+  @override
+  void didUpdateWidget(covariant WorkerWorkdayPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.bookingId != widget.bookingId) load();
+  }
+
+  @override
+  void dispose() {
+    ticker?.cancel();
+    super.dispose();
+  }
+
+  String get today => DateTime.now().toLocal().toIso8601String().substring(0, 10);
+  Map<String, dynamic>? get current {
+    for (final row in workdays) {
+      if (row['work_date']?.toString().startsWith(today) == true) return row;
+    }
+    return null;
+  }
+
+  int get elapsedSeconds {
+    final row = current;
+    if (row == null) return 0;
+    final base = (row['elapsed_work_seconds'] as num?)?.toInt() ?? 0;
+    if (row['status'] != 'running') return base;
+    return base + DateTime.now().difference(fetchedAt).inSeconds.clamp(0, 86400).toInt();
+  }
+
+  String get clock {
+    final seconds = elapsedSeconds;
+    return (seconds ~/ 3600).toString().padLeft(2, '0') + ':' +
+      ((seconds % 3600) ~/ 60).toString().padLeft(2, '0') + ':' +
+      (seconds % 60).toString().padLeft(2, '0');
+  }
+
+  Future<void> load() async {
+    if (!mounted) return;
+    setState(() { loading = true; error = null; });
+    try {
+      final result = await client.rpc('srk_technician_get_my_workdays', params: {
+        'p_booking_id': widget.bookingId,
+      });
+      workdays = List<Map<String, dynamic>>.from(result as List);
+      fetchedAt = DateTime.now();
+    } catch (e) {
+      error = 'Workday रिकॉर्ड लोड नहीं हुआ: ' + e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> run(Future<void> Function() action) async {
+    if (busy) return;
+    setState(() { busy = true; error = null; });
+    try {
+      await action();
+      await load();
+      await widget.onChanged();
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> requestStart() => run(() async {
+    await client.rpc('srk_technician_request_workday_start', params: {
+      'p_booking_id': widget.bookingId,
+    });
+  });
+
+  Future<void> pause() => run(() async {
+    await client.rpc('srk_technician_pause_workday', params: {
+      'p_workday_id': current!['workday_id'],
+    });
+  });
+
+  Future<void> resume() => run(() async {
+    await client.rpc('srk_technician_resume_workday', params: {
+      'p_workday_id': current!['workday_id'],
+    });
+  });
+
+  Future<void> stop() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('आज का काम रोकें?'),
+        content: const Text('आज का रिकॉर्ड बंद होगा। ग्राहक को आज के काम की समीक्षा और अगला निर्णय देना होगा।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('वापस')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('आज का काम रोकें')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await run(() async {
+      await client.rpc('srk_technician_stop_workday', params: {
+        'p_workday_id': current!['workday_id'],
+      });
+    });
+  }
+
+  Future<void> emergencyPause() async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('🚨 Emergency Pause'),
+        content: const Text('यह सामान्य Break नहीं है। सुरक्षा, स्वास्थ्य या कार्यस्थल के खतरे में Timer रोकें।'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('वापस')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'सुरक्षा का खतरा'), child: const Text('सुरक्षा का खतरा')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'चिकित्सकीय आपात स्थिति'), child: const Text('चिकित्सकीय आपात स्थिति')),
+          TextButton(onPressed: () => Navigator.pop(ctx, 'कार्यस्थल असुरक्षित है'), child: const Text('कार्यस्थल असुरक्षित है')),
+        ],
+      ),
+    );
+    if (reason == null) return;
+    await run(() async {
+      await client.rpc('srk_technician_emergency_pause_workday', params: {
+        'p_workday_id': current!['workday_id'], 'p_reason': reason,
+      });
+    });
+  }
+
+  Future<void> resumeEmergency() async {
+    final controller = TextEditingController();
+    final note = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Emergency Pause समाप्त करें?'),
+        content: TextField(
+          controller: controller, minLines: 2, maxLines: 3,
+          decoration: const InputDecoration(labelText: 'स्थिति सुरक्षित होने का विवरण (कम-से-कम 5 अक्षर)'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('वापस')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('सुरक्षित — Resume करें')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (note == null || note.length < 5) return;
+    await run(() async {
+      await client.rpc('srk_technician_resume_emergency_workday', params: {
+        'p_workday_id': current!['workday_id'], 'p_note': note,
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final row = current;
+    final status = row?['status']?.toString() ?? '';
+    final label = switch (status) {
+      'start_pending' => 'ग्राहक की मंजूरी बाकी',
+      'start_rejected' => 'ग्राहक ने आज का Timer मंजूर नहीं किया',
+      'running' => 'काम चल रहा है',
+      'paused' => 'सामान्य Pause',
+      'lunch_paused' => 'अनिवार्य Lunch Break — अपने-आप Resume होगा',
+      'emergency_paused' => '🚨 Emergency Pause — सामान्य Break नहीं',
+      'stopped' => 'आज का काम रोक दिया गया',
+      _ => 'आज का Workday शुरू नहीं हुआ',
+    };
+    return Card(
+      color: status == 'emergency_paused' ? Colors.red.shade50 : Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.timer_outlined), const SizedBox(width: 8),
+            Expanded(child: Text('आज का Master Workday Timer', style: Theme.of(context).textTheme.titleMedium)),
+            Text(clock, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          ]),
+          const SizedBox(height: 6),
+          Text('स्थिति: ' + (loading ? 'लोड हो रहा है' : label)),
+          if (status == 'emergency_paused' && (row?['emergency_pause_reason'] ?? '').toString().isNotEmpty)
+            Text('कारण: ${row?['emergency_pause_reason']}'),
+          if (status == 'lunch_paused' && row?['lunch_ends_at'] != null)
+            Text('Lunch समाप्ति: ${row?['lunch_ends_at']}'),
+          if (loading) const LinearProgressIndicator(),
+          if (!loading && row == null)
+            FilledButton.icon(
+              onPressed: busy ? null : requestStart,
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('ग्राहक से आज का Timer शुरू करने की मंजूरी माँगें'),
+            ),
+          if (status == 'start_pending')
+            const Text('ग्राहक की मंजूरी मिलने के बाद ही सर्वर Timer शुरू होगा।'),
+          if (status == 'start_rejected')
+            const Text('आज के लिए नया Timer बनाने हेतु Admin / Support से संपर्क करें।'),
+          if (status == 'running') Wrap(spacing: 8, runSpacing: 8, children: [
+            OutlinedButton.icon(onPressed: busy ? null : pause, icon: const Icon(Icons.pause), label: const Text('सामान्य Pause')),
+            OutlinedButton.icon(onPressed: busy ? null : emergencyPause, icon: const Icon(Icons.sos), label: const Text('Emergency Pause')),
+            OutlinedButton.icon(onPressed: busy ? null : stop, icon: const Icon(Icons.stop), label: const Text('आज का काम रोकें')),
+          ]),
+          if (status == 'paused') Wrap(spacing: 8, runSpacing: 8, children: [
+            FilledButton.icon(onPressed: busy ? null : resume, icon: const Icon(Icons.play_arrow), label: const Text('Resume')),
+            OutlinedButton.icon(onPressed: busy ? null : stop, icon: const Icon(Icons.stop), label: const Text('आज का काम रोकें')),
+          ]),
+          if (status == 'emergency_paused')
+            SizedBox(width: double.infinity, child: FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: busy ? null : resumeEmergency,
+              icon: const Icon(Icons.verified_user), label: const Text('स्थिति सुरक्षित है — Resume करें'),
+            )),
+          if (status == 'stopped')
+            const Text('आज का समय सुरक्षित है। ग्राहक की समीक्षा और अगले दिन / काम पूरा करने के निर्णय की प्रतीक्षा करें।'),
+          if (error != null) Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(error!, style: const TextStyle(color: Colors.red)),
+          ),
+          if (busy) const LinearProgressIndicator(),
         ]),
       ),
     );

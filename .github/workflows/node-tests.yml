@@ -7,10 +7,12 @@ on:
       - feature/master-technician-payment-cycle-20261121
       - work/admin-worker-payout-web-integration-20261125
       - work/mobile-customer-technician-integration-20261125
+      - work/srk-completion-gap-20261125
   pull_request:
     branches:
       - main
       - feature/master-technician-payment-cycle-20261121
+      - work/mobile-customer-technician-integration-20261125
   workflow_dispatch:
 
 permissions:
