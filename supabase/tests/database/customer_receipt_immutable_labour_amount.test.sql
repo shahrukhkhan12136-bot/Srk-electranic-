@@ -1,11 +1,13 @@
 BEGIN;
-SELECT plan(7);
+SELECT plan(8);
 SELECT ok(position('auth.uid()' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
  'receipt requires an authenticated user');
 SELECT ok(position('customer_user_id=v_uid' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
  'receipt is scoped to the booking owner');
 SELECT ok(position('service_amount' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
  'new Master receipt returns the service amount');
+SELECT ok(position('MASTER_TAX_SNAPSHOT_REQUIRED' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
+ 'new Master receipt requires a tax snapshot before reconciliation');
 SELECT ok(position('f.subtotal_paise<>f.labour_amount_paise' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
  'new Master bill must reconcile to service amount only');
 SELECT ok(position('v_service+v_fee=v_total' in pg_get_functiondef('public.srk_customer_get_payment_receipt(uuid)'::regprocedure))>0,
