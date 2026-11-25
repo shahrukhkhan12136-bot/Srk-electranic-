@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8');
-const payout = source.slice(source.indexOf('async function loadMasterPayouts'), source.indexOf('async function markPayoutPaid'));
+const payout = source.slice(source.indexOf('async function loadWorkerPayoutRequests'), source.indexOf('async function loadMasterPayouts'));
 
 test('Admin web payout queue uses the live shared Worker payout contract', () => {
   assert.ok(payout.includes("from('srk_worker_payout_requests')"));
