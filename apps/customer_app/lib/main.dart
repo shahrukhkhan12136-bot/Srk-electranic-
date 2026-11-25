@@ -495,7 +495,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   void initState() {
     super.initState();
     final user = _client.auth.currentUser;
-    _phone.text = (user?.phone ?? '').replaceAll(RegExp(r'\\D'), '').replaceFirst(RegExp(r'^91(?=\\d{10}$)'), '');
+    _phone.text = (user?.phone ?? '').replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^91(?=\d{10}$)'), '');
     _name.text = user?.userMetadata?['full_name']?.toString() ?? '';
   }
 
@@ -658,7 +658,92 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         const SizedBox(height: 10),
         _field(_name, 'पूरा नाम', maxLength: 100),
         _field(_phone, 'OTP verified मोबाइल नंबर', keyboard: TextInputType.phone, maxLength: 10, readOnly: true,
-          validator: (v) => RegExp(r'^\\d{10}$').hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
+          validator: (v) => RegExp(r'^\d{10}.hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
+        const SizedBox(height: 4),
+        Text('सेवा का पता', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        _field(_state, 'राज्य', maxLength: 100),
+        _field(_district, 'जिला', maxLength: 100),
+        _field(_pincode, '6 अंकों का PIN Code', keyboard: TextInputType.number, maxLength: 6,
+          validator: (v) => RegExp(r'^\d{6}.hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
+        _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
+        OutlinedButton.icon(
+          onPressed: _locationBusy ? null : _useCurrentLocation,
+          icon: _locationBusy ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.my_location),
+          label: Text(_locationBusy ? 'GPS लोकेशन ली जा रही है…' : (_locationLat == null ? 'वर्तमान GPS लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें')),
+        ),
+        const SizedBox(height: 14),
+        Text('आपको कौन-सी सेवा चाहिए?', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        SrkServiceCategoryPicker(onSelection: (selection) {
+          setState(() { _selection = selection; _pricePreview = null; _priceError = null; });
+          _refreshPricePreview();
+        }),
+        if (_selection != null) ...[
+          const SizedBox(height: 12),
+          Text('${_selection!.categoryName} • ${_selection!.serviceName}\n${_selection!.skillName} • ${_selection!.skillLevelName}',
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (_selection!.pricingUnit == 'hour') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _durationHours, decoration: _decoration('काम की अवधि'),
+              items: const [1,3,8].map((v) => DropdownMenuItem(value:v,child:Text('$v घंटे'))).toList(),
+              onChanged: (v) { setState(() => _durationHours=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          if (_selection!.pricingUnit == 'per_item') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
+              items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
+              onChanged: (v) { setState(() => _unitCount=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
+            items: const [1,2,3].map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
+            onChanged: (v) { setState(() => _technicianCount=v??1); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
+            items: const [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
+            onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 12),
+          Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('सर्वर से अनुमानित मजदूरी', style: Theme.of(context).textTheme.titleMedium),
+              if (_priceBusy) const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
+              if (_priceError != null) Text(_priceError!, style: const TextStyle(color: Colors.red)),
+              if (_pricePreview != null) ...[
+                Text('अनुमानित कुल: ${_money(_pricePreview!['estimated_customer_total'])}', style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
+                Text('मजदूरी: ${_money(_pricePreview!['estimated_base_total'])}'),
+                Text('कंपनी कमीशन (अनुमान): ${_money(_pricePreview!['estimated_company_commission'])}'),
+                Text('Technician का हिस्सा (अनुमान): ${_money(_pricePreview!['estimated_worker_net'])}'),
+                Text((_pricePreview!['price_note']??'').toString()),
+                const Text('सामान / पार्ट्स इस अनुमान में शामिल नहीं हैं; अलग सूची और आपकी मंजूरी के बाद ही जोड़े जाएँगे।'),
+              ],
+            ]))),
+        ],
+        const SizedBox(height: 12),
+        Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Padding(padding: EdgeInsets.all(14), child: Text(
+            'बुकिंग भेजने के बाद योग्य Technician को ऑफर मिलेगा। Technician स्वीकार करने के बाद काम का समय तय करने का प्रस्ताव भेज सकता है, जिसे आप स्वीकार या अस्वीकार कर सकेंगे। कोई अग्रिम भुगतान नहीं।')),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _submitting || _selection == null || _pricePreview == null || _priceBusy ? null : _submit,
+          icon: _submitting ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.send),
+          label: Text(_submitting ? 'बुकिंग भेजी जा रही है…' : 'बुकिंग भेजें'),
+        ),
+        const SizedBox(height: 24),
+      ]),
+    )),
+  );
+}
+).hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
         const SizedBox(height: 4),
         Text('सेवा का पता', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 10),
@@ -666,6 +751,247 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         _field(_district, 'जिला', maxLength: 100),
         _field(_pincode, '6 अंकों का PIN Code', keyboard: TextInputType.number, maxLength: 6,
           validator: (v) => RegExp(r'^\\d{6}$').hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
+        _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
+        OutlinedButton.icon(
+          onPressed: _locationBusy ? null : _useCurrentLocation,
+          icon: _locationBusy ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.my_location),
+          label: Text(_locationBusy ? 'GPS लोकेशन ली जा रही है…' : (_locationLat == null ? 'वर्तमान GPS लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें')),
+        ),
+        const SizedBox(height: 14),
+        Text('आपको कौन-सी सेवा चाहिए?', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        SrkServiceCategoryPicker(onSelection: (selection) {
+          setState(() { _selection = selection; _pricePreview = null; _priceError = null; });
+          _refreshPricePreview();
+        }),
+        if (_selection != null) ...[
+          const SizedBox(height: 12),
+          Text('${_selection!.categoryName} • ${_selection!.serviceName}\n${_selection!.skillName} • ${_selection!.skillLevelName}',
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (_selection!.pricingUnit == 'hour') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _durationHours, decoration: _decoration('काम की अवधि'),
+              items: const [1,3,8].map((v) => DropdownMenuItem(value:v,child:Text('$v घंटे'))).toList(),
+              onChanged: (v) { setState(() => _durationHours=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          if (_selection!.pricingUnit == 'per_item') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
+              items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
+              onChanged: (v) { setState(() => _unitCount=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
+            items: const [1,2,3].map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
+            onChanged: (v) { setState(() => _technicianCount=v??1); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
+            items: const [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
+            onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 12),
+          Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('सर्वर से अनुमानित मजदूरी', style: Theme.of(context).textTheme.titleMedium),
+              if (_priceBusy) const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
+              if (_priceError != null) Text(_priceError!, style: const TextStyle(color: Colors.red)),
+              if (_pricePreview != null) ...[
+                Text('अनुमानित कुल: ${_money(_pricePreview!['estimated_customer_total'])}', style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
+                Text('मजदूरी: ${_money(_pricePreview!['estimated_base_total'])}'),
+                Text('कंपनी कमीशन (अनुमान): ${_money(_pricePreview!['estimated_company_commission'])}'),
+                Text('Technician का हिस्सा (अनुमान): ${_money(_pricePreview!['estimated_worker_net'])}'),
+                Text((_pricePreview!['price_note']??'').toString()),
+                const Text('सामान / पार्ट्स इस अनुमान में शामिल नहीं हैं; अलग सूची और आपकी मंजूरी के बाद ही जोड़े जाएँगे।'),
+              ],
+            ]))),
+        ],
+        const SizedBox(height: 12),
+        Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Padding(padding: EdgeInsets.all(14), child: Text(
+            'बुकिंग भेजने के बाद योग्य Technician को ऑफर मिलेगा। Technician स्वीकार करने के बाद काम का समय तय करने का प्रस्ताव भेज सकता है, जिसे आप स्वीकार या अस्वीकार कर सकेंगे। कोई अग्रिम भुगतान नहीं।')),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _submitting || _selection == null || _pricePreview == null || _priceBusy ? null : _submit,
+          icon: _submitting ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.send),
+          label: Text(_submitting ? 'बुकिंग भेजी जा रही है…' : 'बुकिंग भेजें'),
+        ),
+        const SizedBox(height: 24),
+      ]),
+    )),
+  );
+}
+).hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
+        _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
+        OutlinedButton.icon(
+          onPressed: _locationBusy ? null : _useCurrentLocation,
+          icon: _locationBusy ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.my_location),
+          label: Text(_locationBusy ? 'GPS लोकेशन ली जा रही है…' : (_locationLat == null ? 'वर्तमान GPS लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें')),
+        ),
+        const SizedBox(height: 14),
+        Text('आपको कौन-सी सेवा चाहिए?', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        SrkServiceCategoryPicker(onSelection: (selection) {
+          setState(() { _selection = selection; _pricePreview = null; _priceError = null; });
+          _refreshPricePreview();
+        }),
+        if (_selection != null) ...[
+          const SizedBox(height: 12),
+          Text('${_selection!.categoryName} • ${_selection!.serviceName}\n${_selection!.skillName} • ${_selection!.skillLevelName}',
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (_selection!.pricingUnit == 'hour') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _durationHours, decoration: _decoration('काम की अवधि'),
+              items: const [1,3,8].map((v) => DropdownMenuItem(value:v,child:Text('$v घंटे'))).toList(),
+              onChanged: (v) { setState(() => _durationHours=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          if (_selection!.pricingUnit == 'per_item') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
+              items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
+              onChanged: (v) { setState(() => _unitCount=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
+            items: const [1,2,3].map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
+            onChanged: (v) { setState(() => _technicianCount=v??1); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
+            items: const [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
+            onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 12),
+          Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('सर्वर से अनुमानित मजदूरी', style: Theme.of(context).textTheme.titleMedium),
+              if (_priceBusy) const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
+              if (_priceError != null) Text(_priceError!, style: const TextStyle(color: Colors.red)),
+              if (_pricePreview != null) ...[
+                Text('अनुमानित कुल: ${_money(_pricePreview!['estimated_customer_total'])}', style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
+                Text('मजदूरी: ${_money(_pricePreview!['estimated_base_total'])}'),
+                Text('कंपनी कमीशन (अनुमान): ${_money(_pricePreview!['estimated_company_commission'])}'),
+                Text('Technician का हिस्सा (अनुमान): ${_money(_pricePreview!['estimated_worker_net'])}'),
+                Text((_pricePreview!['price_note']??'').toString()),
+                const Text('सामान / पार्ट्स इस अनुमान में शामिल नहीं हैं; अलग सूची और आपकी मंजूरी के बाद ही जोड़े जाएँगे।'),
+              ],
+            ]))),
+        ],
+        const SizedBox(height: 12),
+        Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Padding(padding: EdgeInsets.all(14), child: Text(
+            'बुकिंग भेजने के बाद योग्य Technician को ऑफर मिलेगा। Technician स्वीकार करने के बाद काम का समय तय करने का प्रस्ताव भेज सकता है, जिसे आप स्वीकार या अस्वीकार कर सकेंगे। कोई अग्रिम भुगतान नहीं।')),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _submitting || _selection == null || _pricePreview == null || _priceBusy ? null : _submit,
+          icon: _submitting ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.send),
+          label: Text(_submitting ? 'बुकिंग भेजी जा रही है…' : 'बुकिंग भेजें'),
+        ),
+        const SizedBox(height: 24),
+      ]),
+    )),
+  );
+}
+).hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
+        const SizedBox(height: 4),
+        Text('सेवा का पता', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 10),
+        _field(_state, 'राज्य', maxLength: 100),
+        _field(_district, 'जिला', maxLength: 100),
+        _field(_pincode, '6 अंकों का PIN Code', keyboard: TextInputType.number, maxLength: 6,
+          validator: (v) => RegExp(r'^\d{6}.hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
+        _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
+        OutlinedButton.icon(
+          onPressed: _locationBusy ? null : _useCurrentLocation,
+          icon: _locationBusy ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.my_location),
+          label: Text(_locationBusy ? 'GPS लोकेशन ली जा रही है…' : (_locationLat == null ? 'वर्तमान GPS लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें')),
+        ),
+        const SizedBox(height: 14),
+        Text('आपको कौन-सी सेवा चाहिए?', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        SrkServiceCategoryPicker(onSelection: (selection) {
+          setState(() { _selection = selection; _pricePreview = null; _priceError = null; });
+          _refreshPricePreview();
+        }),
+        if (_selection != null) ...[
+          const SizedBox(height: 12),
+          Text('${_selection!.categoryName} • ${_selection!.serviceName}\n${_selection!.skillName} • ${_selection!.skillLevelName}',
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (_selection!.pricingUnit == 'hour') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _durationHours, decoration: _decoration('काम की अवधि'),
+              items: const [1,3,8].map((v) => DropdownMenuItem(value:v,child:Text('$v घंटे'))).toList(),
+              onChanged: (v) { setState(() => _durationHours=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          if (_selection!.pricingUnit == 'per_item') ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
+              items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
+              onChanged: (v) { setState(() => _unitCount=v??1); _refreshPricePreview(); },
+            ),
+          ],
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
+            items: const [1,2,3].map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
+            onChanged: (v) { setState(() => _technicianCount=v??1); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            value: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
+            items: const [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
+            onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
+          ),
+          const SizedBox(height: 12),
+          Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('सर्वर से अनुमानित मजदूरी', style: Theme.of(context).textTheme.titleMedium),
+              if (_priceBusy) const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
+              if (_priceError != null) Text(_priceError!, style: const TextStyle(color: Colors.red)),
+              if (_pricePreview != null) ...[
+                Text('अनुमानित कुल: ${_money(_pricePreview!['estimated_customer_total'])}', style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
+                Text('मजदूरी: ${_money(_pricePreview!['estimated_base_total'])}'),
+                Text('कंपनी कमीशन (अनुमान): ${_money(_pricePreview!['estimated_company_commission'])}'),
+                Text('Technician का हिस्सा (अनुमान): ${_money(_pricePreview!['estimated_worker_net'])}'),
+                Text((_pricePreview!['price_note']??'').toString()),
+                const Text('सामान / पार्ट्स इस अनुमान में शामिल नहीं हैं; अलग सूची और आपकी मंजूरी के बाद ही जोड़े जाएँगे।'),
+              ],
+            ]))),
+        ],
+        const SizedBox(height: 12),
+        Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: const Padding(padding: EdgeInsets.all(14), child: Text(
+            'बुकिंग भेजने के बाद योग्य Technician को ऑफर मिलेगा। Technician स्वीकार करने के बाद काम का समय तय करने का प्रस्ताव भेज सकता है, जिसे आप स्वीकार या अस्वीकार कर सकेंगे। कोई अग्रिम भुगतान नहीं।')),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _submitting || _selection == null || _pricePreview == null || _priceBusy ? null : _submit,
+          icon: _submitting ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.send),
+          label: Text(_submitting ? 'बुकिंग भेजी जा रही है…' : 'बुकिंग भेजें'),
+        ),
+        const SizedBox(height: 24),
+      ]),
+    )),
+  );
+}
+).hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
         _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
         OutlinedButton.icon(
           onPressed: _locationBusy ? null : _useCurrentLocation,
