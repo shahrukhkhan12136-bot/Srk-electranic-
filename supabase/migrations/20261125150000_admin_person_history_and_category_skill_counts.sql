@@ -157,8 +157,11 @@ begin
     into v_payouts
     from public.srk_worker_payout_requests p
     where p.worker_id = v_worker.id
-      and p.requested_at >= v_from
-      and p.requested_at < v_until;
+      and (
+        (p.requested_at >= v_from and p.requested_at < v_until)
+        or (p.reviewed_at >= v_from and p.reviewed_at < v_until)
+        or (p.paid_at >= v_from and p.paid_at < v_until)
+      );
 
     select coalesce(jsonb_agg(jsonb_build_object(
       'transaction_code', l.transaction_code, 'entry_type', l.entry_type,
@@ -182,8 +185,10 @@ begin
     where (c.reported_to_worker_id = v_worker.id
        or c.reported_by_user_id = v_user_id
        or c.reported_to_user_id = v_user_id)
-      and c.created_at >= v_from
-      and c.created_at < v_until;
+      and (
+        (c.created_at >= v_from and c.created_at < v_until)
+        or (c.resolved_at >= v_from and c.resolved_at < v_until)
+      );
 
 
     select coalesce(jsonb_agg(jsonb_build_object(
@@ -196,8 +201,10 @@ begin
     from public.srk_worker_documents d
     where (d.worker_id=v_worker.id
        or d.application_id in (select a.id from public.srk_worker_applications a where a.user_id=v_user_id))
-      and d.created_at >= v_from
-      and d.created_at < v_until;
+      and (
+        (d.created_at >= v_from and d.created_at < v_until)
+        or (d.reviewed_at >= v_from and d.reviewed_at < v_until)
+      );
 
   else
     select * into v_customer
@@ -241,8 +248,10 @@ begin
       into v_complaints
       from public.srk_booking_complaints c
       where (c.customer_user_id = v_customer.user_id or c.reported_by_user_id = v_customer.user_id)
-        and c.created_at >= v_from
-        and c.created_at < v_until;
+        and (
+          (c.created_at >= v_from and c.created_at < v_until)
+          or (c.resolved_at >= v_from and c.resolved_at < v_until)
+        );
     else
       select * into v_staff
       from public.srk_staff_profiles
@@ -278,8 +287,10 @@ begin
       into v_documents
       from public.srk_staff_documents d
       where d.staff_id=v_staff.id
-        and d.created_at >= v_from
-        and d.created_at < v_until;
+        and (
+          (d.created_at >= v_from and d.created_at < v_until)
+          or (d.verified_at >= v_from and d.verified_at < v_until)
+        );
 
       select coalesce(jsonb_agg(jsonb_build_object(
         'entity_type', a.entity_type, 'entity_id', a.entity_id, 'booking_id', a.booking_id,
