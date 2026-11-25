@@ -614,7 +614,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             const Divider(),
             Text(booking['electrician_quote_kind'] == 'counter_offer' ? 'पुराना Counter Offer' : 'पुराना कोटेशन',
               style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('सर्विस / मेहनताना: ₹${service.toStringAsFixed(2)}'),
+            Text('लेबर चार्ज: ₹${service.toStringAsFixed(2)}'),
             Text('कुल: ₹${quoteTotal.toStringAsFixed(2)}'),
             Text('कोटेशन स्थिति: $quoteStatus'),
             if ((booking['quote_note'] ?? '').toString().isNotEmpty) Text('विवरण: ${booking['quote_note']}'),
