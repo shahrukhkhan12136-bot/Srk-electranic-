@@ -131,7 +131,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           final rows = await _client.rpc('srk_customer_get_booking_payment_cycle',
             params: {'p_booking_id': bookingId});
           final list = List<Map<String, dynamic>>.from(rows as List);
-          if (list.isNotEmpty) paymentCycles[bookingId] = list.first;
+          paymentCycles[bookingId] = list.isNotEmpty
+              ? list.first
+              : {'online_required': true, 'cycle_unverified': true};
         } catch (_) {
           // Fail closed in the UI: keep Online available and hide Cash if the
           // server cannot provide the cycle state. The payment RPC still enforces it.
