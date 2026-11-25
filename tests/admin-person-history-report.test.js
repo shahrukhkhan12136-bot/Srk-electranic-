@@ -98,6 +98,13 @@ test('District rates are snapshotted into bookings and drive customer pricing an
   assert.match(bookingMigration, /preview_booking_price_with_district/);
   assert.match(bookingMigration, /get_district_worker_hourly_rate/);
   assert.match(bookingMigration, /get_district_fixed_service_amount/);
+  assert.doesNotMatch(bookingMigration, /material/i);
+  assert.match(bookingMigration, /'company_commission_rate',v_commission/);
+  assert.match(bookingMigration, /commission_rate=v_commission/);
+  assert.match(bookingMigration, /round\(v_worker_gross\*v_booking\.commission_rate\/100,2\)/);
+  assert.match(bookingMigration, /company_commission_rate,\s*company_commission,net_earning/);
+  assert.match(bookingMigration, /service_amount=v_labour,cancellation_fee_amount=v_cancellation_fee/);
+  assert.doesNotMatch(bookingMigration, /service_amount,materials_amount/i);
   assert.match(bookingMigration, /v_rate is null and v_booking\.district_rate_snapshot is null then raise exception 'Hourly rate not configured/);
   assert.match(bookingMigration, /v_rate is null and v_booking\.district_rate_snapshot is null then raise exception 'Approved hourly rate not configured/);
   assert.match(bookingMigration, /else r\.helper_hourly_rate end\) is not null or v_booking\.district_rate_snapshot is not null/);
