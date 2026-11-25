@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:srk_mobile_core/srk_mobile_core.dart';
+import 'worker_rate_card.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
@@ -104,6 +105,7 @@ class ElectricianDashboard extends StatefulWidget {
 class _ElectricianDashboardState extends State<ElectricianDashboard> {
   final client = Supabase.instance.client;
   Map<String, dynamic>? profile, wallet, paymentCycle;
+  List<Map<String, dynamic>> rateCardCategories = [];
   List<Map<String, dynamic>> offers = [], offerDetails = [], earnings = [], offerPriceDetails = [], bookingDetails = [];
   bool loading = true;
   String? error;
@@ -131,6 +133,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
         bookingDetails = [];
         wallet = null;
         paymentCycle = null;
+        rateCardCategories = [];
         return;
       }
 
@@ -147,6 +150,14 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
       } catch (_) {
         paymentCycle = null;
         loadWarnings.add('अगले काम की भुगतान स्थिति अभी लोड नहीं हो पाई। कृपया Refresh करें।');
+      }
+
+      try {
+        final rateCardResult = await client.rpc('srk_worker_get_my_rate_card');
+        rateCardCategories = List<Map<String, dynamic>>.from(rateCardResult as List);
+      } catch (_) {
+        rateCardCategories = [];
+        loadWarnings.add('छहों कैटेगरी की आपकी रेट सूची अभी लोड नहीं हो पाई। Refresh करके फिर कोशिश करें।');
       }
 
       final assignmentRows = await client.rpc('srk_worker_get_my_assignments');
@@ -411,6 +422,7 @@ class _ElectricianDashboardState extends State<ElectricianDashboard> {
                 ]),
               ),
             ),
+          if (p != null) WorkerRateCard(categories: rateCardCategories),
           if (p == null || !active)
             Card(
               child: Padding(
