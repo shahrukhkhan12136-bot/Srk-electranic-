@@ -923,7 +923,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       try {
         placemarks = await Geocoding().placemarkFromCoordinates(pos.latitude, pos.longitude);
       } catch (_) {
-        // GPS coordinates remain valid even if the device geocoder is unavailable.
+        // Keep GPS coordinates even if the device geocoder is unavailable.
       }
       if (!mounted) return;
       final place = placemarks.isNotEmpty ? placemarks.first : null;
@@ -933,10 +933,22 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         if (place != null) {
           final stateName = (place.administrativeArea ?? '').trim();
           final districtName = (place.subAdministrativeArea ?? place.locality ?? '').trim();
-          final pin = (place.postalCode ?? '').replaceAll(RegExp(r'\D'), '');
+          final pin = (place.postalCode ?? '').replaceAll(RegExp(r'\\D'), '');
           if (stateName.isNotEmpty) _state.text = stateName;
           if (districtName.isNotEmpty) _district.text = districtName;
-          if (RegExp(r'^[0-9]{6}
+          if (pin.length == 6 && int.tryParse(pin) != null) _pincode.text = pin;
+          final addressParts = <String?>[place.name, place.subLocality, place.thoroughfare, place.locality]
+              .where((part) => part != null && part.trim().isNotEmpty)
+              .map((part) => part!.trim()).toSet().toList();
+          if (addressParts.isNotEmpty && _address.text.trim().isEmpty) {
+            _address.text = addressParts.join(', ');
+          }
+        }
+      });
+      final locationMessage = place != null && (place.administrativeArea ?? '').trim().isNotEmpty
+          ? 'GPS लोकेशन जुड़ गई। राज्य/जिला/PIN अपने-आप भरे गए हैं—कृपया पुष्टि करें।'
+          : 'GPS coordinates जुड़ गए। पता अपने-आप नहीं मिल सका; कृपया मैन्युअल भरें।';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(locationMessage)));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
@@ -945,7 +957,6 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       if (mounted) setState(() => _locationBusy = false);
     }
   }
-
   Future<void> _refreshPricePreview() async {
     final selection = _selection;
     final request = ++_previewRequest;
