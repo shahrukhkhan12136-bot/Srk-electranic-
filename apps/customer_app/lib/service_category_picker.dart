@@ -161,7 +161,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       if (_category != null) ...[
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: _service?['id']?.toString(), isExpanded: true,
+          initialValue: _service?['id']?.toString(), isExpanded: true,
           decoration: const InputDecoration(labelText: 'काम / सर्विस चुनें', border: OutlineInputBorder()),
           items: _availableServices.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(x['service_name'].toString()))).toList(),
           onChanged: (id) { setState(() { _service = _availableServices.firstWhere((x) => x['id'].toString() == id); _skill = null; _level = null; final matches = _rules.where((x) => x['service_type_id'] == id && x['category_id'] == _category?['id']).toList(); _rule = matches.isEmpty ? null : matches.first; _motorHp = null; }); widget.onSelection(null); },
@@ -170,14 +170,14 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       if (_service != null) ...[
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: _skill?['id']?.toString(), isExpanded: true,
+          initialValue: _skill?['id']?.toString(), isExpanded: true,
           decoration: const InputDecoration(labelText: 'काम का प्रकार / कौशल', border: OutlineInputBorder()),
           items: _availableSkills.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(x['skill_name'].toString()))).toList(),
           onChanged: (id) { setState(() { _skill = _availableSkills.firstWhere((x) => x['id'].toString() == id); }); _emitSelection(); },
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
-          value: _level?['id']?.toString(), isExpanded: true,
+          initialValue: _level?['id']?.toString(), isExpanded: true,
           decoration: const InputDecoration(labelText: 'टेक्नीशियन का स्तर', border: OutlineInputBorder()),
           items: _availableLevels.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(x['level_name'].toString()))).toList(),
           onChanged: (id) { setState(() { _level = _availableLevels.firstWhere((x) => x['id'].toString() == id); }); _emitSelection(); },
@@ -188,7 +188,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       if (_rule?['pricing_unit'] == 'motor_hp') ...[
         const SizedBox(height: 12),
         DropdownButtonFormField<double>(
-          value: _motorHp, decoration: const InputDecoration(labelText: 'मोटर / पंप HP चुनें', border: OutlineInputBorder()),
+          initialValue: _motorHp, decoration: const InputDecoration(labelText: 'मोटर / पंप HP चुनें', border: OutlineInputBorder()),
           items: _hpTiers.where((x) => x['pricing_rule_id'] == _rule?['id']).map((x) {
             final hp = (x['motor_hp'] as num).toDouble();
             return DropdownMenuItem(value: hp, child: Text('$hp HP'));
