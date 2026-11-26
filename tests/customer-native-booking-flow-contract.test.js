@@ -62,3 +62,14 @@ test('Changing any price input invalidates in-flight and displayed customer esti
   assert.match(customer, /setState\(_invalidatePricePreview\)/,
     'manual location edits must invalidate in-flight price previews');
 });
+test('Customer price preview separates service charge from any previous cancellation-fee balance', () => {
+  const previewStart = customer.indexOf("Text('अनुमानित सर्विस चार्ज'");
+  const previewEnd = customer.indexOf("Text((_pricePreview!['price_note']", previewStart);
+  const preview = customer.slice(previewStart, previewEnd);
+  assert.match(preview, /estimated_base_total/);
+  assert.match(preview, /pending_cancellation_fee_amount/);
+  assert.match(preview, /पिछली बुकिंग का बकाया रद्दीकरण शुल्क/);
+  assert.match(preview, /estimated_customer_total/);
+  assert.match(preview, /कुल अनुमानित देय राशि/);
+  assert.doesNotMatch(preview, /estimated_company_commission|estimated_worker_net/);
+});
