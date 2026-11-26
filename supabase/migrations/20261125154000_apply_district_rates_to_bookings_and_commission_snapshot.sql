@@ -445,7 +445,7 @@ begin
   case when v_booking.pricing_unit_snapshot in ('per_item','motor_hp') then null else v_rate end,v_skill_level,p_reason)
  returning * into v_assignment;
  return v_assignment;
-end
+end;
 $function$
 
 
@@ -653,7 +653,7 @@ begin
   end if;
  end loop;
  return v_inserted;
-end
+end;
 $function$
 
 
