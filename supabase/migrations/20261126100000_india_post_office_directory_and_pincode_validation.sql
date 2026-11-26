@@ -285,6 +285,30 @@ begin
 end;
 $function$;
 
+create or replace function srk_private.admin_abort_post_office_import(
+  p_batch_id uuid,p_reason text
+) returns boolean
+language plpgsql volatile security definer
+set search_path=pg_catalog,public,auth,srk_private
+as $function$
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'Main Admin permission required' using errcode='42501';
+  end if;
+  if length(btrim(coalesce(p_reason,''))) < 10 then
+    raise exception 'Abort reason must be at least 10 characters';
+  end if;
+  update srk_private.india_post_office_import_batches
+  set status='failed'
+  where id=p_batch_id and status='importing';
+  if not found then
+    raise exception 'Open postal directory import batch not found';
+  end if;
+  delete from srk_private.india_post_office_import_staging where batch_id=p_batch_id;
+  return true;
+end;
+$function$;
+
 -- Public RPC wrappers are the only PostgREST entry points for Admin import.
 create or replace function public.srk_admin_begin_india_post_office_import(
   p_source_date text,p_expected_rows integer,
@@ -312,6 +336,15 @@ language sql volatile security definer
 set search_path=pg_catalog,public,auth,srk_private
 as $function$
   select srk_private.admin_finalize_post_office_import(p_batch_id);
+$function$;
+
+create or replace function public.srk_admin_abort_india_post_office_import(
+  p_batch_id uuid,p_reason text
+) returns boolean
+language sql volatile security definer
+set search_path=pg_catalog,public,auth,srk_private
+as $function$
+  select srk_private.admin_abort_post_office_import(p_batch_id,p_reason);
 $function$;
 
 create or replace function public.srk_admin_get_india_post_office_import_status(
@@ -473,6 +506,8 @@ create trigger trg_srk_validate_postal_location
 before insert or update of state,district,pincode on public.service_bookings
 for each row execute function srk_private.validate_service_booking_postal_location();
 
+revoke all on function public.srk_admin_abort_india_post_office_import(uuid,text) from public,anon;
+grant execute on function public.srk_admin_abort_india_post_office_import(uuid,text) to authenticated;
 revoke all on function public.srk_admin_list_unmapped_india_post_office_districts(uuid) from public,anon;
 revoke all on function public.srk_admin_map_india_post_office_district_alias(text,text,text,text) from public,anon;
 grant execute on function public.srk_admin_list_unmapped_india_post_office_districts(uuid) to authenticated;
