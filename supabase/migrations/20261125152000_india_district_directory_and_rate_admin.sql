@@ -94,7 +94,8 @@ begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'Main Admin permission required' using errcode='42501';
   end if;
-  if jsonb_typeof(p_districts) <> 'array' or jsonb_array_length(p_districts) < 780 then
+  if p_districts is null or jsonb_typeof(p_districts) is distinct from 'array'
+     or jsonb_array_length(p_districts) < 780 then
     raise exception 'District sync rejected: expected a current all-India directory snapshot';
   end if;
   if (select count(distinct state_code) from jsonb_to_recordset(p_districts) as x(code text, name text, state_code text, state_name text)) <> 36 then
