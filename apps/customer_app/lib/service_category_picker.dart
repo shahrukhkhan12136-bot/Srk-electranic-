@@ -31,9 +31,10 @@ class SrkBackendServiceSelection {
 }
 
 class SrkServiceCategoryPicker extends StatefulWidget {
-  const SrkServiceCategoryPicker({super.key, required this.onSelection, this.initialCategoryCode});
+  const SrkServiceCategoryPicker({super.key, required this.onSelection, this.initialCategoryCode, this.languageCode = 'hi'});
   final ValueChanged<SrkBackendServiceSelection?> onSelection;
   final String? initialCategoryCode;
+  final String languageCode;
 
   @override
   State<SrkServiceCategoryPicker> createState() => _SrkServiceCategoryPickerState();
@@ -89,6 +90,61 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       if (!mounted) return;
       setState(() { _loading = false; _error = 'लाइव सेवा सूची लोड नहीं हुई। इंटरनेट और Supabase अनुमति जाँचें।'; });
     }
+  }
+
+
+  String _catalogueLabel(String kind, dynamic raw) {
+    final source = raw?.toString() ?? '';
+    if (widget.languageCode != 'hi') return source;
+    const translations = <String, Map<String, String>>{
+      'category': {
+        'AC + Fridge Technician': 'एसी और फ्रिज तकनीशियन',
+        'Cooler Technician': 'कूलर तकनीशियन',
+        'Electrician': 'इलेक्ट्रिशियन',
+        'Motor & Pump Technician': 'मोटर और पंप तकनीशियन',
+        'Painter': 'पेंटर',
+        'Plumber': 'प्लंबर',
+      },
+      'level': {
+        'AC Technician': 'एसी तकनीशियन',
+        'Basic': 'बेसिक',
+        'Expert': 'एक्सपर्ट',
+        'Factory/Industrial Wiring Expert': 'फैक्ट्री / औद्योगिक वायरिंग विशेषज्ञ',
+        'Master': 'मास्टर',
+        'Master Electrician': 'मास्टर इलेक्ट्रिशियन',
+        'Master/Industrial': 'मास्टर / औद्योगिक',
+        'Residential/Office Wiring': 'घर / कार्यालय वायरिंग',
+      },
+      'service': {
+        'AC Installation': 'एसी लगाना',
+        'AC Repair': 'एसी मरम्मत',
+        'Basic Electrical Work': 'बिजली के सामान्य काम',
+        'Bathroom & Kitchen Plumbing': 'बाथरूम और रसोई की प्लंबिंग',
+        'Cooler Motor Repair': 'कूलर मोटर मरम्मत',
+        'Cooler Pump Repair': 'कूलर पंप मरम्मत',
+        'Cooler Repair': 'कूलर मरम्मत',
+        'Cooler Service': 'कूलर सर्विस',
+        'Drainage & Blockage Work': 'नाली और जाम की समस्या',
+        'Exterior Painting': 'बाहरी पेंटिंग',
+        'Factory/Industrial Wiring': 'फैक्ट्री / औद्योगिक वायरिंग',
+        'Fridge Repair': 'फ्रिज मरम्मत',
+        'Industrial Painting': 'औद्योगिक पेंटिंग',
+        'Interior Painting': 'घर के अंदर पेंटिंग',
+        'Master Electrician Work': 'मास्टर इलेक्ट्रिशियन का काम',
+        'Motor & Pump Installation': 'मोटर और पंप लगाना',
+        'Motor Repair': 'मोटर मरम्मत',
+        'Motor/Pump Checking': 'मोटर / पंप जाँच',
+        'Motor/Pump Fitting': 'मोटर / पंप फिटिंग',
+        'Motor/Pump Inspection': 'मोटर / पंप निरीक्षण',
+        'Plumbing Repair & Maintenance': 'प्लंबिंग मरम्मत और रखरखाव',
+        'Pump Repair': 'पंप मरम्मत',
+        'Putty, Primer & Surface Preparation': 'पुट्टी, प्राइमर और सतह की तैयारी',
+        'Residential/Office Wiring': 'घर / कार्यालय वायरिंग',
+        'Texture, Polish & Special Finish': 'टेक्सचर, पॉलिश और विशेष फिनिश',
+        'Water Tank & Pipeline Work': 'पानी की टंकी और पाइपलाइन का काम',
+      },
+    };
+    return translations[kind]?[source] ?? source;
   }
 
   bool _isCurrent(Map<String, dynamic> row) {
@@ -153,10 +209,10 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     final hp = unit == 'motor_hp' ? _motorHp : null;
     if (unit == 'motor_hp' && hp == null) { widget.onSelection(null); return; }
     widget.onSelection(SrkBackendServiceSelection(
-      categoryId: c['id'].toString(), categoryName: c['category_name'].toString(),
-      serviceTypeId: s['id'].toString(), serviceName: s['service_name'].toString(),
+      categoryId: c['id'].toString(), categoryName: _catalogueLabel('category', c['category_name']),
+      serviceTypeId: s['id'].toString(), serviceName: _catalogueLabel('service', s['service_name']),
       skillId: k['id'].toString(), skillName: k['skill_name'].toString(),
-      skillLevelId: l?['id']?.toString(), skillLevelName: l?['level_name']?.toString() ?? 'लागू नहीं',
+      skillLevelId: l?['id']?.toString(), skillLevelName: l == null ? 'लागू नहीं' : _catalogueLabel('level', l['level_name']),
       pricingUnit: unit,
       helperAvailable: unit == 'hour' && configuredHelperRate > 0,
       pricingRuleId: r?['id']?.toString(), motorHp: hp,
@@ -192,7 +248,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
             }, child: Padding(padding: const EdgeInsets.all(8), child: Row(children: [
               Icon(_categoryIcon(item['category_code']?.toString()), size: 20),
               const SizedBox(width: 7),
-              Expanded(child: Text(item['category_name'].toString(), maxLines: 2, overflow: TextOverflow.ellipsis)),
+              Expanded(child: Text(_catalogueLabel('category', item['category_name']), maxLines: 2, overflow: TextOverflow.ellipsis)),
             ]))));
         },
       ),
@@ -203,7 +259,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         Wrap(spacing: 8, runSpacing: 8, children: _availableLevels.map((level) {
           final selected = _level?['id'] == level['id'];
           return ChoiceChip(
-            label: Text(level['level_name'].toString()),
+            label: Text(_catalogueLabel('level', level['level_name'])),
             selected: selected,
             onSelected: (_) {
               setState(() {
@@ -227,7 +283,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         DropdownButtonFormField<String>(
           initialValue: _service?['id']?.toString(), isExpanded: true,
           decoration: const InputDecoration(labelText: 'काम की सर्विस चुनें', border: OutlineInputBorder()),
-          items: _availableServices.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(x['service_name'].toString()))).toList(),
+          items: _availableServices.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(_catalogueLabel('service', x['service_name'])))).toList(),
           onChanged: (id) {
             setState(() {
               _service = _availableServices.firstWhere((x) => x['id'].toString() == id);
