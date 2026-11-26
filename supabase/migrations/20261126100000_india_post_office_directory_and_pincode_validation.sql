@@ -99,6 +99,12 @@ begin
      or nullif(btrim(p_source_name),'') is null then
     raise exception 'A dated all-India postal directory snapshot and its expected row count are required';
   end if;
+  if exists (
+    select 1 from srk_private.india_post_office_import_batches
+    where status='importing'
+  ) then
+    raise exception 'Another India Post directory import is already in progress';
+  end if;
   insert into srk_private.india_post_office_import_batches(source_date,source_name,expected_rows,created_by)
   values (btrim(p_source_date),btrim(p_source_name),p_expected_rows,auth.uid())
   returning id into v_id;
