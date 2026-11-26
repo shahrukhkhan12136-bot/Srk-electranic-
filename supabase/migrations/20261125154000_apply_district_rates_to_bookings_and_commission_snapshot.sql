@@ -122,7 +122,9 @@ set search_path=pg_catalog,public,srk_private
 as $function$
 begin
   if not new.is_active then return new; end if;
-  if tg_op='UPDATE' and old.is_active then return new; end if;
+  if tg_op='UPDATE' then
+    if old.is_active then return new; end if;
+  end if;
 
   insert into public.srk_district_service_rate_overrides(
     district_lgd_code,service_rate_id,pricing_rule_id,
