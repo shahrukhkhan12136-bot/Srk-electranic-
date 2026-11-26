@@ -1274,7 +1274,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   Future<void> _useCurrentLocation() async {
     setState(() => _locationBusy = true);
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) throw StateError('फोन की Location/GPS चालू करें।');
+      if (!await Geolocator.isLocationServiceEnabled()) throw StateError('फोन की लोकेशन/जीपीएस चालू करें।');
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
@@ -1313,8 +1313,8 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         }
       });
       final locationMessage = place != null && (place.administrativeArea ?? '').trim().isNotEmpty
-          ? 'GPS लोकेशन जुड़ गई। राज्य/जिला/PIN अपने-आप भरे गए हैं—कृपया पुष्टि करें।'
-          : 'GPS coordinates जुड़ गए। पता अपने-आप नहीं मिल सका; कृपया मैन्युअल भरें।';
+          ? 'जीपीएस लोकेशन जुड़ गई। राज्य/जिला/पिन कोड अपने-आप भरे गए हैं—कृपया पुष्टि करें।'
+          : 'जीपीएस निर्देशांक जुड़ गए। पता अपने-आप नहीं मिल सका; कृपया मैन्युअल भरें।';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(locationMessage)));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
@@ -1332,7 +1332,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       return;
     }
     if (_state.text.trim().isEmpty || _district.text.trim().isEmpty || _pincode.text.trim().length != 6 || _address.text.trim().isEmpty) {
-      setState(() { _priceError = 'पहले राज्य, जिला, 6 अंकों का PIN Code और पूरा पता भरें।'; _pricePreview = null; _priceBusy = false; });
+      setState(() { _priceError = 'पहले राज्य, जिला, 6 अंकों का पिन कोड और पूरा पता भरें।'; _pricePreview = null; _priceBusy = false; });
       return;
     }
     setState(() { _priceBusy = true; _priceError = null; _pricePreview = null; });
@@ -1364,13 +1364,13 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     if (!_formKey.currentState!.validate()) return;
     final selection = _selection;
     if (selection == null || _pricePreview == null || _priceBusy) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('पहले लाइव कैटलॉग से सेवा चुनें और सर्वर दर की पुष्टि करें।')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('पहले सक्रिय सेवा सूची से सेवा चुनें और सर्वर द्वारा तय दर की पुष्टि करें।')));
       return;
     }
     final session = _client.auth.currentSession;
     final user = _client.auth.currentUser;
     if (session == null || user == null || user.phoneConfirmedAt == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('बुकिंग के लिए पहले मोबाइल OTP सत्यापन पूरा करें।')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('बुकिंग के लिए पहले मोबाइल ओटीपी सत्यापन पूरा करें।')));
       return;
     }
     setState(() => _submitting = true);
@@ -1401,7 +1401,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.check_circle, color: Colors.green, size: 42),
           title: const Text('बुकिंग सफलतापूर्वक भेजी गई'),
-          content: Text('बुकिंग ID: ${booking['id'] ?? '—'}\n\nअभी कोई अग्रिम भुगतान नहीं लिया गया है। योग्य Technician को सेवा के अनुसार ऑफर भेजा जाएगा।'),
+          content: Text('बुकिंग संख्या: ${booking['id'] ?? '—'}\n\nअभी कोई अग्रिम भुगतान नहीं लिया गया है। योग्य टेक्नीशियन को सेवा के अनुसार ऑफर भेजा जाएगा।'),
           actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('ठीक है'))],
         ),
       );
@@ -1450,7 +1450,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       child: ListView(padding: const EdgeInsets.all(16), children: [
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Row(children: const [
           Icon(Icons.verified_user, color: Colors.green), SizedBox(width: 10),
-          Expanded(child: Text('बुकिंग आपके OTP-verified मोबाइल खाते से जुड़ेगी। भुगतान काम पूरा होने और अंतिम बिल बनने के बाद ही होगा।')),
+          Expanded(child: Text('बुकिंग आपके ओटीपी-सत्यापित मोबाइल खाते से जुड़ेगी। भुगतान काम पूरा होने और अंतिम बिल बनने के बाद ही होगा।')),
         ]))),
         Text('1. सर्विस कैटेगरी और स्तर चुनें', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
@@ -1473,13 +1473,13 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           Text('2. कितने लोग चाहिए?', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
-            initialValue: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
+            initialValue: _technicianCount, decoration: _decoration('कितने टेक्नीशियन चाहिए?'),
             items: List.generate(10, (i) => i + 1).map((v)=>DropdownMenuItem(value:v,child:Text('$v टेक्नीशियन'))).toList(),
             onChanged: (v) { setState(() { _technicianCount=v??1; _invalidatePricePreview(); }); },
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
-            initialValue: _helperCount, decoration: _decoration('कितने Helper चाहिए?'),
+            initialValue: _helperCount, decoration: _decoration('कितने सहायक चाहिए?'),
             items: List.generate(_selection!.pricingUnit == 'hour' && _selection!.helperAvailable ? 11 : 1, (i) => i)
               .map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'हेल्पर नहीं':'$v हेल्पर'))).toList(),
             onChanged: _selection!.pricingUnit == 'hour' && _selection!.helperAvailable
@@ -1503,12 +1503,12 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
             ),
           ] else if (_selection!.pricingUnit == 'per_item') ...[
             DropdownButtonFormField<int>(
-              initialValue: _unitCount, decoration: _decoration('कितने Cooler / Unit'),
+              initialValue: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
               items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
               onChanged: (v) { setState(() { _unitCount=v??1; _invalidatePricePreview(); }); },
             ),
           ] else if (_selection!.pricingUnit == 'motor_hp') ...[
-            Text('Motor / Pump का निर्धारित HP रेट लागू होगा।'),
+            Text('मोटर / पंप का निर्धारित एचपी रेट लागू होगा।'),
           ],
         ],
         const SizedBox(height: 14),
@@ -1516,13 +1516,13 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         const SizedBox(height: 8),
         _field(_state, 'राज्य', maxLength: 100),
         _field(_district, 'जिला', maxLength: 100),
-        _field(_pincode, '6 अंकों का PIN Code', keyboard: TextInputType.number, maxLength: 6,
-          validator: (v) => RegExp(r'^[0-9]{6}$').hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
+        _field(_pincode, '6 अंकों का पिन कोड', keyboard: TextInputType.number, maxLength: 6,
+          validator: (v) => RegExp(r'^[0-9]{6}$').hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का पिन कोड भरें'),
         _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
         OutlinedButton.icon(
           onPressed: _locationBusy ? null : _useCurrentLocation,
           icon: _locationBusy ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.my_location),
-          label: Text(_locationBusy ? 'GPS लोकेशन ली जा रही है…' : (_locationLat == null ? 'GPS से वर्तमान लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें')),
+          label: Text(_locationBusy ? 'जीपीएस लोकेशन ली जा रही है…' : (_locationLat == null ? 'जीपीएस से वर्तमान लोकेशन जोड़ें' : 'जीपीएस लोकेशन जुड़ गई • दोबारा चुनें')),
         ),
         const SizedBox(height: 10),
         const SizedBox(height: 14),
@@ -1549,7 +1549,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
               const Divider(),
               const Text('कुल अनुमानित देय राशि', style: TextStyle(fontWeight: FontWeight.w700)),
               Text(_money(_pricePreview!['estimated_customer_total']), style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
-              Text((_pricePreview!['price_note']??'').toString()),
+              Text('जिला ${_district.text.trim()} की स्वीकृत दर के अनुसार'),
             ]))),
         const SizedBox(height: 12),
         Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
