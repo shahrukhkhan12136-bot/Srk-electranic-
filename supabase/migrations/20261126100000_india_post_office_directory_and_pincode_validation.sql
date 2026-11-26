@@ -148,8 +148,8 @@ begin
   if not found or v_batch.status <> 'importing' then
     raise exception 'Postal directory import batch is not open';
   end if;
-  if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) < 1
-     or jsonb_array_length(p_rows) > 500 then
+  if p_rows is null or jsonb_typeof(p_rows) is distinct from 'array'
+     or jsonb_array_length(p_rows) < 1 or jsonb_array_length(p_rows) > 500 then
     raise exception 'Import each postal directory chunk with 1 to 500 rows';
   end if;
   if exists (
@@ -234,6 +234,11 @@ begin
       )
       and not exists (
         select 1 from srk_private.india_post_office_district_aliases a
+        join public.srk_india_districts mapped
+          on mapped.district_lgd_code=a.district_lgd_code
+         and mapped.is_active
+         and lower(regexp_replace(btrim(mapped.state_name),'[^[:alnum:]]','','g')) =
+             lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
         where lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
               lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
           and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
@@ -265,6 +270,11 @@ begin
   ) d on true
   left join lateral (
     select a.district_lgd_code from srk_private.india_post_office_district_aliases a
+    join public.srk_india_districts mapped
+      on mapped.district_lgd_code=a.district_lgd_code
+     and mapped.is_active
+     and lower(regexp_replace(btrim(mapped.state_name),'[^[:alnum:]]','','g')) =
+         lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
     where lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
           lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
       and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
