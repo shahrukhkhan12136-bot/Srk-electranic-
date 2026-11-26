@@ -1277,6 +1277,9 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       if (!mounted) return;
       final place = placemarks.isNotEmpty ? placemarks.first : null;
       setState(() {
+        ++_previewRequest;
+        _pricePreview = null;
+        _priceError = null;
         _locationLat = pos.latitude;
         _locationLng = pos.longitude;
         if (place != null) {
@@ -1413,8 +1416,9 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       onChanged: (_) {
         if (identical(controller, _state) || identical(controller, _district) ||
             identical(controller, _pincode) || identical(controller, _address)) {
-          if (_pricePreview != null || _priceError != null) {
-            setState(() { _pricePreview = null; _priceError = null; });
+          if (_pricePreview != null || _priceError != null || _priceBusy) {
+            ++_previewRequest;
+            setState(() { _pricePreview = null; _priceError = null; _priceBusy = false; });
           }
         }
       },
