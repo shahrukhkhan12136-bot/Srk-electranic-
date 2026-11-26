@@ -58,7 +58,31 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   @override
   void initState() {
     super.initState();
+    widget.language.addListener(_handleLanguageChange);
+    _currentLanguage = widget.language.value;
     _loadCatalogue();
+  }
+
+  @override
+  void didUpdateWidget(covariant SrkServiceCategoryPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.language != widget.language) {
+      oldWidget.language.removeListener(_handleLanguageChange);
+      widget.language.addListener(_handleLanguageChange);
+      _currentLanguage = widget.language.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.language.removeListener(_handleLanguageChange);
+    super.dispose();
+  }
+
+  void _handleLanguageChange() {
+    if (!mounted) return;
+    setState(() => _currentLanguage = widget.language.value);
+    if (_category != null) _emitSelection();
   }
 
   Future<void> _loadCatalogue() async {
@@ -303,7 +327,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     widget.onSelection(SrkBackendServiceSelection(
       categoryId: c['id'].toString(), categoryName: _catalogueLabel('category', c['category_name']),
       serviceTypeId: s['id'].toString(), serviceName: _catalogueLabel('service', s['service_name']),
-      skillId: k['id'].toString(), skillName: k['skill_name'].toString(),
+      skillId: k['id'].toString(), skillName: _catalogueLabel('skill', k['skill_name']),
       skillLevelId: l?['id']?.toString(), skillLevelName: l == null ? 'लागू नहीं' : _catalogueLabel('level', l['level_name']),
       pricingUnit: unit,
       helperAvailable: unit == 'hour' && configuredHelperRate > 0,
