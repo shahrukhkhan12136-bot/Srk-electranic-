@@ -145,6 +145,11 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     }).toList();
     if (r == null && matchingRates.isEmpty) { widget.onSelection(null); return; }
     final unit = r?['pricing_unit']?.toString() ?? 'hour';
+    final configuredHelperRate = (r?['helper_rate'] as num?)?.toDouble() ??
+        matchingRates.fold<double>(0, (best, rate) {
+          final value = (rate['helper_hourly_rate'] as num?)?.toDouble() ?? 0;
+          return value > best ? value : best;
+        });
     final hp = unit == 'motor_hp' ? _motorHp : null;
     if (unit == 'motor_hp' && hp == null) { widget.onSelection(null); return; }
     widget.onSelection(SrkBackendServiceSelection(
@@ -153,7 +158,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       skillId: k['id'].toString(), skillName: k['skill_name'].toString(),
       skillLevelId: l?['id']?.toString(), skillLevelName: l?['level_name']?.toString() ?? 'लागू नहीं',
       pricingUnit: unit,
-      helperAvailable: unit == 'hour',
+      helperAvailable: unit == 'hour' && configuredHelperRate > 0,
       pricingRuleId: r?['id']?.toString(), motorHp: hp,
       availableMotorHp: _hpTiers.where((x) => r != null && x['pricing_rule_id'] == r['id'])
         .map((x) => (x['motor_hp'] as num).toDouble()).toList()..sort(),
