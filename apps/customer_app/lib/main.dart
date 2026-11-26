@@ -1410,6 +1410,14 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     child: TextFormField(
       controller: controller, decoration: _decoration(label, hint: hint),
       keyboardType: keyboard, maxLines: maxLines, maxLength: maxLength, readOnly: readOnly,
+      onChanged: (_) {
+        if (identical(controller, _state) || identical(controller, _district) ||
+            identical(controller, _pincode) || identical(controller, _address)) {
+          if (_pricePreview != null || _priceError != null) {
+            setState(() { _pricePreview = null; _priceError = null; });
+          }
+        }
+      },
       validator: validator ?? (v) => _required(v, label),
     ),
   );
@@ -1489,7 +1497,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           ],
         ],
         const SizedBox(height: 14),
-        Text('5. काम की लोकेशन', style: Theme.of(context).textTheme.titleMedium),
+        Text('4. काम की लोकेशन', style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         _field(_state, 'राज्य', maxLength: 100),
         _field(_district, 'जिला', maxLength: 100),
@@ -1502,6 +1510,8 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           label: Text(_locationBusy ? 'GPS लोकेशन ली जा रही है…' : (_locationLat == null ? 'GPS से वर्तमान लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें')),
         ),
         const SizedBox(height: 10),
+        const SizedBox(height: 14),
+        Text('5. अनुमानित कीमत देखें', style: Theme.of(context).textTheme.titleMedium),
         OutlinedButton.icon(
           onPressed: _selection == null || _priceBusy ? null : _refreshPricePreview,
           icon: const Icon(Icons.calculate_outlined),
