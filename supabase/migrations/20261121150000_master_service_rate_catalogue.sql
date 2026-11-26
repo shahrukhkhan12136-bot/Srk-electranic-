@@ -188,7 +188,7 @@ BEGIN
   END IF;
   IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='service_bookings_srk_duration_minutes_valid') THEN
     ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_srk_duration_minutes_valid
-      CHECK(srk_duration_minutes IS NULL OR srk_duration_minutes BETWEEN 1 AND 72000);
+      CHECK(srk_duration_minutes IS NULL OR srk_duration_minutes BETWEEN 1 AND 86400);
   END IF;
   IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='service_bookings_srk_rate_snapshot_complete') THEN
     ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_srk_rate_snapshot_complete
@@ -207,7 +207,7 @@ BEGIN
           AND ((srk_billing_model_snapshot='hourly' AND srk_technician_hourly_paise_snapshot IS NOT NULL
                 AND srk_helper_hourly_paise_snapshot IS NOT NULL
                 AND (NOT srk_helper_included_snapshot OR srk_helper_hourly_paise_snapshot>0)
-                AND srk_fixed_labour_paise_snapshot IS NULL AND srk_duration_minutes BETWEEN 1 AND 72000)
+                AND srk_fixed_labour_paise_snapshot IS NULL AND srk_duration_minutes BETWEEN 1 AND 86400)
             OR (srk_billing_model_snapshot='fixed_per_unit' AND srk_fixed_labour_paise_snapshot IS NOT NULL
                 AND srk_technician_hourly_paise_snapshot IS NULL AND srk_helper_hourly_paise_snapshot IS NULL
                 AND srk_helper_included_snapshot=false AND srk_duration_minutes IS NULL)))
