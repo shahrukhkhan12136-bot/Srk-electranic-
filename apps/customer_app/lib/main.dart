@@ -1251,6 +1251,13 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     super.dispose();
   }
 
+  void _invalidatePricePreview() {
+    ++_previewRequest;
+    _pricePreview = null;
+    _priceError = null;
+    _priceBusy = false;
+  }
+
   String? _required(String? value, String label, {int min = 2}) {
     final v = value?.trim() ?? '';
     return v.length < min ? '$label सही भरें' : null;
@@ -1416,10 +1423,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       onChanged: (_) {
         if (identical(controller, _state) || identical(controller, _district) ||
             identical(controller, _pincode) || identical(controller, _address)) {
-          if (_pricePreview != null || _priceError != null || _priceBusy) {
-            ++_previewRequest;
-            setState(() { _pricePreview = null; _priceError = null; _priceBusy = false; });
-          }
+          setState(_invalidatePricePreview);
         }
       },
       validator: validator ?? (v) => _required(v, label),
@@ -1447,8 +1451,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           onSelection: (selection) {
             setState(() {
               _selection = selection;
-              _pricePreview = null;
-              _priceError = null;
+              _invalidatePricePreview();
               if (selection == null || !selection.helperAvailable) _helperCount = 0;
             });
           },
@@ -1464,7 +1467,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           DropdownButtonFormField<int>(
             initialValue: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
             items: List.generate(10, (i) => i + 1).map((v)=>DropdownMenuItem(value:v,child:Text('$v टेक्नीशियन'))).toList(),
-            onChanged: (v) { setState(() { _technicianCount=v??1; _pricePreview=null; }); },
+            onChanged: (v) { setState(() { _technicianCount=v??1; _invalidatePricePreview(); }); },
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<int>(
@@ -1472,7 +1475,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
             items: List.generate(_selection!.pricingUnit == 'hour' && _selection!.helperAvailable ? 11 : 1, (i) => i)
               .map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'हेल्पर नहीं':'$v हेल्पर'))).toList(),
             onChanged: _selection!.pricingUnit == 'hour' && _selection!.helperAvailable
-              ? (v) { setState(() { _helperCount=v??0; _pricePreview=null; }); }
+              ? (v) { setState(() { _helperCount=v??0; _invalidatePricePreview(); }); }
               : null,
           ),
           const SizedBox(height: 8),
@@ -1488,13 +1491,13 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
                 ...List.generate(60, (i) => i + 1).map((days) =>
                   DropdownMenuItem(value: days * 24, child: Text('$days दिन'))),
               ],
-              onChanged: (v) { setState(() { _durationHours=v??1; _pricePreview=null; }); },
+              onChanged: (v) { setState(() { _durationHours=v??1; _invalidatePricePreview(); }); },
             ),
           ] else if (_selection!.pricingUnit == 'per_item') ...[
             DropdownButtonFormField<int>(
               initialValue: _unitCount, decoration: _decoration('कितने Cooler / Unit'),
               items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
-              onChanged: (v) { setState(() { _unitCount=v??1; _pricePreview=null; }); },
+              onChanged: (v) { setState(() { _unitCount=v??1; _invalidatePricePreview(); }); },
             ),
           ] else if (_selection!.pricingUnit == 'motor_hp') ...[
             Text('Motor / Pump का निर्धारित HP रेट लागू होगा।'),
