@@ -26,7 +26,7 @@ test('Customer booking picker order is category, qualification, service, then wo
 test('Customer booking supports 1 hour through 60 days and separate Technician/Helper counts', () => {
   assert.match(customer, /List\.generate\(60, \(i\) => i \+ 1\)/);
   assert.match(customer, /days \* 24/);
-  assert.match(customer, /कितने Technician चाहिए/);
+  assert.match(customer, /कितने टेक्नीशियन चाहिए/);
   assert.match(customer, /कितने Helper चाहिए/);
   assert.match(customer, /p_technician_count/);
   assert.match(customer, /p_helper_count/);
@@ -38,7 +38,7 @@ test('GPS reverse geocoding attempts to fill State, District and PIN before pric
   assert.match(customer, /_state\.text = stateName/);
   assert.match(customer, /_district\.text = districtName/);
   assert.match(customer, /_pincode\.text = pin/);
-  assert.match(customer, /पहले राज्य, जिला, 6 अंकों का PIN Code और पूरा पता भरें/);
+  assert.match(customer, /पहले राज्य, जिला, 6 अंकों का पिन कोड और पूरा पता भरें/);
 });
 
 test('Booking price preview and creation use the district-aware server RPCs', () => {
@@ -64,7 +64,7 @@ test('Changing any price input invalidates in-flight and displayed customer esti
 });
 test('Customer price preview separates service charge from any previous cancellation-fee balance', () => {
   const previewStart = customer.indexOf("Text('अनुमानित सर्विस चार्ज'");
-  const previewEnd = customer.indexOf("Text((_pricePreview!['price_note']", previewStart);
+  const previewEnd = customer.indexOf("Text('जिला ${_district.text.trim()} की स्वीकृत दर के अनुसार')", previewStart);
   const preview = customer.slice(previewStart, previewEnd);
   assert.match(preview, /estimated_base_total/);
   assert.match(preview, /pending_cancellation_fee_amount/);
@@ -82,4 +82,17 @@ test('Changing saved customer language rebuilds the full dashboard and unregiste
 test('Customer settings do not imply notification controls exist when none are implemented', () => {
   assert.match(customer, /सूचनाओं की अनुमति बदलने का विकल्प अभी ऐप में उपलब्ध नहीं है/);
   assert.match(customer, /Notification permission controls are not available inside the app yet/);
+});
+test('Customer booking form fixed interface labels are Hindi and do not leak English price notes', () => {
+  const bookingStart = customer.indexOf('class CustomerBookingFormPage');
+  const booking = customer.slice(bookingStart);
+  for (const phrase of [
+    'ओटीपी-सत्यापित मोबाइल खाते',
+    'कितने टेक्नीशियन चाहिए?',
+    'कितने सहायक चाहिए?',
+    '6 अंकों का पिन कोड',
+    'जीपीएस से वर्तमान लोकेशन जोड़ें',
+    'जिला ${_district.text.trim()} की स्वीकृत दर के अनुसार',
+  ]) assert.ok(booking.includes(phrase), 'missing Hindi booking label: ' + phrase);
+  assert.doesNotMatch(booking, /OTP-verified|PIN Code|GPS coordinates|price_note|qualified Technician/);
 });
