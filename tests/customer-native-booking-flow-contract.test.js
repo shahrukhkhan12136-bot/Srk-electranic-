@@ -54,3 +54,11 @@ test('Booking matching is dispatched immediately after the district rate snapsho
   const returnBooking = dispatch.indexOf('return v_booking;', snapshot);
   assert.ok(snapshot >= 0 && immediate > snapshot && returnBooking > immediate);
 });
+
+test('Changing any price input invalidates in-flight and displayed customer estimates', () => {
+  assert.match(customer, /void _invalidatePricePreview\(\)\s*\{\s*\+\+_previewRequest;/);
+  assert.ok((customer.match(/_invalidatePricePreview\(\);/g) || []).length >= 5,
+    'category, worker counts, duration, and unit changes must invalidate the preview');
+  assert.match(customer, /setState\(_invalidatePricePreview\)/,
+    'manual location edits must invalidate in-flight price previews');
+});
