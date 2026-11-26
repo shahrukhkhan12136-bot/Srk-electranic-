@@ -527,6 +527,7 @@ grant execute on function public.srk_admin_get_india_post_office_import_status(u
 revoke all on function srk_private.admin_begin_post_office_import(text,integer,text) from public,anon,authenticated;
 revoke all on function srk_private.admin_import_post_office_chunk(uuid,jsonb) from public,anon,authenticated;
 revoke all on function srk_private.admin_finalize_post_office_import(uuid) from public,anon,authenticated;
+revoke all on function srk_private.admin_abort_post_office_import(uuid,text) from public,anon,authenticated;
 revoke all on function srk_private.assert_india_postal_location(text,text,text) from public,anon,authenticated;
 revoke all on function srk_private.validate_service_booking_postal_location() from public,anon,authenticated;
 revoke all on function public.srk_customer_validate_india_location_v1(text,text,text) from public,anon;
