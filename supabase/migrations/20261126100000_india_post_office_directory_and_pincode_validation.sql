@@ -80,6 +80,11 @@ create table if not exists srk_private.india_post_office_district_aliases (
 );
 alter table srk_private.india_post_office_district_aliases enable row level security;
 revoke all on srk_private.india_post_office_district_aliases from public,anon,authenticated;
+create unique index if not exists india_post_office_district_aliases_normalized_uidx
+  on srk_private.india_post_office_district_aliases(
+    lower(regexp_replace(btrim(source_state_name),'[^[:alnum:]]','','g')),
+    lower(regexp_replace(btrim(source_district_name),'[^[:alnum:]]','','g'))
+  );
 
 create table if not exists srk_private.india_post_office_directory_status (
   singleton boolean primary key default true check (singleton),
@@ -218,20 +223,22 @@ begin
   from (
     select distinct s.state_name,s.district_name
     from srk_private.india_post_office_import_staging s
-    left join public.srk_india_districts d
-      on d.is_active
-      and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
-          lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
-      and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
-          lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
-    left join srk_private.india_post_office_district_aliases a
-      on lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
-          lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
-      and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
-          lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
     where s.batch_id=p_batch_id
-      and d.district_lgd_code is null
-      and a.district_lgd_code is null
+      and not exists (
+        select 1 from public.srk_india_districts d
+        where d.is_active
+          and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
+              lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+          and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
+              lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+      )
+      and not exists (
+        select 1 from srk_private.india_post_office_district_aliases a
+        where lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
+              lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+          and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
+              lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+      )
   ) missing;
   if v_unmapped > 0 then
     raise exception 'Map all % postal source district/state names to official LGD districts before finalizing',v_unmapped;
@@ -247,17 +254,23 @@ begin
     coalesce(d.district_lgd_code,a.district_lgd_code),
     s.circle_name,s.region_name,s.division_name,v_batch.source_date,v_batch.source_name,true
   from srk_private.india_post_office_import_staging s
-  left join public.srk_india_districts d
-    on d.is_active
-    and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
-        lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
-    and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
-        lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
-  left join srk_private.india_post_office_district_aliases a
-    on lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
-        lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
-    and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
-        lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+  left join lateral (
+    select d.district_lgd_code from public.srk_india_districts d
+    where d.is_active
+      and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
+          lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+      and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
+          lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+    order by d.district_lgd_code limit 1
+  ) d on true
+  left join lateral (
+    select a.district_lgd_code from srk_private.india_post_office_district_aliases a
+    where lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
+          lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+      and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
+          lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+    limit 1
+  ) a on true
   where s.batch_id=p_batch_id;
 
   update srk_private.india_post_office_directory_status
@@ -373,18 +386,22 @@ begin
   return query
   select s.state_name,s.district_name,count(*)::bigint
   from srk_private.india_post_office_import_staging s
-  left join public.srk_india_districts d
-    on d.is_active
-    and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
-        lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
-    and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
-        lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
-  left join srk_private.india_post_office_district_aliases a
-    on lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
-        lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
-    and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
-        lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
-  where s.batch_id=p_batch_id and d.district_lgd_code is null and a.district_lgd_code is null
+  where s.batch_id=p_batch_id
+    and not exists (
+      select 1 from public.srk_india_districts d
+      where d.is_active
+        and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
+            lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+        and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
+            lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+    )
+    and not exists (
+      select 1 from srk_private.india_post_office_district_aliases a
+      where lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
+            lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+        and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
+            lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+    )
   group by s.state_name,s.district_name
   order by s.state_name,s.district_name;
 end;
