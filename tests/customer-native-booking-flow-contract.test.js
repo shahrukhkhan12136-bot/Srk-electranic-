@@ -61,6 +61,30 @@ test('Changing any price input invalidates in-flight and displayed customer esti
     'category, worker counts, duration, and unit changes must invalidate the preview');
   assert.match(customer, /setState\(_invalidatePricePreview\)/,
     'manual location edits must invalidate in-flight price previews');
+  assert.match(customer, /_locationLat = null;[\s\S]*?_locationLng = null;[\s\S]*?_invalidatePricePreview\(\);/,
+    'a new GPS attempt or manual address edit must clear stale coordinates');
+  assert.match(customer, /If the customer edits any part of the address after GPS capture/);
+});
+test('Customer booking server wrapper validates the official district and captures approved district rates before matching', () => {
+  const start = dispatch.indexOf('create or replace function srk_private.create_booking_with_district_rates(');
+  const end = dispatch.indexOf('$function$;', start);
+  assert.ok(start >= 0 && end > start, 'district-aware booking function must exist');
+  const body = dispatch.slice(start, end);
+  assert.match(body, /auth\.uid\(\) is null/);
+  assert.match(body, /from public\.srk_india_districts[\s\S]*?where is_active/);
+  assert.match(body, /public\.srk_customer_create_booking\(/);
+  assert.match(body, /rate_status='approved'/);
+  assert.match(body, /district_rate_snapshot=jsonb_build_object/);
+  assert.match(body, /perform public\.srk_process_booking_matching_queue\(\)/);
+});
+test('Customer booking submit requires a valid form, current price preview, and OTP-confirmed session', () => {
+  const start = customer.indexOf('Future<void> _submit()');
+  const end = customer.indexOf('InputDecoration _decoration', start);
+  const body = customer.slice(start, end);
+  assert.match(body, /_formKey\.currentState!\.validate\(\)/);
+  assert.match(body, /_pricePreview == null \|\| _priceBusy/);
+  assert.match(body, /session == null \|\| user == null \|\| user\.phoneConfirmedAt == null/);
+  assert.match(body, /srk_customer_create_booking_v2/);
 });
 test('Customer price preview separates service charge from any previous cancellation-fee balance', () => {
   const previewStart = customer.indexOf("Text('अनुमानित सर्विस चार्ज'");

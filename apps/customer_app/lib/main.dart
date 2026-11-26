@@ -1272,7 +1272,14 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   }
 
   Future<void> _useCurrentLocation() async {
-    setState(() => _locationBusy = true);
+    setState(() {
+      _locationBusy = true;
+      // A new GPS attempt must never leave previously captured coordinates attached
+      // to a different manually entered address if this attempt fails.
+      _locationLat = null;
+      _locationLng = null;
+      _invalidatePricePreview();
+    });
     try {
       if (!await Geolocator.isLocationServiceEnabled()) throw StateError('फोन की लोकेशन/जीपीएस चालू करें।');
       var permission = await Geolocator.checkPermission();
@@ -1431,7 +1438,13 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       onChanged: (_) {
         if (identical(controller, _state) || identical(controller, _district) ||
             identical(controller, _pincode) || identical(controller, _address)) {
-          setState(_invalidatePricePreview);
+          setState(() {
+            // If the customer edits any part of the address after GPS capture,
+            // drop the old coordinates so the booking cannot mix two locations.
+            _locationLat = null;
+            _locationLng = null;
+            _invalidatePricePreview();
+          });
         }
       },
       validator: validator ?? (v) => _required(v, label),
