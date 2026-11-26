@@ -137,7 +137,6 @@ const Map<String, Map<String, String>> srkCatalogueHindiTranslations = {
         "Wood Polish & Finishing": "लकड़ी की पॉलिश और फिनिशिंग",
       },
     };
-};
 
 String srkCatalogueLabel(String kind, dynamic raw, String languageCode) {
   final source = raw?.toString() ?? '';
