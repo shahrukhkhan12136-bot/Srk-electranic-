@@ -1530,6 +1530,16 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
           Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
             child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('अनुमानित सर्विस चार्ज', style: Theme.of(context).textTheme.titleMedium),
+              Text(_money(_pricePreview!['estimated_base_total']), style: const TextStyle(fontSize: 20,fontWeight: FontWeight.w600)),
+              if (((_pricePreview!['pending_cancellation_fee_amount'] as num?) ?? 0) > 0) ...[
+                const SizedBox(height: 8),
+                const Divider(),
+                const Text('पिछली बुकिंग का बकाया रद्दीकरण शुल्क'),
+                Text(_money(_pricePreview!['pending_cancellation_fee_amount'])),
+              ],
+              const SizedBox(height: 8),
+              const Divider(),
+              const Text('कुल अनुमानित देय राशि', style: TextStyle(fontWeight: FontWeight.w700)),
               Text(_money(_pricePreview!['estimated_customer_total']), style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
               Text((_pricePreview!['price_note']??'').toString()),
             ]))),
