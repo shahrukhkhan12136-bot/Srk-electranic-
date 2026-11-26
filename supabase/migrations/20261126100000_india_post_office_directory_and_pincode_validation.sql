@@ -215,6 +215,54 @@ begin
 end;
 $function$;
 
+-- Public RPC wrappers are the only PostgREST entry points for Admin import.
+create or replace function public.srk_admin_begin_india_post_office_import(
+  p_source_date text,p_expected_rows integer,
+  p_source_name text default 'Department of Posts — All India Pincode Directory (OGD Platform India)'
+) returns uuid
+language sql volatile security invoker
+set search_path=pg_catalog,public,srk_private
+as $function$
+  select srk_private.admin_begin_post_office_import(p_source_date,p_expected_rows,p_source_name);
+$function$;
+
+create or replace function public.srk_admin_import_india_post_office_chunk(
+  p_batch_id uuid,p_rows jsonb
+) returns integer
+language sql volatile security invoker
+set search_path=pg_catalog,public,srk_private
+as $function$
+  select srk_private.admin_import_post_office_chunk(p_batch_id,p_rows);
+$function$;
+
+create or replace function public.srk_admin_finalize_india_post_office_import(
+  p_batch_id uuid
+) returns integer
+language sql volatile security invoker
+set search_path=pg_catalog,public,srk_private
+as $function$
+  select srk_private.admin_finalize_post_office_import(p_batch_id);
+$function$;
+
+create or replace function public.srk_admin_get_india_post_office_import_status(
+  p_batch_id uuid
+) returns table(batch_id uuid,source_date text,expected_rows integer,imported_rows integer,status text)
+language plpgsql stable security definer
+set search_path=pg_catalog,public,auth,srk_private
+as $function$
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'Main Admin permission required' using errcode='42501';
+  end if;
+  return query
+  select b.id,b.source_date,b.expected_rows,
+    (select count(*)::integer from srk_private.india_post_office_import_staging s where s.batch_id=b.id),
+    b.status
+  from srk_private.india_post_office_import_batches b
+  where b.id=p_batch_id;
+end;
+$function$;
+
 create or replace function srk_private.assert_india_postal_location(
   p_state text,p_district text,p_pincode text
 ) returns boolean
@@ -279,6 +327,15 @@ drop trigger if exists trg_srk_validate_postal_location on public.service_bookin
 create trigger trg_srk_validate_postal_location
 before insert or update of state,district,pincode on public.service_bookings
 for each row execute function srk_private.validate_service_booking_postal_location();
+
+revoke all on function public.srk_admin_begin_india_post_office_import(text,integer,text) from public,anon;
+revoke all on function public.srk_admin_import_india_post_office_chunk(uuid,jsonb) from public,anon;
+revoke all on function public.srk_admin_finalize_india_post_office_import(uuid) from public,anon;
+revoke all on function public.srk_admin_get_india_post_office_import_status(uuid) from public,anon;
+grant execute on function public.srk_admin_begin_india_post_office_import(text,integer,text) to authenticated;
+grant execute on function public.srk_admin_import_india_post_office_chunk(uuid,jsonb) to authenticated;
+grant execute on function public.srk_admin_finalize_india_post_office_import(uuid) to authenticated;
+grant execute on function public.srk_admin_get_india_post_office_import_status(uuid) to authenticated;
 
 revoke all on function srk_private.admin_begin_post_office_import(text,integer,text) from public,anon;
 revoke all on function srk_private.admin_import_post_office_chunk(uuid,jsonb) from public,anon;
