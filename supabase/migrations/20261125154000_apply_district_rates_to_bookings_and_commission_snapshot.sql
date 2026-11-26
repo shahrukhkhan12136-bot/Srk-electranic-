@@ -6,6 +6,208 @@ alter table public.service_bookings
 create index if not exists service_bookings_district_lgd_code_idx
   on public.service_bookings(district_lgd_code);
 
+
+-- Seed every active LGD district with the currently approved nationwide standard rates.
+-- These rows are editable district overrides; later Admin edits affect only new bookings.
+-- The zero UUID identifies this one-time system seed (not a human Admin).
+do $seed_guard$
+begin
+  if (select count(*) from public.srk_india_districts where is_active) < 780
+     or (select count(distinct state_lgd_code) from public.srk_india_districts where is_active) <> 36 then
+    raise exception 'Cannot seed district rates: complete all-India LGD directory is required';
+  end if;
+  if not exists (
+    select 1 from public.srk_service_rates
+    where rate_status='approved' and effective_from<=clock_timestamp()
+      and (effective_to is null or effective_to>clock_timestamp())
+  ) then
+    raise exception 'Cannot seed district rates: no currently approved service rates exist';
+  end if;
+  if not exists (
+    select 1 from public.srk_service_pricing_rules
+    where effective_from<=clock_timestamp() and (effective_to is null or effective_to>clock_timestamp())
+  ) then
+    raise exception 'Cannot seed district rates: no currently active pricing rules exist';
+  end if;
+end;
+$seed_guard$;
+
+insert into public.srk_district_service_rate_overrides(
+  district_lgd_code,service_rate_id,pricing_rule_id,
+  technician_rate,helper_rate,fixed_price,hp_tiers,
+  effective_from,created_by,change_reason
+)
+select d.district_lgd_code,sr.id,null,
+  sr.technician_hourly_rate,sr.helper_hourly_rate,null,'[]'::jsonb,
+  clock_timestamp(),'00000000-0000-0000-0000-000000000000'::uuid,
+  'Initial nationwide default copied from currently approved standard service rate'
+from public.srk_india_districts d
+cross join public.srk_service_rates sr
+where d.is_active
+  and sr.rate_status='approved'
+  and sr.effective_from<=clock_timestamp()
+  and (sr.effective_to is null or sr.effective_to>clock_timestamp())
+on conflict do nothing;
+
+insert into public.srk_district_service_rate_overrides(
+  district_lgd_code,service_rate_id,pricing_rule_id,
+  technician_rate,helper_rate,fixed_price,hp_tiers,
+  effective_from,created_by,change_reason
+)
+select d.district_lgd_code,null,r.id,
+  case when r.pricing_unit='hour' then r.technician_rate else null end,
+  case when r.pricing_unit='hour' then r.helper_rate else null end,
+  case when r.pricing_unit='per_item' then r.technician_rate else null end,
+  case when r.pricing_unit='motor_hp' then coalesce(t.hp_tiers,'[]'::jsonb) else '[]'::jsonb end,
+  clock_timestamp(),'00000000-0000-0000-0000-000000000000'::uuid,
+  'Initial nationwide default copied from currently active standard pricing rule'
+from public.srk_india_districts d
+cross join public.srk_service_pricing_rules r
+left join lateral (
+  select jsonb_agg(jsonb_build_object('motor_hp',hp.motor_hp,'fixed_price',hp.fixed_price)
+                   order by hp.motor_hp) as hp_tiers
+  from public.srk_service_pricing_hp_tiers hp
+  where hp.pricing_rule_id=r.id
+) t on true
+where d.is_active
+  and r.effective_from<=clock_timestamp()
+  and (r.effective_to is null or r.effective_to>clock_timestamp())
+  and r.pricing_unit in ('hour','per_item','motor_hp')
+   and (
+     r.pricing_unit <> 'hour'
+     or not exists (
+       select 1 from public.srk_service_rates sr
+       where sr.category_id=r.category_id
+         and sr.service_type_id=r.service_type_id
+         and sr.rate_status='approved'
+         and sr.effective_from<=clock_timestamp()
+         and (sr.effective_to is null or sr.effective_to>clock_timestamp())
+     )
+   )
+on conflict do nothing;
+
+do $seed_verify$
+begin
+  if exists (
+    select 1
+    from public.srk_india_districts d
+    cross join public.srk_service_rates sr
+    where d.is_active
+      and sr.rate_status='approved'
+      and sr.effective_from<=clock_timestamp()
+      and (sr.effective_to is null or sr.effective_to>clock_timestamp())
+      and not exists (
+        select 1 from public.srk_district_service_rate_overrides o
+        where o.district_lgd_code=d.district_lgd_code
+          and o.service_rate_id=sr.id and o.effective_to is null
+      )
+  ) then
+    raise exception 'District rate seed verification failed: an approved hourly rate is missing in at least one district';
+  end if;
+  if exists (
+    select 1
+    from public.srk_india_districts d
+    cross join public.srk_service_pricing_rules r
+    where d.is_active
+      and r.effective_from<=clock_timestamp()
+      and (r.effective_to is null or r.effective_to>clock_timestamp())
+      and r.pricing_unit in ('hour','per_item','motor_hp')
+   and (
+     r.pricing_unit <> 'hour'
+     or not exists (
+       select 1 from public.srk_service_rates sr
+       where sr.category_id=r.category_id
+         and sr.service_type_id=r.service_type_id
+         and sr.rate_status='approved'
+         and sr.effective_from<=clock_timestamp()
+         and (sr.effective_to is null or sr.effective_to>clock_timestamp())
+     )
+   )
+      and not exists (
+        select 1 from public.srk_district_service_rate_overrides o
+        where o.district_lgd_code=d.district_lgd_code
+          and o.pricing_rule_id=r.id and o.effective_to is null
+      )
+  ) then
+    raise exception 'District rate seed verification failed: an active pricing rule is missing in at least one district';
+  end if;
+end;
+$seed_verify$;
+
+
+-- Keep future newly-added/reactivated LGD districts usable without a manual rate setup.
+create or replace function srk_private.seed_default_rates_for_india_district()
+returns trigger
+language plpgsql
+security definer
+set search_path=pg_catalog,public,srk_private
+as $function$
+begin
+  if not new.is_active then return new; end if;
+  if tg_op='UPDATE' then
+    if old.is_active then return new; end if;
+  end if;
+
+  insert into public.srk_district_service_rate_overrides(
+    district_lgd_code,service_rate_id,pricing_rule_id,
+    technician_rate,helper_rate,fixed_price,hp_tiers,
+    effective_from,created_by,change_reason
+  )
+  select new.district_lgd_code,sr.id,null,
+    sr.technician_hourly_rate,sr.helper_hourly_rate,null,'[]'::jsonb,
+    clock_timestamp(),'00000000-0000-0000-0000-000000000000'::uuid,
+    'Initial nationwide default copied from currently approved standard service rate'
+  from public.srk_service_rates sr
+  where sr.rate_status='approved' and sr.effective_from<=clock_timestamp()
+    and (sr.effective_to is null or sr.effective_to>clock_timestamp())
+  on conflict do nothing;
+
+  insert into public.srk_district_service_rate_overrides(
+    district_lgd_code,service_rate_id,pricing_rule_id,
+    technician_rate,helper_rate,fixed_price,hp_tiers,
+    effective_from,created_by,change_reason
+  )
+  select new.district_lgd_code,null,r.id,
+    case when r.pricing_unit='hour' then r.technician_rate else null end,
+    case when r.pricing_unit='hour' then r.helper_rate else null end,
+    case when r.pricing_unit='per_item' then r.technician_rate else null end,
+    case when r.pricing_unit='motor_hp' then coalesce(t.hp_tiers,'[]'::jsonb) else '[]'::jsonb end,
+    clock_timestamp(),'00000000-0000-0000-0000-000000000000'::uuid,
+    'Initial nationwide default copied from currently active standard pricing rule'
+  from public.srk_service_pricing_rules r
+  left join lateral (
+    select jsonb_agg(jsonb_build_object('motor_hp',hp.motor_hp,'fixed_price',hp.fixed_price)
+                     order by hp.motor_hp) as hp_tiers
+    from public.srk_service_pricing_hp_tiers hp
+    where hp.pricing_rule_id=r.id
+  ) t on true
+  where r.effective_from<=clock_timestamp()
+    and (r.effective_to is null or r.effective_to>clock_timestamp())
+    and r.pricing_unit in ('hour','per_item','motor_hp')
+   and (
+     r.pricing_unit <> 'hour'
+     or not exists (
+       select 1 from public.srk_service_rates sr
+       where sr.category_id=r.category_id
+         and sr.service_type_id=r.service_type_id
+         and sr.rate_status='approved'
+         and sr.effective_from<=clock_timestamp()
+         and (sr.effective_to is null or sr.effective_to>clock_timestamp())
+     )
+   )
+  on conflict do nothing;
+
+  return new;
+end;
+$function$;
+
+revoke all on function srk_private.seed_default_rates_for_india_district() from public,anon,authenticated;
+drop trigger if exists srk_seed_default_rates_for_india_district on public.srk_india_districts;
+create trigger srk_seed_default_rates_for_india_district
+after insert or update of is_active on public.srk_india_districts
+for each row execute function srk_private.seed_default_rates_for_india_district();
+
+
 create or replace function srk_private.get_district_worker_hourly_rate(
   p_booking_id uuid,p_skill_level_id uuid,p_worker_role text
 ) returns numeric
@@ -445,7 +647,7 @@ begin
   case when v_booking.pricing_unit_snapshot in ('per_item','motor_hp') then null else v_rate end,v_skill_level,p_reason)
  returning * into v_assignment;
  return v_assignment;
-end
+end;
 $function$
 
 
@@ -653,7 +855,7 @@ begin
   end if;
  end loop;
  return v_inserted;
-end
+end;
 $function$
 
 

@@ -1,4 +1,6 @@
 -- India LGD district directory and district-specific service-rate administration.
+-- Keep the sync floor compatible with the checked-in 784-district source snapshot;
+-- the 36-state/UT and unique LGD-code checks below provide additional completeness guards.
 -- This migration stages Admin controls only; booking/dispatch/billing integration is handled
 -- by a subsequent migration before any district rate is used for live bookings.
 
@@ -92,7 +94,8 @@ begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'Main Admin permission required' using errcode='42501';
   end if;
-  if jsonb_typeof(p_districts) <> 'array' or jsonb_array_length(p_districts) < 790 then
+  if p_districts is null or jsonb_typeof(p_districts) is distinct from 'array'
+     or jsonb_array_length(p_districts) < 780 then
     raise exception 'District sync rejected: expected a current all-India directory snapshot';
   end if;
   if (select count(distinct state_code) from jsonb_to_recordset(p_districts) as x(code text, name text, state_code text, state_name text)) <> 36 then
@@ -286,12 +289,31 @@ begin
     elsif v_unit='per_item' then
       if p_fixed_price is null or p_fixed_price<=0 then raise exception 'Fixed service price is required'; end if;
     elsif v_unit='motor_hp' then
-      if jsonb_typeof(p_hp_tiers)<>'array' or jsonb_array_length(p_hp_tiers)=0 then
+      if p_hp_tiers is null or jsonb_typeof(p_hp_tiers) is distinct from 'array' or jsonb_array_length(p_hp_tiers)=0 then
         raise exception 'Motor/Pump HP rates are required';
       end if;
-      select count(*) into v_expected_tiers from public.srk_service_pricing_hp_tiers where pricing_rule_id=p_pricing_rule_id;
-      if jsonb_array_length(p_hp_tiers)<>v_expected_tiers then
-        raise exception 'Every approved HP tier must be priced; do not add or remove HP tiers';
+      select count(*) into v_expected_tiers
+      from public.srk_service_pricing_hp_tiers
+      where pricing_rule_id=p_pricing_rule_id;
+      if jsonb_array_length(p_hp_tiers)<>v_expected_tiers
+         or (select count(distinct x.motor_hp)
+             from jsonb_to_recordset(p_hp_tiers) as x(motor_hp numeric,fixed_price numeric))<>v_expected_tiers
+         or exists (
+           select 1 from public.srk_service_pricing_hp_tiers t
+           where t.pricing_rule_id=p_pricing_rule_id
+             and not exists (
+               select 1 from jsonb_to_recordset(p_hp_tiers) as x(motor_hp numeric,fixed_price numeric)
+               where x.motor_hp=t.motor_hp
+             )
+         )
+         or exists (
+           select 1 from jsonb_to_recordset(p_hp_tiers) as x(motor_hp numeric,fixed_price numeric)
+           where not exists (
+             select 1 from public.srk_service_pricing_hp_tiers t
+             where t.pricing_rule_id=p_pricing_rule_id and t.motor_hp=x.motor_hp
+           )
+         ) then
+        raise exception 'Every approved HP tier must appear exactly once; do not add, remove, or duplicate HP tiers';
       end if;
       if exists(select 1 from jsonb_to_recordset(p_hp_tiers) as x(motor_hp numeric,fixed_price numeric)
         where motor_hp is null or fixed_price is null or fixed_price<=0) then
