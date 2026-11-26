@@ -61,6 +61,9 @@ test('Changing any price input invalidates in-flight and displayed customer esti
     'category, worker counts, duration, and unit changes must invalidate the preview');
   assert.match(customer, /setState\(_invalidatePricePreview\)/,
     'manual location edits must invalidate in-flight price previews');
+  assert.match(customer, /_locationLat = null;[\s\S]*?_locationLng = null;[\s\S]*?_invalidatePricePreview\(\);/,
+    'a new GPS attempt or manual address edit must clear stale coordinates');
+  assert.match(customer, /If the customer edits any part of the address after GPS capture/);
 });
 test('Customer price preview separates service charge from any previous cancellation-fee balance', () => {
   const previewStart = customer.indexOf("Text('अनुमानित सर्विस चार्ज'");
