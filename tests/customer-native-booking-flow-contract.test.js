@@ -79,3 +79,7 @@ test('Changing saved customer language rebuilds the full dashboard and unregiste
   assert.match(customer, /customerLanguage\.removeListener\(_handleCustomerLanguageChanged\)/);
   assert.match(customer, /await _client\.auth\.updateUser\(UserAttributes\(data: \{'customer_language': value\}\)\)/);
 });
+test('Customer settings do not imply notification controls exist when none are implemented', () => {
+  assert.match(customer, /सूचनाओं की अनुमति बदलने का विकल्प अभी ऐप में उपलब्ध नहीं है/);
+  assert.match(customer, /Notification permission controls are not available inside the app yet/);
+});
