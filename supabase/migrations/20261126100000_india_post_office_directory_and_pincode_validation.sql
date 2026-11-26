@@ -31,7 +31,7 @@ create table if not exists public.srk_india_post_offices (
     (pincode, office_name, office_type, district_name, state_name)
 );
 create index if not exists srk_india_post_offices_location_idx
-  on public.srk_india_post_offices(pincode, state_name, district_name)
+  on public.srk_india_post_offices(pincode, district_lgd_code)
   where is_active;
 alter table public.srk_india_post_offices enable row level security;
 revoke all on public.srk_india_post_offices from public, anon, authenticated;
@@ -458,8 +458,10 @@ begin
   if not exists (
     select 1 from public.srk_india_districts
     where district_lgd_code=p_district_lgd_code and is_active
+      and lower(regexp_replace(btrim(state_name),'[^[:alnum:]]','','g')) =
+          lower(regexp_replace(btrim(p_source_state_name),'[^[:alnum:]]','','g'))
   ) then
-    raise exception 'Select an active official LGD district';
+    raise exception 'Select an active LGD district from the same State as the postal source row';
   end if;
   insert into srk_private.india_post_office_district_aliases(
     source_state_name,source_district_name,district_lgd_code,mapped_by,mapping_reason
