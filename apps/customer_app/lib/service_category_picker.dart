@@ -121,11 +121,8 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   }
 
 
-  String _catalogueLabel(String kind, dynamic raw) {
-    final source = raw?.toString() ?? '';
-    if (_currentLanguage != 'hi') return source;
-    return srkCatalogueLabel(kind, raw, _currentLanguage);
-  }
+  String _catalogueLabel(String kind, dynamic raw) =>
+      srkCatalogueLabel(kind, raw, _currentLanguage);
 
   bool _isCurrent(Map<String, dynamic> row) {
     final now = DateTime.now().toUtc();
