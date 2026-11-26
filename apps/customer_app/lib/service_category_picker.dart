@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
+
+import 'service_catalogue_localization.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// A booking selection made from the live, RLS-filtered Supabase catalogue.
@@ -31,9 +34,10 @@ class SrkBackendServiceSelection {
 }
 
 class SrkServiceCategoryPicker extends StatefulWidget {
-  const SrkServiceCategoryPicker({super.key, required this.onSelection, this.initialCategoryCode});
+  const SrkServiceCategoryPicker({super.key, required this.onSelection, this.initialCategoryCode, required this.language});
   final ValueChanged<SrkBackendServiceSelection?> onSelection;
   final String? initialCategoryCode;
+  final ValueListenable<String> language;
 
   @override
   State<SrkServiceCategoryPicker> createState() => _SrkServiceCategoryPickerState();
@@ -52,11 +56,36 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   List<Map<String, dynamic>> _rates = [];
   Map<String, dynamic>? _category, _service, _skill, _level, _rule;
   double? _motorHp;
+  String _currentLanguage = 'hi';
 
   @override
   void initState() {
     super.initState();
+    widget.language.addListener(_handleLanguageChange);
+    _currentLanguage = widget.language.value;
     _loadCatalogue();
+  }
+
+  @override
+  void didUpdateWidget(covariant SrkServiceCategoryPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.language != widget.language) {
+      oldWidget.language.removeListener(_handleLanguageChange);
+      widget.language.addListener(_handleLanguageChange);
+      _currentLanguage = widget.language.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.language.removeListener(_handleLanguageChange);
+    super.dispose();
+  }
+
+  void _handleLanguageChange() {
+    if (!mounted) return;
+    setState(() => _currentLanguage = widget.language.value);
+    if (_category != null) _emitSelection();
   }
 
   Future<void> _loadCatalogue() async {
@@ -90,6 +119,10 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
       setState(() { _loading = false; _error = 'लाइव सेवा सूची लोड नहीं हुई। इंटरनेट और Supabase अनुमति जाँचें।'; });
     }
   }
+
+
+  String _catalogueLabel(String kind, dynamic raw) =>
+      srkCatalogueLabel(kind, raw, _currentLanguage);
 
   bool _isCurrent(Map<String, dynamic> row) {
     final now = DateTime.now().toUtc();
@@ -153,10 +186,10 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
     final hp = unit == 'motor_hp' ? _motorHp : null;
     if (unit == 'motor_hp' && hp == null) { widget.onSelection(null); return; }
     widget.onSelection(SrkBackendServiceSelection(
-      categoryId: c['id'].toString(), categoryName: c['category_name'].toString(),
-      serviceTypeId: s['id'].toString(), serviceName: s['service_name'].toString(),
-      skillId: k['id'].toString(), skillName: k['skill_name'].toString(),
-      skillLevelId: l?['id']?.toString(), skillLevelName: l?['level_name']?.toString() ?? 'लागू नहीं',
+      categoryId: c['id'].toString(), categoryName: _catalogueLabel('category', c['category_name']),
+      serviceTypeId: s['id'].toString(), serviceName: _catalogueLabel('service', s['service_name']),
+      skillId: k['id'].toString(), skillName: _catalogueLabel('skill', k['skill_name']),
+      skillLevelId: l?['id']?.toString(), skillLevelName: l == null ? 'लागू नहीं' : _catalogueLabel('level', l['level_name']),
       pricingUnit: unit,
       helperAvailable: unit == 'hour' && configuredHelperRate > 0,
       pricingRuleId: r?['id']?.toString(), motorHp: hp,
@@ -166,7 +199,15 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ValueListenableBuilder<String>(
+    valueListenable: widget.language,
+    builder: (context, language, child) {
+      _currentLanguage = language;
+      return _buildContent(context);
+    },
+  );
+
+  Widget _buildContent(BuildContext context) {
     if (_loading) return const Padding(
       padding: EdgeInsets.all(18), child: Center(child: CircularProgressIndicator()),
     );
@@ -192,7 +233,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
             }, child: Padding(padding: const EdgeInsets.all(8), child: Row(children: [
               Icon(_categoryIcon(item['category_code']?.toString()), size: 20),
               const SizedBox(width: 7),
-              Expanded(child: Text(item['category_name'].toString(), maxLines: 2, overflow: TextOverflow.ellipsis)),
+              Expanded(child: Text(_catalogueLabel('category', item['category_name']), maxLines: 2, overflow: TextOverflow.ellipsis)),
             ]))));
         },
       ),
@@ -203,7 +244,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         Wrap(spacing: 8, runSpacing: 8, children: _availableLevels.map((level) {
           final selected = _level?['id'] == level['id'];
           return ChoiceChip(
-            label: Text(level['level_name'].toString()),
+            label: Text(_catalogueLabel('level', level['level_name'])),
             selected: selected,
             onSelected: (_) {
               setState(() {
@@ -227,7 +268,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
         DropdownButtonFormField<String>(
           initialValue: _service?['id']?.toString(), isExpanded: true,
           decoration: const InputDecoration(labelText: 'काम की सर्विस चुनें', border: OutlineInputBorder()),
-          items: _availableServices.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(x['service_name'].toString()))).toList(),
+          items: _availableServices.map((x) => DropdownMenuItem(value: x['id'].toString(), child: Text(_catalogueLabel('service', x['service_name'])))).toList(),
           onChanged: (id) {
             setState(() {
               _service = _availableServices.firstWhere((x) => x['id'].toString() == id);
@@ -253,7 +294,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
               value: skill['id'].toString(),
               groupValue: _skill?['id']?.toString(),
               controlAffinity: ListTileControlAffinity.leading,
-              title: Text(skill['skill_name'].toString()),
+              title: Text(_catalogueLabel('skill', skill['skill_name'])),
               onChanged: (selectedId) {
                 setState(() => _skill = selectedId == null ? null : skill);
                 _emitSelection();

@@ -1468,6 +1468,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         Text('1. सर्विस कैटेगरी और स्तर चुनें', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),
         SrkServiceCategoryPicker(
+          language: customerLanguage,
           initialCategoryCode: widget.initialCategoryCode,
           onSelection: (selection) {
             setState(() {
