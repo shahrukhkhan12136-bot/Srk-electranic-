@@ -73,3 +73,9 @@ test('Customer price preview separates service charge from any previous cancella
   assert.match(preview, /कुल अनुमानित देय राशि/);
   assert.doesNotMatch(preview, /estimated_company_commission|estimated_worker_net/);
 });
+test('Changing saved customer language rebuilds the full dashboard and unregisters its listener', () => {
+  assert.match(customer, /customerLanguage\.addListener\(_handleCustomerLanguageChanged\)/);
+  assert.match(customer, /void _handleCustomerLanguageChanged\(\)\s*\{\s*if \(mounted\) setState\(\(\) \{\}\);/);
+  assert.match(customer, /customerLanguage\.removeListener\(_handleCustomerLanguageChanged\)/);
+  assert.match(customer, /await _client\.auth\.updateUser\(UserAttributes\(data: \{'customer_language': value\}\)\)/);
+});
