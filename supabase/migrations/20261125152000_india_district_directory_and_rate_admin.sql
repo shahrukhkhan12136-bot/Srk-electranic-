@@ -289,7 +289,7 @@ begin
     elsif v_unit='per_item' then
       if p_fixed_price is null or p_fixed_price<=0 then raise exception 'Fixed service price is required'; end if;
     elsif v_unit='motor_hp' then
-      if jsonb_typeof(p_hp_tiers)<>'array' or jsonb_array_length(p_hp_tiers)=0 then
+      if p_hp_tiers is null or jsonb_typeof(p_hp_tiers) is distinct from 'array' or jsonb_array_length(p_hp_tiers)=0 then
         raise exception 'Motor/Pump HP rates are required';
       end if;
       select count(*) into v_expected_tiers
