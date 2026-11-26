@@ -229,8 +229,8 @@ $function$;
 create or replace function public.srk_admin_import_india_post_office_chunk(
   p_batch_id uuid,p_rows jsonb
 ) returns integer
-language sql volatile security invoker
-set search_path=pg_catalog,public,srk_private
+language sql volatile security definer
+set search_path=pg_catalog,public,auth,srk_private
 as $function$
   select srk_private.admin_import_post_office_chunk(p_batch_id,p_rows);
 $function$;
@@ -238,8 +238,8 @@ $function$;
 create or replace function public.srk_admin_finalize_india_post_office_import(
   p_batch_id uuid
 ) returns integer
-language sql volatile security invoker
-set search_path=pg_catalog,public,srk_private
+language sql volatile security definer
+set search_path=pg_catalog,public,auth,srk_private
 as $function$
   select srk_private.admin_finalize_post_office_import(p_batch_id);
 $function$;
