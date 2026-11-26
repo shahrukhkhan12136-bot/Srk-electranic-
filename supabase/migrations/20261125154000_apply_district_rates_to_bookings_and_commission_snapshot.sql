@@ -73,6 +73,17 @@ where d.is_active
   and r.effective_from<=clock_timestamp()
   and (r.effective_to is null or r.effective_to>clock_timestamp())
   and r.pricing_unit in ('hour','per_item','motor_hp')
+   and (
+     r.pricing_unit <> 'hour'
+     or not exists (
+       select 1 from public.srk_service_rates sr
+       where sr.category_id=r.category_id
+         and sr.service_type_id=r.service_type_id
+         and sr.rate_status='approved'
+         and sr.effective_from<=clock_timestamp()
+         and (sr.effective_to is null or sr.effective_to>clock_timestamp())
+     )
+   )
 on conflict do nothing;
 
 do $seed_verify$
@@ -101,6 +112,17 @@ begin
       and r.effective_from<=clock_timestamp()
       and (r.effective_to is null or r.effective_to>clock_timestamp())
       and r.pricing_unit in ('hour','per_item','motor_hp')
+   and (
+     r.pricing_unit <> 'hour'
+     or not exists (
+       select 1 from public.srk_service_rates sr
+       where sr.category_id=r.category_id
+         and sr.service_type_id=r.service_type_id
+         and sr.rate_status='approved'
+         and sr.effective_from<=clock_timestamp()
+         and (sr.effective_to is null or sr.effective_to>clock_timestamp())
+     )
+   )
       and not exists (
         select 1 from public.srk_district_service_rate_overrides o
         where o.district_lgd_code=d.district_lgd_code
@@ -162,6 +184,17 @@ begin
   where r.effective_from<=clock_timestamp()
     and (r.effective_to is null or r.effective_to>clock_timestamp())
     and r.pricing_unit in ('hour','per_item','motor_hp')
+   and (
+     r.pricing_unit <> 'hour'
+     or not exists (
+       select 1 from public.srk_service_rates sr
+       where sr.category_id=r.category_id
+         and sr.service_type_id=r.service_type_id
+         and sr.rate_status='approved'
+         and sr.effective_from<=clock_timestamp()
+         and (sr.effective_to is null or sr.effective_to>clock_timestamp())
+     )
+   )
   on conflict do nothing;
 
   return new;
