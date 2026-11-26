@@ -30,6 +30,7 @@ test('Customer booking supports 1 hour through 60 days and separate Technician/H
   assert.match(customer, /कितने Helper चाहिए/);
   assert.match(customer, /p_technician_count/);
   assert.match(customer, /p_helper_count/);
+  assert.match(picker, /helperAvailable: unit == 'hour' && configuredHelperRate > 0/);
 });
 
 test('GPS reverse geocoding attempts to fill State, District and PIN before price preview', () => {
