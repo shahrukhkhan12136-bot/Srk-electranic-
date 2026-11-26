@@ -13,6 +13,7 @@ create table if not exists public.srk_india_post_offices (
   delivery_status text not null default '',
   district_name text not null,
   state_name text not null,
+  district_lgd_code text not null references public.srk_india_districts(district_lgd_code),
   circle_name text,
   region_name text,
   division_name text,
@@ -66,6 +67,19 @@ create table if not exists srk_private.india_post_office_import_staging (
 );
 alter table srk_private.india_post_office_import_staging enable row level security;
 revoke all on srk_private.india_post_office_import_staging from public, anon, authenticated;
+
+create table if not exists srk_private.india_post_office_district_aliases (
+  source_state_name text not null,
+  source_district_name text not null,
+  district_lgd_code text not null references public.srk_india_districts(district_lgd_code),
+  mapped_by uuid not null,
+  mapped_at timestamptz not null default clock_timestamp(),
+  mapping_reason text not null,
+  primary key (source_state_name,source_district_name),
+  constraint srk_india_post_office_alias_reason check (length(btrim(mapping_reason)) >= 10)
+);
+alter table srk_private.india_post_office_district_aliases enable row level security;
+revoke all on srk_private.india_post_office_district_aliases from public,anon,authenticated;
 
 create table if not exists srk_private.india_post_office_directory_status (
   singleton boolean primary key default true check (singleton),
@@ -176,6 +190,7 @@ declare
   v_states integer;
   v_districts integer;
   v_pincodes integer;
+  v_unmapped integer;
 begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'Main Admin permission required' using errcode='42501';
@@ -199,15 +214,51 @@ begin
       v_states,v_districts,v_pincodes;
   end if;
 
+  select count(*)::integer into v_unmapped
+  from (
+    select distinct s.state_name,s.district_name
+    from srk_private.india_post_office_import_staging s
+    left join public.srk_india_districts d
+      on d.is_active
+      and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
+          lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+      and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
+          lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+    left join srk_private.india_post_office_district_aliases a
+      on lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
+          lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+      and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
+          lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+    where s.batch_id=p_batch_id
+      and d.district_lgd_code is null
+      and a.district_lgd_code is null
+  ) missing;
+  if v_unmapped > 0 then
+    raise exception 'Map all % postal source district/state names to official LGD districts before finalizing',v_unmapped;
+  end if;
+
   -- Keep the old live snapshot until this complete replacement commits.
   delete from public.srk_india_post_offices;
   insert into public.srk_india_post_offices(
-    pincode,office_name,office_type,delivery_status,district_name,state_name,
+    pincode,office_name,office_type,delivery_status,district_name,state_name,district_lgd_code,
     circle_name,region_name,division_name,source_date,source_name,is_active
   )
-  select pincode,office_name,office_type,delivery_status,district_name,state_name,
-    circle_name,region_name,division_name,v_batch.source_date,v_batch.source_name,true
-  from srk_private.india_post_office_import_staging where batch_id=p_batch_id;
+  select s.pincode,s.office_name,s.office_type,s.delivery_status,s.district_name,s.state_name,
+    coalesce(d.district_lgd_code,a.district_lgd_code),
+    s.circle_name,s.region_name,s.division_name,v_batch.source_date,v_batch.source_name,true
+  from srk_private.india_post_office_import_staging s
+  left join public.srk_india_districts d
+    on d.is_active
+    and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+    and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+  left join srk_private.india_post_office_district_aliases a
+    on lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+    and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+  where s.batch_id=p_batch_id;
 
   update srk_private.india_post_office_directory_status
   set is_ready=true,source_date=v_batch.source_date,source_name=v_batch.source_name,
@@ -276,6 +327,7 @@ create or replace function srk_private.assert_india_postal_location(
 language plpgsql stable security definer
 set search_path=pg_catalog,public,srk_private
 as $function$
+declare v_district_lgd_code text;
 begin
   if p_pincode is null or p_pincode !~ '^[0-9]{6}$' then
     raise exception 'कृपया 6 अंकों का सही पिन कोड भरें।';
@@ -286,16 +338,85 @@ begin
   ) then
     raise exception 'भारत की आधिकारिक PIN Directory अभी Admin द्वारा सक्रिय नहीं की गई है।';
   end if;
+  select d.district_lgd_code into v_district_lgd_code
+  from public.srk_india_districts d
+  where d.is_active
+    and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(coalesce(p_state,'')),'[^[:alnum:]]','','g'))
+    and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(coalesce(p_district,'')),'[^[:alnum:]]','','g'))
+  limit 1;
+  if v_district_lgd_code is null then
+    raise exception 'कृपया आधिकारिक सूची से सही राज्य और जिला चुनें।';
+  end if;
   if not exists (
     select 1 from public.srk_india_post_offices o
     where o.is_active and o.pincode=p_pincode
-      and lower(regexp_replace(btrim(o.state_name),'[^[:alnum:]]','','g')) =
-          lower(regexp_replace(btrim(coalesce(p_state,'')),'[^[:alnum:]]','','g'))
-      and lower(regexp_replace(btrim(o.district_name),'[^[:alnum:]]','','g')) =
-          lower(regexp_replace(btrim(coalesce(p_district,'')),'[^[:alnum:]]','','g'))
+      and o.district_lgd_code=v_district_lgd_code
   ) then
     raise exception 'यह पिन कोड चुने गए राज्य और जिले से मेल नहीं खाता। कृपया सही लोकेशन चुनें।';
   end if;
+  return true;
+end;
+$function$;
+
+create or replace function public.srk_admin_list_unmapped_india_post_office_districts(
+  p_batch_id uuid
+) returns table(source_state_name text,source_district_name text,office_rows bigint)
+language plpgsql stable security definer
+set search_path=pg_catalog,public,auth,srk_private
+as $function$
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'Main Admin permission required' using errcode='42501';
+  end if;
+  return query
+  select s.state_name,s.district_name,count(*)::bigint
+  from srk_private.india_post_office_import_staging s
+  left join public.srk_india_districts d
+    on d.is_active
+    and lower(regexp_replace(btrim(d.state_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+    and lower(regexp_replace(btrim(d.district_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+  left join srk_private.india_post_office_district_aliases a
+    on lower(regexp_replace(btrim(a.source_state_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(s.state_name),'[^[:alnum:]]','','g'))
+    and lower(regexp_replace(btrim(a.source_district_name),'[^[:alnum:]]','','g')) =
+        lower(regexp_replace(btrim(s.district_name),'[^[:alnum:]]','','g'))
+  where s.batch_id=p_batch_id and d.district_lgd_code is null and a.district_lgd_code is null
+  group by s.state_name,s.district_name
+  order by s.state_name,s.district_name;
+end;
+$function$;
+
+create or replace function public.srk_admin_map_india_post_office_district_alias(
+  p_source_state_name text,p_source_district_name text,p_district_lgd_code text,p_mapping_reason text
+) returns boolean
+language plpgsql volatile security definer
+set search_path=pg_catalog,public,auth,srk_private
+as $function$
+begin
+  if auth.uid() is null or not public.is_srk_admin() then
+    raise exception 'Main Admin permission required' using errcode='42501';
+  end if;
+  if nullif(btrim(p_source_state_name),'') is null
+     or nullif(btrim(p_source_district_name),'') is null
+     or length(btrim(coalesce(p_mapping_reason,''))) < 10 then
+    raise exception 'Source names and a mapping reason of at least 10 characters are required';
+  end if;
+  if not exists (
+    select 1 from public.srk_india_districts
+    where district_lgd_code=p_district_lgd_code and is_active
+  ) then
+    raise exception 'Select an active official LGD district';
+  end if;
+  insert into srk_private.india_post_office_district_aliases(
+    source_state_name,source_district_name,district_lgd_code,mapped_by,mapping_reason
+  ) values (btrim(p_source_state_name),btrim(p_source_district_name),p_district_lgd_code,auth.uid(),btrim(p_mapping_reason))
+  on conflict (source_state_name,source_district_name) do update set
+    district_lgd_code=excluded.district_lgd_code,mapped_by=excluded.mapped_by,
+    mapped_at=clock_timestamp(),mapping_reason=excluded.mapping_reason;
   return true;
 end;
 $function$;
@@ -334,6 +455,11 @@ drop trigger if exists trg_srk_validate_postal_location on public.service_bookin
 create trigger trg_srk_validate_postal_location
 before insert or update of state,district,pincode on public.service_bookings
 for each row execute function srk_private.validate_service_booking_postal_location();
+
+revoke all on function public.srk_admin_list_unmapped_india_post_office_districts(uuid) from public,anon;
+revoke all on function public.srk_admin_map_india_post_office_district_alias(text,text,text,text) from public,anon;
+grant execute on function public.srk_admin_list_unmapped_india_post_office_districts(uuid) to authenticated;
+grant execute on function public.srk_admin_map_india_post_office_district_alias(text,text,text,text) to authenticated;
 
 revoke all on function public.srk_admin_begin_india_post_office_import(text,integer,text) from public,anon;
 revoke all on function public.srk_admin_import_india_post_office_chunk(uuid,jsonb) from public,anon;
