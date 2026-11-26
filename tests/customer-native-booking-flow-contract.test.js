@@ -83,3 +83,16 @@ test('Customer settings do not imply notification controls exist when none are i
   assert.match(customer, /सूचनाओं की अनुमति बदलने का विकल्प अभी ऐप में उपलब्ध नहीं है/);
   assert.match(customer, /Notification permission controls are not available inside the app yet/);
 });
+test('Customer booking form fixed interface labels are Hindi and do not leak English price notes', () => {
+  const bookingStart = customer.indexOf('class CustomerBookingFormPage');
+  const booking = customer.slice(bookingStart);
+  for (const phrase of [
+    'ओटीपी-सत्यापित मोबाइल खाते',
+    'कितने टेक्नीशियन चाहिए?',
+    'कितने सहायक चाहिए?',
+    '6 अंकों का पिन कोड',
+    'जीपीएस से वर्तमान लोकेशन जोड़ें',
+    'जिला ${_district.text.trim()} की स्वीकृत दर के अनुसार',
+  ]) assert.ok(booking.includes(phrase), 'missing Hindi booking label: ' + phrase);
+  assert.doesNotMatch(booking, /OTP-verified|PIN Code|GPS coordinates|price_note|qualified Technician/);
+});
