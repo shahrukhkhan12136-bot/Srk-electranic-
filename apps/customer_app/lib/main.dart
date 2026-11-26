@@ -233,6 +233,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     super.initState();
     final language = _client.auth.currentUser?.userMetadata?['customer_language']?.toString();
     if (language == 'en' || language == 'hi') customerLanguage.value = language!;
+    customerLanguage.addListener(_handleCustomerLanguageChanged);
     _loadBookings();
     _workTimerTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _bookings.any((b) => b['status'] == 'in_progress' && b['work_timer_running'] == true)) {
@@ -241,8 +242,13 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     });
   }
 
+  void _handleCustomerLanguageChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    customerLanguage.removeListener(_handleCustomerLanguageChanged);
     _workTimerTicker?.cancel();
     _dashboardScrollController.dispose();
     super.dispose();
