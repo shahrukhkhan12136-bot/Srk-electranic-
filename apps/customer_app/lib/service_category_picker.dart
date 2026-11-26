@@ -31,10 +31,10 @@ class SrkBackendServiceSelection {
 }
 
 class SrkServiceCategoryPicker extends StatefulWidget {
-  const SrkServiceCategoryPicker({super.key, required this.onSelection, this.initialCategoryCode, this.languageCode = 'hi'});
+  const SrkServiceCategoryPicker({super.key, required this.onSelection, this.initialCategoryCode, required this.language});
   final ValueChanged<SrkBackendServiceSelection?> onSelection;
   final String? initialCategoryCode;
-  final String languageCode;
+  final ValueListenable<String> language;
 
   @override
   State<SrkServiceCategoryPicker> createState() => _SrkServiceCategoryPickerState();
@@ -53,6 +53,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   List<Map<String, dynamic>> _rates = [];
   Map<String, dynamic>? _category, _service, _skill, _level, _rule;
   double? _motorHp;
+  String _currentLanguage = 'hi';
 
   @override
   void initState() {
@@ -95,7 +96,7 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
 
   String _catalogueLabel(String kind, dynamic raw) {
     final source = raw?.toString() ?? '';
-    if (widget.languageCode != 'hi') return source;
+    if (_currentLanguage != 'hi') return source;
     const translations = <String, Map<String, String>>{
       'category': {
         'AC + Fridge Technician': 'एसी और फ्रिज तकनीशियन',
@@ -222,7 +223,15 @@ class _SrkServiceCategoryPickerState extends State<SrkServiceCategoryPicker> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ValueListenableBuilder<String>(
+    valueListenable: widget.language,
+    builder: (context, language, child) {
+      _currentLanguage = language;
+      return _buildContent(context);
+    },
+  );
+
+  Widget _buildContent(BuildContext context) {
     if (_loading) return const Padding(
       padding: EdgeInsets.all(18), child: Center(child: CircularProgressIndicator()),
     );
