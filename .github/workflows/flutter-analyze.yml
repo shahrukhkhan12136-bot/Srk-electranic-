@@ -15,6 +15,7 @@ on:
   pull_request:
     branches:
       - feature/master-technician-payment-cycle-20261121
+      - work/srk-completion-gap-20261125
     paths:
       - 'apps/customer_app/**'
       - 'apps/electrician_app/**'

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,9 @@ import 'package:srk_mobile_core/srk_mobile_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'service_category_picker.dart';
+
+final ValueNotifier<String> customerLanguage = ValueNotifier<String>('hi');
+bool get customerEnglish => customerLanguage.value == 'en';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,9 +34,22 @@ class CustomerApp extends StatelessWidget {
       );
 }
 
-class CustomerGate extends StatelessWidget {
+class CustomerGate extends StatefulWidget {
   const CustomerGate({super.key});
+  @override
+  State<CustomerGate> createState() => _CustomerGateState();
+}
 
+class _CustomerGateState extends State<CustomerGate> {
+  String? _profileUserId;
+  Future<Map<String, dynamic>?>? _profileFuture;
+  Future<Map<String, dynamic>?> _loadProfile() async {
+    final result = await Supabase.instance.client.rpc('srk_customer_get_my_profile');
+    final rows = List<Map<String, dynamic>>.from(result as List);
+    if (rows.isEmpty) return null;
+    final hasCurrentConsent = await Supabase.instance.client.rpc('srk_customer_has_current_policy_consent');
+    return hasCurrentConsent == true ? rows.first : null;
+  }
   @override
   Widget build(BuildContext context) {
     final client = Supabase.instance.client;
@@ -40,11 +57,154 @@ class CustomerGate extends StatelessWidget {
       stream: client.auth.onAuthStateChange,
       builder: (context, snapshot) {
         final user = client.auth.currentUser;
-        if (user == null) return const SrkLoginPage(role: SrkAppRole.customer);
-        return const CustomerDashboard();
+        if (user == null) {
+          _profileUserId = null;
+          _profileFuture = null;
+          return const SrkLoginPage(role: SrkAppRole.customer);
+        }
+        if (_profileUserId != user.id) {
+          _profileUserId = user.id;
+          _profileFuture = _loadProfile();
+        }
+        return FutureBuilder<Map<String, dynamic>?>(
+          key: ValueKey(user.id), future: _profileFuture,
+          builder: (context, profile) {
+            if (profile.connectionState != ConnectionState.done) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+            if (profile.hasError) {
+              return Scaffold(body: Center(child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const Text('आपकी प्रोफाइल सुरक्षित रूप से जाँची नहीं जा सकी। इंटरनेट जाँचकर दोबारा कोशिश करें।', textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  FilledButton(onPressed: () => setState(() => _profileFuture = _loadProfile()), child: const Text('दोबारा कोशिश करें')),
+                ]),
+              )));
+            }
+            if (profile.data == null) return const CustomerProfileSetupPage();
+            return const CustomerDashboard();
+          },
+        );
       },
     );
   }
+}
+
+class CustomerProfileSetupPage extends StatefulWidget {
+  const CustomerProfileSetupPage({super.key});
+  @override
+  State<CustomerProfileSetupPage> createState() => _CustomerProfileSetupPageState();
+}
+class _CustomerProfileSetupPageState extends State<CustomerProfileSetupPage> {
+  final _client = Supabase.instance.client;
+  final _name = TextEditingController();
+  final Map<String, bool> _accepted = {};
+  List<Map<String, dynamic>> _policies = [];
+  bool _loading = true, _saving = false;
+  String? _error;
+  @override
+  void initState() {
+    super.initState();
+    final metadata = _client.auth.currentUser?.userMetadata ?? const <String, dynamic>{};
+    _name.text = (metadata['full_name'] ?? metadata['name'] ?? '').toString();
+    _loadPolicies();
+  }
+  @override
+  void dispose() { _name.dispose(); super.dispose(); }
+  Future<void> _loadPolicies() async {
+    try {
+      final rows = await _client.rpc('srk_get_registration_policy_documents', params: {
+        'p_worker_type': 'customer', 'p_language_code': 'hi',
+      });
+      _policies = List<Map<String, dynamic>>.from(rows as List);
+      if (_policies.length != 2 ||
+          !_policies.any((p) => p['policy_type'] == 'terms') ||
+          !_policies.any((p) => p['policy_type'] == 'privacy')) {
+        _error = 'Main Admin ने अभी दोनों वर्तमान Hindi दस्तावेज़ प्रकाशित नहीं किए हैं। सहायता से संपर्क करें।';
+      }
+    } catch (_) {
+      _error = 'नीति दस्तावेज़ लोड नहीं हुए। इंटरनेट जाँचकर दोबारा कोशिश करें।';
+    } finally { if (mounted) setState(() => _loading = false); }
+  }
+  Future<void> _saveProfile() async {
+    if (_name.text.trim().length < 2) {
+      setState(() => _error = 'कृपया अपना पूरा नाम भरें।'); return;
+    }
+    if (_policies.length != 2 || _policies.any((p) => _accepted[p['id'].toString()] != true)) {
+      setState(() => _error = 'कृपया नियम और शर्तें तथा गोपनीयता नीति स्वीकार करें。'); return;
+    }
+    final user = _client.auth.currentUser;
+    final phone = (user?.phone ?? '').replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^91(?=\d{10}$)'), '');
+    if (user == null || user.phoneConfirmedAt == null || !RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
+      setState(() => _error = 'सत्यापित मोबाइल नंबर उपलब्ध नहीं है। कृपया दोबारा OTP लॉगिन करें。'); return;
+    }
+    setState(() { _saving = true; _error = null; });
+    try {
+      for (final policy in _policies) {
+        await _client.rpc('srk_record_registration_policy_consent', params: {
+          'p_worker_type': 'customer',
+          'p_policy_document_id': policy['id'],
+          'p_user_agent': 'SRK ELECTRONIC Customer Android App',
+        });
+      }
+      await _client.rpc('srk_customer_upsert_profile', params: {
+        'p_full_name': _name.text.trim(), 'p_phone': phone,
+      });
+      await _client.auth.updateUser(UserAttributes(data: {'full_name': _name.text.trim()}));
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const CustomerDashboard()));
+    } catch (e) {
+      if (mounted) setState(() => _error = 'प्रोफाइल सेव नहीं हुई: ' + e.toString().replaceFirst('Exception: ', ''));
+    } finally { if (mounted) setState(() => _saving = false); }
+  }
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('ग्राहक प्रोफाइल')),
+    body: Container(
+      decoration: const BoxDecoration(gradient: LinearGradient(
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+        colors: [Color(0xFFE8F4FF), Color(0xFFF8FBFF), Color(0xFFFFF4E8)],
+      )),
+      child: SafeArea(child: ListView(padding: const EdgeInsets.all(18), children: [
+        const SrkFounderBanner(compact: true),
+        const SizedBox(height: 18),
+        Text('अपना नाम सेव करें', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        TextField(controller: _name, textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(labelText: 'पूरा नाम', border: OutlineInputBorder())),
+        const SizedBox(height: 16),
+        Text('एक बार की सहमति', style: Theme.of(context).textTheme.titleMedium),
+        const Text('ये दस्तावेज़ आपकी ग्राहक प्रोफाइल सेव करते समय स्वीकार किए जाएँगे। सामान्य बुकिंग में दोबारा नहीं पूछे जाएँगे।'),
+        const SizedBox(height: 8),
+        if (_loading) const Center(child: CircularProgressIndicator()),
+        if (!_loading && _policies.length == 2) ..._policies.map((policy) {
+          final id = policy['id'].toString();
+          final title = policy['policy_type'] == 'terms' ? 'नियम और शर्तें' : 'गोपनीयता नीति';
+          return Card(child: ExpansionTile(
+            title: Text(title + ' • संस्करण ' + policy['version'].toString()),
+            children: [
+              Padding(padding: const EdgeInsets.all(12), child: SelectableText(policy['body']?.toString() ?? '')),
+              CheckboxListTile(
+                value: _accepted[id] == true,
+                onChanged: _saving ? null : (v) => setState(() => _accepted[id] = v == true),
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text('मैंने ' + title + ' पढ़ लिया है और स्वीकार करता/करती हूँ।'),
+              ),
+            ],
+          ));
+        }),
+        if (_error != null) Padding(padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Text(_error!, style: const TextStyle(color: Colors.red))),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: _loading || _saving || _policies.length != 2 ? null : _saveProfile,
+          icon: _saving ? const SizedBox(width: 18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.save),
+          label: Text(_saving ? 'सेव हो रहा है…' : 'नाम और सहमति सेव करें'),
+        ),
+      ])),
+    ),
+  );
 }
 
 class CustomerDashboard extends StatefulWidget {
@@ -62,14 +222,97 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
   List<Map<String, dynamic>> _complaints = [];
   String? _contactLoadWarning;
   String? _complaintLoadWarning;
+  int _selectedNavIndex = 0;
+  final ScrollController _dashboardScrollController = ScrollController();
+  final GlobalKey _bookingsSectionKey = GlobalKey();
+  Timer? _workTimerTicker;
+  int _timerTick = 0;
 
   @override
   void initState() {
     super.initState();
+    final language = _client.auth.currentUser?.userMetadata?['customer_language']?.toString();
+    if (language == 'en' || language == 'hi') customerLanguage.value = language!;
+    customerLanguage.addListener(_handleCustomerLanguageChanged);
     _loadBookings();
+    _workTimerTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _bookings.any((b) => b['status'] == 'in_progress' && b['work_timer_running'] == true)) {
+        setState(() => _timerTick++);
+      }
+    });
   }
 
-  String _status(String value) => switch (value) {
+  void _handleCustomerLanguageChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    customerLanguage.removeListener(_handleCustomerLanguageChanged);
+    _workTimerTicker?.cancel();
+    _dashboardScrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onBottomNavigation(int index) async {
+    setState(() => _selectedNavIndex = index);
+    switch (index) {
+      case 0:
+        if (_dashboardScrollController.hasClients) {
+          await _dashboardScrollController.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+        }
+        break;
+      case 1:
+        final target = _bookingsSectionKey.currentContext;
+        if (target != null) await Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
+        break;
+      case 2:
+        await _openSettings();
+        if (mounted) setState(() => _selectedNavIndex = 0);
+        break;
+      case 3:
+        await showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (ctx) => SafeArea(child: Padding(
+          padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('सहायता और सुरक्षा', style: Theme.of(ctx).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            const Text('बुकिंग से जुड़ी शिकायत के लिए अपनी बुकिंग में शिकायत विकल्प खोलें। आपात स्थिति में Admin को SOS भेजें।'),
+            const SizedBox(height: 12),
+            if (_bookings.any((booking) => booking['status'] == 'in_progress'))
+              FilledButton.icon(onPressed: () { Navigator.pop(ctx); _sendSos(); }, icon: const Icon(Icons.sos), label: const Text('आपातकालीन SOS भेजें'))
+            else
+              const Text('SOS केवल चालू बुकिंग के दौरान उपलब्ध होगा।'),
+          ]),
+        )));
+        if (mounted) setState(() => _selectedNavIndex = 0);
+        break;
+      case 4:
+        await showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (ctx) => SafeArea(child: Padding(
+          padding: const EdgeInsets.all(20), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('मेरी प्रोफाइल', style: Theme.of(ctx).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            ListTile(leading: const Icon(Icons.phone_android), title: const Text('लॉगिन मोबाइल'), subtitle: Text(_client.auth.currentUser?.phone ?? '—')),
+            ListTile(leading: const Icon(Icons.verified_user_outlined), title: const Text('Customer Account'), subtitle: Text(_client.auth.currentUser?.id ?? '—')),
+          ]),
+        )));
+        if (mounted) setState(() => _selectedNavIndex = 0);
+        break;
+    }
+  }
+
+  String _status(String value) => customerEnglish ? switch (value) {
+        'new' => 'New booking',
+        'confirmed' => 'Confirmed',
+        'assigned' => 'Technician assigned',
+        'inspection' => 'Inspection in progress',
+        'awaiting_quote_approval' => 'Quote approval pending',
+        'quote_approved' => 'Quote approved',
+        'quote_rejected' => 'Quote changes requested',
+        'in_progress' => 'Work in progress',
+        'completed' => 'Completed',
+        'awaiting_work_start_approval' => 'Work start approval pending',
+        'cancelled' => 'Cancelled',
+        _ => value,
+      } : switch (value) {
         'new' => 'नई बुकिंग',
         'confirmed' => 'पुष्टि हुई',
         'assigned' => 'इलेक्ट्रिशियन नियुक्त',
@@ -83,6 +326,17 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         'cancelled' => 'रद्द',
         _ => value,
       };
+
+  String _customerTimerText(Map<String, dynamic> booking) {
+    final accumulated = (booking['work_timer_elapsed_seconds'] as num?)?.toInt() ?? 0;
+    final startedAt = DateTime.tryParse(booking['work_started_at']?.toString() ?? '')?.toLocal();
+    final running = booking['work_timer_running'] == true;
+    final elapsed = accumulated + (running && startedAt != null
+        ? DateTime.now().difference(startedAt).inSeconds.clamp(0, 60 * 60 * 24 * 365)
+        : 0);
+    final h = elapsed ~/ 3600, m = (elapsed % 3600) ~/ 60, s = elapsed % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
 
   Future<void> _requestAccountDeletion() async {
     final controller = TextEditingController();
@@ -135,7 +389,7 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       }
       final response = await _client
           .from('service_bookings')
-          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,quote_status,quote_note,district,state,pincode,electrician_quote_kind,work_start_approval_status,work_start_requested_at,completion_approval_status,completion_requested_at,requested_duration_hours,pricing_unit_snapshot')
+          .select('id,service_type,status,payment_status,payment_method,preferred_date,preferred_time,created_at,quoted_amount,service_charge,quote_status,quote_note,district,state,pincode,electrician_quote_kind,work_start_approval_status,work_start_requested_at,completion_approval_status,completion_requested_at,requested_duration_hours,pricing_unit_snapshot,work_timer_elapsed_seconds,work_started_at,work_timer_running')
           .eq('customer_user_id', user.id)
           .order('created_at', ascending: false)
           .limit(50);
@@ -494,15 +748,82 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       );
       await _loadBookings();
     }
+  }  Future<void> _openSettings() async {
+    final user = _client.auth.currentUser;
+    final metadata = user?.userMetadata ?? const <String, dynamic>{};
+    final name = (metadata['full_name'] ?? metadata['name'] ?? 'ग्राहक').toString();
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: ValueListenableBuilder<String>(
+            valueListenable: customerLanguage,
+            builder: (context, language, _) {
+              final english = language == 'en';
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(english ? 'Settings' : 'सेटिंग्स', style: Theme.of(ctx).textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    leading: const Icon(Icons.language),
+                    title: Text(english ? 'App language' : 'ऐप की भाषा'),
+                    subtitle: DropdownButton<String>(
+                      value: language,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(value: 'hi', child: Text('हिंदी')),
+                        DropdownMenuItem(value: 'en', child: Text('English')),
+                      ],
+                      onChanged: (value) async {
+                        if (value == null || user == null) return;
+                        try {
+                          await _client.auth.updateUser(UserAttributes(data: {'customer_language': value}));
+                          customerLanguage.value = value;
+                        } catch (e) {
+                          if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text((english ? 'Language could not be saved: ' : 'भाषा सेव नहीं हुई: ') + e.toString())),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.notifications_outlined),
+                    title: Text(english ? 'Notifications' : 'सूचनाएँ'),
+                    subtitle: Text(english
+                        ? 'Notification permission controls are not available inside the app yet.'
+                        : 'सूचनाओं की अनुमति बदलने का विकल्प अभी ऐप में उपलब्ध नहीं है।'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: Text(name),
+                    subtitle: Text((english ? 'Customer ID: ' : 'ग्राहक ID: ') + (user?.id ?? '—')),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(english ? 'Booking form and service details remain in Hindi.' : 'बुकिंग फॉर्म और सर्विस विवरण हिंदी में ही रहेंगे।',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
+
 
   Future<void> _logout() async {
     await _client.auth.signOut();
   }
 
-  Future<void> _openBookingForm() async {
+  Future<void> _openBookingForm({String? categoryCode}) async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const CustomerBookingFormPage(),
+      builder: (_) => CustomerBookingFormPage(initialCategoryCode: categoryCode),
     ));
     if (mounted) _loadBookings();
   }
@@ -513,39 +834,55 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       appBar: AppBar(
         title: const Text('SRK ELECTRONIC'),
         actions: [
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _loadBookings,
-            icon: const Icon(Icons.refresh),
-          ),
-          IconButton(
-            tooltip: 'Account Deletion Request',
-            onPressed: _requestAccountDeletion,
-            icon: const Icon(Icons.person_remove_outlined),
-          ),
-          IconButton(
-            tooltip: 'Logout',
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
+          TextButton.icon(onPressed: _loading ? null : _loadBookings, icon: const Icon(Icons.refresh), label: Text(customerEnglish ? 'Refresh' : 'रिफ्रेश')),
+          PopupMenuButton<String>(
+            tooltip: 'अधिक विकल्प',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) { if (value == 'delete') _requestAccountDeletion(); if (value == 'logout') _logout(); },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'delete', child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(Icons.person_remove_outlined), title: Text('Account Deletion Request'))),
+              PopupMenuItem(value: 'logout', child: ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(Icons.logout), title: Text('Logout'))),
+            ],
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openBookingForm,
-        icon: const Icon(Icons.add),
-        label: const Text('नई बुकिंग'),
-      ),
-      body: RefreshIndicator(
+      body: Container(
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFE8F4FF), Color(0xFFF8FBFF), Color(0xFFFFF4E8)])),
+        child: Stack(children: [
+          Positioned(top: 34, right: -42, child: Container(width: 150, height: 150, decoration: BoxDecoration(shape: BoxShape.circle, color: Color(0x222B8DEB)))),
+          Positioned(bottom: 80, left: -54, child: Container(width: 180, height: 180, decoration: BoxDecoration(shape: BoxShape.circle, color: Color(0x22F5B544)))),
+          RefreshIndicator(
         onRefresh: _loadBookings,
         child: ListView(
+          controller: _dashboardScrollController,
           padding: const EdgeInsets.all(16),
           children: [
+            _CustomerIdentityHeader(user: _client.auth.currentUser),
+            const SizedBox(height: 12),
             const SrkFounderBanner(),
             const SizedBox(height: 14),
-            Text('मेरी बुकिंग',
+            Text(customerEnglish ? 'Choose a service' : 'अपनी सर्विस चुनें', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 10),
+            GridView.count(
+              crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.25,
+              children: [
+                _CustomerCategoryTile(code: 'electrician', title: customerEnglish ? 'Electrician' : 'इलेक्ट्रिशियन', icon: Icons.electrical_services),
+                _CustomerCategoryTile(code: 'plumber', title: customerEnglish ? 'Plumber' : 'प्लंबर', icon: Icons.plumbing),
+                _CustomerCategoryTile(code: 'painter', title: customerEnglish ? 'Painter' : 'पेंटर', icon: Icons.format_paint),
+                _CustomerCategoryTile(code: 'ac_fridge_technician', title: customerEnglish ? 'AC + Fridge Technician' : 'एसी और फ्रिज टेक्नीशियन', icon: Icons.ac_unit),
+                _CustomerCategoryTile(code: 'motor_pump_technician', title: customerEnglish ? 'Motor & Pump Technician' : 'मोटर और पंप टेक्नीशियन', icon: Icons.water),
+                _CustomerCategoryTile(code: 'cooler_technician', title: customerEnglish ? 'Cooler Technician' : 'कूलर टेक्नीशियन', icon: Icons.air),
+              ].map((tile) => _CustomerCategoryTile(
+                code: tile.code, title: tile.title, icon: tile.icon,
+                onTap: () => _openBookingForm(categoryCode: tile.code),
+              )).toList(),
+            ),
+            const SizedBox(height: 18),
+            Text(customerEnglish ? 'My bookings' : 'मेरी बुकिंग', key: _bookingsSectionKey,
                 style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 6),
-            const Text('आपकी OTP-लिंक की गई बुकिंग और इलेक्ट्रिशियन के कोटेशन यहाँ दिखेंगे।'),
+            Text(customerEnglish ? 'Your OTP-linked bookings and technician quotes appear here.' : 'आपकी OTP-लिंक की गई बुकिंग और इलेक्ट्रिशियन के कोटेशन यहाँ दिखेंगे।'),
             const SizedBox(height: 16),
             if (_loading) const Center(child: CircularProgressIndicator()),
             if (_error != null)
@@ -586,6 +923,19 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
             ),
           ],
         ),
+          ),
+        ]),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedNavIndex,
+        onDestinationSelected: _onBottomNavigation,
+        destinations: [
+          NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: customerEnglish ? 'Home' : 'होम'),
+          NavigationDestination(icon: const Icon(Icons.receipt_long_outlined), selectedIcon: const Icon(Icons.receipt_long), label: customerEnglish ? 'Bookings' : 'बुकिंग'),
+          NavigationDestination(icon: const Icon(Icons.settings_outlined), selectedIcon: const Icon(Icons.settings), label: customerEnglish ? 'Settings' : 'सेटिंग्स'),
+          NavigationDestination(icon: const Icon(Icons.support_agent_outlined), selectedIcon: const Icon(Icons.support_agent), label: customerEnglish ? 'Help' : 'सहायता'),
+          NavigationDestination(icon: const Icon(Icons.person_outline), selectedIcon: const Icon(Icons.person), label: customerEnglish ? 'Profile' : 'प्रोफाइल'),
+        ],
       ),
     );
   }
@@ -639,6 +989,8 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
       booking['completion_approval_status'] == 'pending' &&
       booking['completion_requested_at'] != null;
     final method = (booking['payment_method'] ?? '').toString().toLowerCase();
+    final timerRunning = booking['work_timer_running'] == true;
+    final showTimer = status == 'in_progress' && booking['work_started_at'] != null;
     final paymentCycle = booking['payment_cycle'] is Map ? Map<String, dynamic>.from(booking['payment_cycle'] as Map) : <String, dynamic>{};
     final onlineOnly = paymentCycle['online_required'] == true;
     final cycleUnverified = paymentCycle['cycle_unverified'] == true;
@@ -652,6 +1004,15 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
           const SizedBox(height: 6),
           Text('बुकिंग: ${booking['id']}'),
           Text('स्थिति: ${_status(status)}'),
+          if (showTimer) Card(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: ListTile(
+              leading: Icon(Icons.timer, color: timerRunning ? Colors.green : Colors.orange),
+              title: Text(customerEnglish ? 'Work timer' : 'काम का टाइमर'),
+              subtitle: Text(_customerTimerText(booking), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              trailing: Text(timerRunning ? (customerEnglish ? 'Running' : 'चालू') : (customerEnglish ? 'Paused' : 'रुका हुआ')),
+            ),
+          ),
           if ((booking['worker_contacts'] as List? ?? const []).isNotEmpty)
             ...List<Map<String, dynamic>>.from(booking['worker_contacts'] as List).map((worker) {
               final phone = worker['phone'].toString();
@@ -795,16 +1156,83 @@ Future<void> _callPhone(String raw) async {
 
 /// Uses the existing rate-limited Netlify booking endpoint. The service-role
 /// credential remains server-side and is never included in this app.
+
+class _CustomerIdentityHeader extends StatelessWidget {
+  const _CustomerIdentityHeader({required this.user});
+  final User? user;
+
+  @override
+  Widget build(BuildContext context) {
+    final metadata = user?.userMetadata ?? const <String, dynamic>{};
+    final name = (metadata['full_name'] ?? metadata['name'] ?? 'ग्राहक').toString();
+    final photo = (metadata['avatar_url'] ?? metadata['picture'] ?? '').toString();
+    final customerId = user?.id ?? '—';
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 29,
+              backgroundColor: const Color(0xFFE5F0FF),
+              backgroundImage: photo.startsWith('https://') ? NetworkImage(photo) : null,
+              child: photo.startsWith('https://') ? null : const Icon(Icons.person, size: 32),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 3),
+                  const Text('Customer Unique ID', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                  SelectableText(customerId, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+            const Icon(Icons.verified_user_outlined, color: Color(0xFF2677C9)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CustomerCategoryTile extends StatelessWidget {
+  const _CustomerCategoryTile({required this.code, required this.title, required this.icon, this.onTap});
+  final String code, title;
+  final IconData icon;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Row(children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 26),
+          const SizedBox(width: 9),
+          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700), maxLines: 2)),
+          const Icon(Icons.chevron_right),
+        ]),
+      ),
+    ),
+  );
+}
+
 class CustomerBookingFormPage extends StatefulWidget {
-  const CustomerBookingFormPage({super.key});
+  const CustomerBookingFormPage({super.key, this.initialCategoryCode});
+  final String? initialCategoryCode;
   @override
   State<CustomerBookingFormPage> createState() => _CustomerBookingFormPageState();
 }
 
 class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   final _formKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _phone = TextEditingController();
   final _state = TextEditingController();
   final _district = TextEditingController();
   final _pincode = TextEditingController();
@@ -818,46 +1246,25 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   int _previewRequest = 0;
   bool _submitting = false, _locationBusy = false, _priceBusy = false;
   double? _locationLat, _locationLng;
-  List<Map<String, dynamic>> _policies = [];
-  final Map<String, bool> _policyAccepted = {};
-  bool _policyLoading = true;
-  String? _policyError;
 
   @override
   void initState() {
     super.initState();
-    final user = _client.auth.currentUser;
-    _phone.text = (user?.phone ?? '').replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^91(?=\d{10}$)'), '');
-    _name.text = user?.userMetadata?['full_name']?.toString() ?? '';
-    _loadPolicies();
   }
 
   @override
   void dispose() {
-    _name.dispose(); _phone.dispose(); _state.dispose();
+    _state.dispose();
     _district.dispose(); _pincode.dispose(); _address.dispose();
     super.dispose();
   }
 
-  Future<void> _loadPolicies() async {
-    try {
-      final rows = await _client.rpc('srk_get_registration_policy_documents', params: {
-        'p_worker_type': 'customer', 'p_language_code': 'hi',
-      });
-      _policies = List<Map<String, dynamic>>.from(rows as List);
-      _policyError = null;
-    } catch (e) {
-      _policies = [];
-      _policyError = e.toString();
-    } finally {
-      if (mounted) setState(() => _policyLoading = false);
-    }
+  void _invalidatePricePreview() {
+    ++_previewRequest;
+    _pricePreview = null;
+    _priceError = null;
+    _priceBusy = false;
   }
-
-  bool get _hasPolicyConsent => _policies.length == 2 &&
-      _policies.any((p) => p['policy_type'] == 'terms') &&
-      _policies.any((p) => p['policy_type'] == 'privacy') &&
-      _policies.every((p) => _policyAccepted[p['id'].toString()] == true);
 
   String? _required(String? value, String label, {int min = 2}) {
     final v = value?.trim() ?? '';
@@ -867,7 +1274,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   Future<void> _useCurrentLocation() async {
     setState(() => _locationBusy = true);
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) throw StateError('फोन की Location/GPS चालू करें।');
+      if (!await Geolocator.isLocationServiceEnabled()) throw StateError('फोन की लोकेशन/जीपीएस चालू करें।');
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
@@ -876,9 +1283,39 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 20)),
       );
+      List<Placemark> placemarks = [];
+      try {
+        placemarks = await Geocoding().placemarkFromCoordinates(pos.latitude, pos.longitude);
+      } catch (_) {
+        // Keep GPS coordinates even if the device geocoder is unavailable.
+      }
       if (!mounted) return;
-      setState(() { _locationLat = pos.latitude; _locationLng = pos.longitude; });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('वर्तमान GPS लोकेशन जोड़ दी गई।')));
+      final place = placemarks.isNotEmpty ? placemarks.first : null;
+      setState(() {
+        ++_previewRequest;
+        _pricePreview = null;
+        _priceError = null;
+        _locationLat = pos.latitude;
+        _locationLng = pos.longitude;
+        if (place != null) {
+          final stateName = (place.administrativeArea ?? '').trim();
+          final districtName = (place.subAdministrativeArea ?? place.locality ?? '').trim();
+          final pin = (place.postalCode ?? '').replaceAll(RegExp('[^0-9]'), '');
+          if (stateName.isNotEmpty) _state.text = stateName;
+          if (districtName.isNotEmpty) _district.text = districtName;
+          if (pin.length == 6 && int.tryParse(pin) != null) _pincode.text = pin;
+          final addressParts = <String?>[place.name, place.subLocality, place.thoroughfare, place.locality]
+              .where((part) => part != null && part.trim().isNotEmpty)
+              .map((part) => part!.trim()).toSet().toList();
+          if (addressParts.isNotEmpty && _address.text.trim().isEmpty) {
+            _address.text = addressParts.join(', ');
+          }
+        }
+      });
+      final locationMessage = place != null && (place.administrativeArea ?? '').trim().isNotEmpty
+          ? 'जीपीएस लोकेशन जुड़ गई। राज्य/जिला/पिन कोड अपने-आप भरे गए हैं—कृपया पुष्टि करें।'
+          : 'जीपीएस निर्देशांक जुड़ गए। पता अपने-आप नहीं मिल सका; कृपया मैन्युअल भरें।';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(locationMessage)));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
@@ -887,12 +1324,15 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
       if (mounted) setState(() => _locationBusy = false);
     }
   }
-
   Future<void> _refreshPricePreview() async {
     final selection = _selection;
     final request = ++_previewRequest;
     if (selection == null) {
       if (mounted) setState(() { _pricePreview = null; _priceError = null; _priceBusy = false; });
+      return;
+    }
+    if (_state.text.trim().isEmpty || _district.text.trim().isEmpty || _pincode.text.trim().length != 6 || _address.text.trim().isEmpty) {
+      setState(() { _priceError = 'पहले राज्य, जिला, 6 अंकों का पिन कोड और पूरा पता भरें।'; _pricePreview = null; _priceBusy = false; });
       return;
     }
     setState(() { _priceBusy = true; _priceError = null; _pricePreview = null; });
@@ -922,36 +1362,19 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_policyLoading || !_hasPolicyConsent) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('वर्तमान Hindi Terms और Privacy Policy पढ़कर दोनों स्वीकार करें।'),
-      ));
-      return;
-    }
     final selection = _selection;
     if (selection == null || _pricePreview == null || _priceBusy) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('पहले लाइव कैटलॉग से सेवा चुनें और सर्वर दर की पुष्टि करें।')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('पहले सक्रिय सेवा सूची से सेवा चुनें और सर्वर द्वारा तय दर की पुष्टि करें।')));
       return;
     }
     final session = _client.auth.currentSession;
     final user = _client.auth.currentUser;
     if (session == null || user == null || user.phoneConfirmedAt == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('बुकिंग के लिए पहले मोबाइल OTP सत्यापन पूरा करें।')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('बुकिंग के लिए पहले मोबाइल ओटीपी सत्यापन पूरा करें।')));
       return;
     }
     setState(() => _submitting = true);
     try {
-      for (final policy in _policies) {
-        await _client.rpc('srk_record_registration_policy_consent', params: {
-          'p_worker_type': 'customer',
-          'p_policy_document_id': policy['id'],
-          'p_user_agent': 'SRK ELECTRONIC Customer Android App',
-        });
-      }
-      await _client.rpc('srk_customer_upsert_profile', params: {
-        'p_full_name': _name.text.trim(),
-        'p_phone': _phone.text.trim(),
-      });
       final response = await _client.rpc('srk_customer_create_booking_v2', params: {
         'p_category_id': selection.categoryId,
         'p_service_type_id': selection.serviceTypeId,
@@ -978,7 +1401,7 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.check_circle, color: Colors.green, size: 42),
           title: const Text('बुकिंग सफलतापूर्वक भेजी गई'),
-          content: Text('बुकिंग ID: ${booking['id'] ?? '—'}\n\nअभी कोई अग्रिम भुगतान नहीं लिया गया है। योग्य Technician को सेवा के अनुसार ऑफर भेजा जाएगा।'),
+          content: Text('बुकिंग संख्या: ${booking['id'] ?? '—'}\n\nअभी कोई अग्रिम भुगतान नहीं लिया गया है। योग्य टेक्नीशियन को सेवा के अनुसार ऑफर भेजा जाएगा।'),
           actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('ठीक है'))],
         ),
       );
@@ -1005,6 +1428,12 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
     child: TextFormField(
       controller: controller, decoration: _decoration(label, hint: hint),
       keyboardType: keyboard, maxLines: maxLines, maxLength: maxLength, readOnly: readOnly,
+      onChanged: (_) {
+        if (identical(controller, _state) || identical(controller, _district) ||
+            identical(controller, _pincode) || identical(controller, _address)) {
+          setState(_invalidatePricePreview);
+        }
+      },
       validator: validator ?? (v) => _required(v, label),
     ),
   );
@@ -1014,132 +1443,128 @@ class _CustomerBookingFormPageState extends State<CustomerBookingFormPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('नई सर्विस बुकिंग')),
-    body: SafeArea(child: Form(
+    body: Container(
+      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFE8F4FF), Color(0xFFF8FBFF), Color(0xFFFFF4E8)])),
+      child: SafeArea(child: Form(
       key: _formKey,
       child: ListView(padding: const EdgeInsets.all(16), children: [
         Card(child: Padding(padding: const EdgeInsets.all(14), child: Row(children: const [
           Icon(Icons.verified_user, color: Colors.green), SizedBox(width: 10),
-          Expanded(child: Text('बुकिंग आपके OTP-verified मोबाइल खाते से जुड़ेगी। भुगतान काम पूरा होने और अंतिम बिल बनने के बाद ही होगा।')),
+          Expanded(child: Text('बुकिंग आपके ओटीपी-सत्यापित मोबाइल खाते से जुड़ेगी। भुगतान काम पूरा होने और अंतिम बिल बनने के बाद ही होगा।')),
         ]))),
-        Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Terms & Privacy Policy', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 6),
-            if (_policyLoading)
-              const LinearProgressIndicator()
-            else if (_policies.length != 2)
-              const Text('Main Admin ने अभी Customer की वर्तमान Hindi Terms और Privacy Policy प्रकाशित नहीं की हैं। सुरक्षा के लिए Booking Submit तब तक बंद रहेगा।',
-                style: TextStyle(color: Colors.red))
-            else
-              ..._policies.map((p) {
-                final id = p['id'].toString();
-                return ExpansionTile(
-                  tilePadding: EdgeInsets.zero,
-                  title: Text((p['policy_type'] == 'terms' ? 'Terms & Conditions — ' : 'Privacy Policy — ') + p['version'].toString()),
-                  children: [
-                    Padding(padding: const EdgeInsets.all(8), child: SelectableText(p['body']?.toString() ?? '')),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: _policyAccepted[id] == true,
-                      onChanged: _submitting ? null : (v) => setState(() => _policyAccepted[id] = v == true),
-                      title: const Text('मैंने पूरा दस्तावेज़ पढ़ा और स्वीकार किया है।'),
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                  ],
-                );
-              }),
-            if (_policyError != null)
-              Text('Policy लोड नहीं हुई: $_policyError', style: const TextStyle(color: Colors.red)),
+        Text('1. सर्विस कैटेगरी और स्तर चुनें', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        SrkServiceCategoryPicker(
+          initialCategoryCode: widget.initialCategoryCode,
+          onSelection: (selection) {
+            setState(() {
+              _selection = selection;
+              _invalidatePricePreview();
+              if (selection == null || !selection.helperAvailable) _helperCount = 0;
+            });
+          },
+        ),
+        if (_selection != null) ...[
+          const SizedBox(height: 10),
+          Card(child: Padding(padding: const EdgeInsets.all(12), child: Text(
+            '${_selection!.categoryName} • ${_selection!.skillLevelName}\n${_selection!.serviceName} • ${_selection!.skillName}',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ))),
+          Text('2. कितने लोग चाहिए?', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            initialValue: _technicianCount, decoration: _decoration('कितने टेक्नीशियन चाहिए?'),
+            items: List.generate(10, (i) => i + 1).map((v)=>DropdownMenuItem(value:v,child:Text('$v टेक्नीशियन'))).toList(),
+            onChanged: (v) { setState(() { _technicianCount=v??1; _invalidatePricePreview(); }); },
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<int>(
+            initialValue: _helperCount, decoration: _decoration('कितने सहायक चाहिए?'),
+            items: List.generate(_selection!.pricingUnit == 'hour' && _selection!.helperAvailable ? 11 : 1, (i) => i)
+              .map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'हेल्पर नहीं':'$v हेल्पर'))).toList(),
+            onChanged: _selection!.pricingUnit == 'hour' && _selection!.helperAvailable
+              ? (v) { setState(() { _helperCount=v??0; _invalidatePricePreview(); }); }
+              : null,
+          ),
+          const SizedBox(height: 8),
+          if (_selection!.pricingUnit == 'hour') ...[
+            Text('3. कितने समय के लिए काम चाहिए?', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              initialValue: _durationHours,
+              decoration: _decoration('काम की कुल अवधि (घंटे / दिन)'),
+              items: [
+                ...List.generate(23, (i) => i + 1).map((hours) =>
+                  DropdownMenuItem(value: hours, child: Text('$hours घंटे'))),
+                ...List.generate(60, (i) => i + 1).map((days) =>
+                  DropdownMenuItem(value: days * 24, child: Text('$days दिन'))),
+              ],
+              onChanged: (v) { setState(() { _durationHours=v??1; _invalidatePricePreview(); }); },
+            ),
+          ] else if (_selection!.pricingUnit == 'per_item') ...[
+            DropdownButtonFormField<int>(
+              initialValue: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
+              items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
+              onChanged: (v) { setState(() { _unitCount=v??1; _invalidatePricePreview(); }); },
+            ),
+          ] else if (_selection!.pricingUnit == 'motor_hp') ...[
+            Text('मोटर / पंप का निर्धारित एचपी रेट लागू होगा।'),
           ],
-        ))),
-        const SizedBox(height: 12),
-        Text('ग्राहक की जानकारी', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 10),
-        _field(_name, 'पूरा नाम', maxLength: 100),
-        _field(_phone, 'OTP verified मोबाइल नंबर', keyboard: TextInputType.phone, maxLength: 10, readOnly: true,
-          validator: (v) => RegExp(r'^[0-9]{10}$').hasMatch(v?.trim() ?? '') ? null : '10 अंकों का वही OTP verified नंबर भरें'),
-        const SizedBox(height: 4),
-        Text('सेवा का पता', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 10),
+        ],
+        const SizedBox(height: 14),
+        Text('4. काम की लोकेशन', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
         _field(_state, 'राज्य', maxLength: 100),
         _field(_district, 'जिला', maxLength: 100),
-        _field(_pincode, '6 अंकों का PIN Code', keyboard: TextInputType.number, maxLength: 6,
-          validator: (v) => RegExp(r'^[0-9]{6}$').hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का PIN Code भरें'),
+        _field(_pincode, '6 अंकों का पिन कोड', keyboard: TextInputType.number, maxLength: 6,
+          validator: (v) => RegExp(r'^[0-9]{6}$').hasMatch(v?.trim() ?? '') ? null : 'सही 6 अंकों का पिन कोड भरें'),
         _field(_address, 'पूरा पता / मकान / गली', maxLines: 3, maxLength: 1000),
         OutlinedButton.icon(
           onPressed: _locationBusy ? null : _useCurrentLocation,
           icon: _locationBusy ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2)) : const Icon(Icons.my_location),
-          label: Text(_locationBusy ? 'GPS लोकेशन ली जा रही है…' : (_locationLat == null ? 'वर्तमान GPS लोकेशन जोड़ें' : 'GPS लोकेशन जुड़ गई • दोबारा चुनें')),
+          label: Text(_locationBusy ? 'जीपीएस लोकेशन ली जा रही है…' : (_locationLat == null ? 'जीपीएस से वर्तमान लोकेशन जोड़ें' : 'जीपीएस लोकेशन जुड़ गई • दोबारा चुनें')),
         ),
+        const SizedBox(height: 10),
         const SizedBox(height: 14),
-        Text('आपको कौन-सी सेवा चाहिए?', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        SrkServiceCategoryPicker(onSelection: (selection) {
-          setState(() { _selection = selection; _pricePreview = null; _priceError = null; });
-          _refreshPricePreview();
-        }),
-        if (_selection != null) ...[
-          const SizedBox(height: 12),
-          Text('${_selection!.categoryName} • ${_selection!.serviceName}\n${_selection!.skillName} • ${_selection!.skillLevelName}',
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-          if (_selection!.pricingUnit == 'hour') ...[
-            const SizedBox(height: 8),
-            DropdownButtonFormField<int>(
-              initialValue: _durationHours, decoration: _decoration('काम की अवधि'),
-              items: [1,3,8].map((v) => DropdownMenuItem(value:v,child:Text('$v घंटे'))).toList(),
-              onChanged: (v) { setState(() => _durationHours=v??1); _refreshPricePreview(); },
-            ),
-          ],
-          if (_selection!.pricingUnit == 'per_item') ...[
-            const SizedBox(height: 8),
-            DropdownButtonFormField<int>(
-              initialValue: _unitCount, decoration: _decoration('कितने कूलर / यूनिट'),
-              items: List.generate(10,(i)=>i+1).map((v)=>DropdownMenuItem(value:v,child:Text('$v यूनिट'))).toList(),
-              onChanged: (v) { setState(() => _unitCount=v??1); _refreshPricePreview(); },
-            ),
-          ],
-          const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
-            initialValue: _technicianCount, decoration: _decoration('कितने Technician चाहिए?'),
-            items: [1,2,3].map((v)=>DropdownMenuItem(value:v,child:Text('$v Technician'))).toList(),
-            onChanged: (v) { setState(() => _technicianCount=v??1); _refreshPricePreview(); },
-          ),
-          const SizedBox(height: 8),
-          if (_selection!.pricingUnit == 'hour' && ((_pricePreview?['helper_rate'] as num?) ?? 0) > 0)
-            DropdownButtonFormField<int>(
-              initialValue: _helperCount, decoration: _decoration('Helper (वैकल्पिक)'),
-              items: [0,1].map((v)=>DropdownMenuItem(value:v,child:Text(v==0?'Helper नहीं':'1 Helper'))).toList(),
-              onChanged: (v) { setState(() => _helperCount=v??0); _refreshPricePreview(); },
-            ),
-          const SizedBox(height: 12),
+        Text('5. अनुमानित कीमत देखें', style: Theme.of(context).textTheme.titleMedium),
+        OutlinedButton.icon(
+          onPressed: _selection == null || _priceBusy ? null : _refreshPricePreview,
+          icon: const Icon(Icons.calculate_outlined),
+          label: const Text('लोकेशन के अनुसार अनुमानित कीमत देखें'),
+        ),
+        if (_priceBusy) const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
+        if (_priceError != null) Text(_priceError!, style: const TextStyle(color: Colors.red)),
+        if (_pricePreview != null)
           Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
             child: Padding(padding: const EdgeInsets.all(14), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('सर्वर से अनुमानित मजदूरी', style: Theme.of(context).textTheme.titleMedium),
-              if (_priceBusy) const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator()),
-              if (_priceError != null) Text(_priceError!, style: const TextStyle(color: Colors.red)),
-              if (_pricePreview != null) ...[
-                Text('अनुमानित कुल: ${_money(_pricePreview!['estimated_customer_total'])}', style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
-                Text('मजदूरी: ${_money(_pricePreview!['estimated_base_total'])}'),
-                Text('कंपनी कमीशन (अनुमान): ${_money(_pricePreview!['estimated_company_commission'])}'),
-                Text('Technician का हिस्सा (अनुमान): ${_money(_pricePreview!['estimated_worker_net'])}'),
-                Text((_pricePreview!['price_note']??'').toString()),
+              Text('अनुमानित सर्विस चार्ज', style: Theme.of(context).textTheme.titleMedium),
+              Text(_money(_pricePreview!['estimated_base_total']), style: const TextStyle(fontSize: 20,fontWeight: FontWeight.w600)),
+              if (((_pricePreview!['pending_cancellation_fee_amount'] as num?) ?? 0) > 0) ...[
+                const SizedBox(height: 8),
+                const Divider(),
+                const Text('पिछली बुकिंग का बकाया रद्दीकरण शुल्क'),
+                Text(_money(_pricePreview!['pending_cancellation_fee_amount'])),
               ],
+              const SizedBox(height: 8),
+              const Divider(),
+              const Text('कुल अनुमानित देय राशि', style: TextStyle(fontWeight: FontWeight.w700)),
+              Text(_money(_pricePreview!['estimated_customer_total']), style: const TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
+              Text('जिला ${_district.text.trim()} की स्वीकृत दर के अनुसार'),
             ]))),
-        ],
         const SizedBox(height: 12),
         Card(color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Padding(padding: EdgeInsets.all(14), child: Text(
-            'बुकिंग भेजने के बाद योग्य Technician को ऑफर मिलेगा। Technician स्वीकार करने के बाद काम का समय तय करने का प्रस्ताव भेज सकता है, जिसे आप स्वीकार या अस्वीकार कर सकेंगे। कोई अग्रिम भुगतान नहीं।')),
+            'सभी विवरण और अनुमानित कीमत जाँचने के बाद बुकिंग भेजें। योग्य और उपलब्ध Technician/Helper को ऑफर भेजा जाएगा। कोई अग्रिम भुगतान नहीं।')),
         ),
         const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: _submitting || _selection == null || _pricePreview == null || _priceBusy ? null : _submit,
           icon: _submitting ? const SizedBox(width:18,height:18,child:CircularProgressIndicator(strokeWidth:2,color:Colors.white)) : const Icon(Icons.send),
-          label: Text(_submitting ? 'बुकिंग भेजी जा रही है…' : 'बुकिंग भेजें'),
+          label: Text(_submitting ? 'बुकिंग भेजी जा रही है…' : 'अंतिम चरण: बुकिंग भेजें'),
         ),
         const SizedBox(height: 24),
       ]),
     )),
+    ),
   );
 }

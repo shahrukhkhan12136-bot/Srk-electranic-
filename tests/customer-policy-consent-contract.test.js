@@ -7,12 +7,14 @@ const customer = fs.readFileSync('apps/customer_app/lib/main.dart', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20261125115830_require_customer_terms_privacy_consent_before_profile.sql', 'utf8');
 const admin = fs.readFileSync('admin.html', 'utf8');
 
-test('Customer booking registration loads, displays and records current Hindi Terms and Privacy consent', () => {
+test('Customer accepts current Hindi Terms and Privacy once while saving the first profile', () => {
+  assert.match(customer, /CustomerProfileSetupPage/);
   assert.match(customer, /srk_get_registration_policy_documents/);
   assert.match(customer, /p_worker_type': 'customer'/);
-  assert.match(customer, /Terms & Privacy Policy/);
-  assert.match(customer, /_hasPolicyConsent/);
   assert.match(customer, /srk_record_registration_policy_consent/);
+  assert.match(customer, /नाम और सहमति सेव करें/);
+  const bookingForm = customer.slice(customer.indexOf('class CustomerBookingFormPage'));
+  assert.doesNotMatch(bookingForm, /Terms & Privacy Policy|srk_record_registration_policy_consent/);
 });
 
 test('Customer profile creation is blocked server-side until both current Hindi policies are accepted', () => {
@@ -30,7 +32,23 @@ test('Main Admin can publish separate Customer, Technician and Helper policy doc
   assert.match(admin, /srk_admin_publish_policy_document/);
 });
 
-test('Customer booking form fails closed while policy loading or consent is missing', () => {
-  assert.match(customer, /_policyLoading \|\| !_hasPolicyConsent/);
-  assert.match(customer, /वर्तमान Hindi Terms और Privacy Policy/);
+test('Customer booking does not ask for repeated Terms or Privacy consent', () => {
+  const bookingForm = customer.slice(customer.indexOf('class CustomerBookingFormPage'));
+  assert.doesNotMatch(bookingForm, /_policyLoading|_hasPolicyConsent|Terms & Privacy Policy|srk_record_registration_policy_consent/);
+  assert.match(customer, /srk_customer_has_current_policy_consent/);
+});
+
+test('Customer language preference is saved to the signed-in profile; booking UI stays Hindi', () => {
+  assert.match(customer, /customer_language/);
+  assert.match(customer, /DropdownMenuItem\(value: 'hi'/);
+  assert.match(customer, /DropdownMenuItem\(value: 'en'/);
+  assert.match(customer, /बुकिंग फॉर्म और सर्विस विवरण हिंदी में ही रहेंगे/);
+});
+
+test('Customer booking cards show the server-authoritative running work timer', () => {
+  assert.match(customer, /work_timer_elapsed_seconds/);
+  assert.match(customer, /work_started_at/);
+  assert.match(customer, /work_timer_running/);
+  assert.match(customer, /_customerTimerText\(booking\)/);
+  assert.match(customer, /Timer\.periodic\(const Duration\(seconds: 1\)/);
 });

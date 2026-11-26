@@ -12,8 +12,8 @@ test('Master Rate Catalogue supports all service categories, skills, and service
   assert.match(migration, /skill_code text NOT NULL REFERENCES public\.srk_service_skills/);
   assert.match(migration, /billing_model text NOT NULL CHECK \(billing_model IN \('hourly','fixed_per_unit'\)\)/);
   assert.match(migration, /ON CONFLICT\(service_code\) DO NOTHING/);
-  assert.match(migration, /'ac_installation','AC Installation'/);
-  assert.match(migration, /'ac_repair','AC Repair'/);
+  assert.match(migration, /SELECT c\.category_code,s\.skill_code,s\.skill_code,s\.display_name/);
+  assert.match(migration, /FROM public\.srk_service_skills s[\s\S]*?JOIN public\.srk_service_categories c ON c\.id=s\.category_id[\s\S]*?ON CONFLICT\(service_code\) DO NOTHING/);
 });
 
 test('rate catalogue supports technician/helper hourly pay and fixed-per-unit labour prices', () => {
@@ -24,9 +24,9 @@ test('rate catalogue supports technician/helper hourly pay and fixed-per-unit la
 });
 
 test('only explicitly confirmed plumber rates are activated; unresolved category prices are not guessed', () => {
-  assert.match(migration, /\('residential_plumbing','basic','Basic',10000,5000/);
-  assert.match(migration, /\('residential_plumbing','expert','Expert',15000,7500/);
-  assert.match(migration, /\('industrial_plumbing','master_industrial','Master \/ Industrial',22500,10000/);
+  assert.match(migration, /\('residential_plumbing','basic','Basic',10000::bigint,5000::bigint/);
+  assert.match(migration, /\('residential_plumbing','expert','Expert',15000::bigint,7500::bigint/);
+  assert.match(migration, /\('industrial_plumbing','master_industrial','Master \/ Industrial',22500::bigint,10000::bigint/);
   assert.doesNotMatch(migration, /\('residential_wiring',[\s\S]{0,120}'active'/);
   assert.match(migration, /Conflicting category prices are deliberately not activated/);
 });

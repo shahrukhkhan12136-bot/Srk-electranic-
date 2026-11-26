@@ -134,20 +134,25 @@ JOIN public.srk_service_categories c ON c.id=s.category_id
 ON CONFLICT(service_code) DO NOTHING;
 
 -- Winding is outside SRK ELECTRONIC. Preserve all old records, but keep winding skills and offerings inactive.
+-- Explicit codes cover both motor and cooler winding; name matching safely catches legacy aliases.
 UPDATE public.srk_service_skills s SET is_active=false
-FROM public.srk_service_categories c
-WHERE c.id=s.category_id
-  AND c.category_code='motor_pump'
-  AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%');
+WHERE s.skill_code IN ('motor_winding','cooler_motor_winding')
+   OR EXISTS (
+     SELECT 1 FROM public.srk_service_categories c
+     WHERE c.id=s.category_id AND c.category_code='motor_pump'
+       AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%')
+   );
 UPDATE public.srk_service_offerings o SET is_active=false,updated_at=clock_timestamp()
-WHERE o.skill_code IN (
-  SELECT s.skill_code FROM public.srk_service_skills s
-  JOIN public.srk_service_categories c ON c.id=s.category_id
-  WHERE c.category_code='motor_pump'
-    AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%')
-);
+WHERE o.skill_code IN ('motor_winding','cooler_motor_winding')
+   OR o.skill_code IN (
+     SELECT s.skill_code FROM public.srk_service_skills s
+     JOIN public.srk_service_categories c ON c.id=s.category_id
+     WHERE c.category_code='motor_pump'
+       AND (s.display_name ILIKE '%winding%' OR s.display_name ILIKE '%rewinding%')
+   );
 
 -- Rates are seeded only when the exact service code exists; otherwise Admin must configure a verified rate.
+-- Conflicting category prices are deliberately not activated until the Admin verifies them.
 INSERT INTO public.srk_service_rates
 (service_code,level_code,level_label,technician_hourly_paise,helper_hourly_paise,rate_version,status)
 SELECT v.service_code,v.level_code,v.level_label,v.technician_hourly_paise,v.helper_hourly_paise,
@@ -183,7 +188,7 @@ BEGIN
   END IF;
   IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='service_bookings_srk_duration_minutes_valid') THEN
     ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_srk_duration_minutes_valid
-      CHECK(srk_duration_minutes IS NULL OR srk_duration_minutes BETWEEN 1 AND 72000);
+      CHECK(srk_duration_minutes IS NULL OR srk_duration_minutes BETWEEN 1 AND 86400);
   END IF;
   IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conname='service_bookings_srk_rate_snapshot_complete') THEN
     ALTER TABLE public.service_bookings ADD CONSTRAINT service_bookings_srk_rate_snapshot_complete
@@ -202,7 +207,7 @@ BEGIN
           AND ((srk_billing_model_snapshot='hourly' AND srk_technician_hourly_paise_snapshot IS NOT NULL
                 AND srk_helper_hourly_paise_snapshot IS NOT NULL
                 AND (NOT srk_helper_included_snapshot OR srk_helper_hourly_paise_snapshot>0)
-                AND srk_fixed_labour_paise_snapshot IS NULL AND srk_duration_minutes BETWEEN 1 AND 72000)
+                AND srk_fixed_labour_paise_snapshot IS NULL AND srk_duration_minutes BETWEEN 1 AND 86400)
             OR (srk_billing_model_snapshot='fixed_per_unit' AND srk_fixed_labour_paise_snapshot IS NOT NULL
                 AND srk_technician_hourly_paise_snapshot IS NULL AND srk_helper_hourly_paise_snapshot IS NULL
                 AND srk_helper_included_snapshot=false AND srk_duration_minutes IS NULL)))
