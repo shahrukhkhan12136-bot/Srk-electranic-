@@ -1,4 +1,6 @@
 -- India LGD district directory and district-specific service-rate administration.
+-- Keep the sync floor compatible with the checked-in 784-district source snapshot;
+-- the 36-state/UT and unique LGD-code checks below provide additional completeness guards.
 -- This migration stages Admin controls only; booking/dispatch/billing integration is handled
 -- by a subsequent migration before any district rate is used for live bookings.
 
@@ -92,7 +94,7 @@ begin
   if auth.uid() is null or not public.is_srk_admin() then
     raise exception 'Main Admin permission required' using errcode='42501';
   end if;
-  if jsonb_typeof(p_districts) <> 'array' or jsonb_array_length(p_districts) < 790 then
+  if jsonb_typeof(p_districts) <> 'array' or jsonb_array_length(p_districts) < 780 then
     raise exception 'District sync rejected: expected a current all-India directory snapshot';
   end if;
   if (select count(distinct state_code) from jsonb_to_recordset(p_districts) as x(code text, name text, state_code text, state_name text)) <> 36 then
