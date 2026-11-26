@@ -795,7 +795,9 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
                   ListTile(
                     leading: const Icon(Icons.notifications_outlined),
                     title: Text(english ? 'Notifications' : 'सूचनाएँ'),
-                    subtitle: Text(english ? 'Booking and offer alerts follow device/app permission' : 'बुकिंग और ऑफर की सूचनाएँ ऐप अनुमति के अनुसार'),
+                    subtitle: Text(english
+                        ? 'Notification permission controls are not available inside the app yet.'
+                        : 'सूचनाओं की अनुमति बदलने का विकल्प अभी ऐप में उपलब्ध नहीं है।'),
                   ),
                   ListTile(
                     leading: const Icon(Icons.person_outline),
