@@ -185,7 +185,7 @@
 </div>
 <div class="card" id="adminRazorpayRefundCard">
 <h2>Razorpay Full Refund — Main Admin</h2>
-<p class="muted">केवल verified Razorpay-paid booking के लिए पूरा refund। Backend immutable labour bill / approved legacy quote और cancellation-fee ledger से exact amount निकालेगा। Refund शुरू होते ही pending electrician payout hold होगा; refund processed होने पर ही booking और fee ledger reverse होंगे। Retry पर वही idempotency key इस्तेमाल होगी।</p>
+<p class="muted">केवल verified Razorpay-paid booking के लिए पूरा refund। Backend immutable labour bill और cancellation-fee ledger से exact amount निकालेगा। Refund शुरू होते ही pending electrician payout hold होगा; refund processed होने पर ही booking और fee ledger reverse होंगे। Retry पर वही idempotency key इस्तेमाल होगी।</p>
 <div class="grid">
  <div><label for="razorpayRefundBookingId">Booking ID</label><input id="razorpayRefundBookingId" maxlength="36" placeholder="Booking UUID" style="width:100%"></div>
  <div><label for="razorpayRefundReason">Refund का कारण (20–250 अक्षर)</label><textarea id="razorpayRefundReason" minlength="20" maxlength="250" rows="3" style="width:100%;padding:10px" placeholder="ग्राहक की समस्या और Refund का स्पष्ट कारण"></textarea></div>
